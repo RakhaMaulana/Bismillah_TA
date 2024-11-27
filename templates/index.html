@@ -1,14 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eVoting</title>
-</head>
-<body>
-    <h1>Welcome to eVoting</h1>
-    <a href="{{ url_for('poll') }}">Start Voting</a>
-    <br>
-    <a href="{{ url_for('admin') }}">Admin Login</a>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Welcome to eVoting</h1>
+<p>Secure and anonymous voting system.</p>
+{% endblock %}

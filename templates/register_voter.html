@@ -1,20 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Voter</title>
-</head>
-<body>
-    <h1>Register as a Voter</h1>
-    <form method="POST" enctype="multipart/form-data">
-        <label for="id_number">ID Number:</label>
-        <input type="number" id="id_number" name="id_number" required>
-        <br>
-        <label for="photo">Photo:</label>
-        <input type="file" id="photo" name="photo" required>
-        <br>
-        <button type="submit">Register</button>
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Register Voter</h1>
+<form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
+    <label for="id_number">ID Number:</label>
+    <input type="text" id="id_number" name="id_number" required>
+    <label for="photo">Photo:</label>
+    <input type="hidden" id="photo" name="photo">
+    <div class="video-container">
+        <video id="video" width="320" height="240" autoplay></video>
+        <button type="button" class="take-photo" onclick="takePhoto()">Take Photo</button>
+    </div>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+    <img id="photo-preview" src="" alt="Photo Preview" style="display:none;">
+    <button type="submit">Register</button>
+</form>
+
+<script>
+    // Access the webcam
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const photoInput = document.getElementById('photo');
+    const photoPreview = document.getElementById('photo-preview');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(err => {
+            console.error("Error accessing webcam: " + err);
+        });
+
+    function takePhoto() {
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataURL = canvas.toDataURL('image/jpeg');
+        photoInput.value = dataURL;
+        photoPreview.src = dataURL;
+        photoPreview.style.display = 'block';
+    }
+
+    function capturePhoto() {
+        if (!photoInput.value) {
+            alert("Please take a photo before submitting.");
+            return false;
+        }
+        return true;
+    }
+</script>
+{% endblock %}

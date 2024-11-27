@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Vote</h1>
+<form method="post">
+    <label for="id_number">ID Number:</label>
+    <input type="text" id="id_number" name="id_number" required>
+    <label for="candidate">Choose Candidate:</label>
+    <select id="candidate" name="candidate" required>
+        {% for candidate in candidates %}
+            <option value="{{ candidate[0] }}">{{ candidate[1] }} - {{ candidate[3] }}</option>
+        {% endfor %}
+    </select>
+    <div class="candidate-list">
+        {% for candidate in candidates %}
+            <div class="candidate-item">
+                <h3>{{ candidate[1] }} - {{ candidate[3] }}</h3>
+                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2]) }}" alt="Candidate Photo" width="200">
+            </div>
+        {% endfor %}
+    </div>
+    <button type="submit">Vote</button>
+</form>
+{% endblock %}

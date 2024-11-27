@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Approve Voter</h1>
+<form method="post" class="approve-form">
+    <label for="voter_id">Select Voter to Approve:</label>
+    <select id="voter_id" name="voter_id" required>
+        {% for voter in voters %}
+            <option value="{{ voter[0] }}">{{ voter[1] }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Approve</button>
+</form>
+
+<div class="voter-list">
+    {% for voter in voters %}
+        <div class="voter-item">
+            <h3>ID: {{ voter[1] }}</h3>
+            <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" alt="Voter Photo" width="200">
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
