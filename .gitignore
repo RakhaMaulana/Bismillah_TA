@@ -1,2 +1,7 @@
-Sourcecode/__pycache__/
-Sourcecode/evoting.db
+evoting.db
+uploads/
+__pycache__/
+evoting.db
+__pycache__/BlindSig.cpython-312.pyc
+__pycache__/createdb.cpython-312.pyc
+__pycache__/cryptomath.cpython-312.pyc
