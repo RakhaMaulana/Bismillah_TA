@@ -43,6 +43,10 @@ c.execute('''CREATE TABLE IF NOT EXISTS ballots (
                 signed_blind_message TEXT,
                 unblinded_signature TEXT)''')
 
+c.execute('''CREATE TABLE IF NOT EXISTS whitelisted_ips (
+                id INTEGER PRIMARY KEY,
+                ip_address TEXT)''')
+
 conn.commit()
 
 def get_db_connection():
@@ -110,5 +114,15 @@ def create_admin():
     conn.close()
     print("Admin user created")
 
+def create_local():
+    conn = get_db_connection()
+    c = conn.cursor()
+    ip_address = "127.0.0.1"
+    c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
+    conn.commit()
+    conn.close()
+    print("Localhost whitelisted")
+
 # Create admin user
 create_admin()
+create_local()

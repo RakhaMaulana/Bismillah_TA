@@ -8,14 +8,15 @@
     <label for="candidate">Choose Candidate:</label>
     <select id="candidate" name="candidate" required>
         {% for candidate in candidates %}
-            <option value="{{ candidate[0] }}">{{ candidate[1] }} - {{ candidate[3] }}</option>
+            <option value="{{ candidate[0] }}">{{ candidate[1] }}</option>
         {% endfor %}
     </select>
     <div class="candidate-list">
         {% for candidate in candidates %}
             <div class="candidate-item">
-                <h3>{{ candidate[1] }} - {{ candidate[3] }}</h3>
-                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2]) }}" alt="Candidate Photo" width="200">
+                <h1>{{ candidate[1] }}</h1>
+                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('\\')[-1]) }}" alt="Candidate Photo" width="200">
+                <h3>{{  candidate[3] }}</h3>
             </div>
         {% endfor %}
     </div>

@@ -5,19 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>eVoting</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
 </head>
 <body>
-    <nav>
-        <a href="{{ url_for('index') }}">Home</a>
-        {% if session.username %}
-            <a href="{{ url_for('register_candidate') }}">Register Candidate</a>
-            <a href="{{ url_for('approve_voter') }}">Approve Voter</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
-        {% else %}
-            <a href="{{ url_for('login') }}">Admin Login</a>
-            <a href="{{ url_for('register_voter') }}">Register</a>
-            <a href="{{ url_for('vote') }}">Vote</a>
-        {% endif %}
+    <nav class="navbar navbar-expand-custom navbar-mainbg">
+        <a class="navbar-brand navbar-logo" href="{{ url_for('index') }}">eVoting</a>
+        <button class="navbar-toggler" type="button" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="fas fa-bars text-white"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ml-auto">
+                <div class="hori-selector"><div class="left"></div><div class="right"></div></div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i>HOME</a>
+                </li>
+                {% if session.username %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('register_candidate') }}"><i class="fas fa-user-plus"></i>REGISTER CANDIDATE</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('approve_voter') }}"><i class="fas fa-check"></i>APPROVE VOTER</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>LOGOUT</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i>ADMIN LOGIN</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('register_voter') }}"><i class="fas fa-user"></i>REGISTER</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('vote') }}"><i class="fas fa-vote-yea"></i>VOTE</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
     </nav>
     <div class="container">
         {% with messages = get_flashed_messages() %}
@@ -31,5 +56,47 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function test(){
+            var tabsNewAnim = $('#navbarSupportedContent');
+            var selectorNewAnim = $('#navbarSupportedContent').find('li').length;
+            var activeItemNewAnim = tabsNewAnim.find('.active');
+            var activeWidthNewAnimHeight = activeItemNewAnim.innerHeight();
+            var activeWidthNewAnimWidth = activeItemNewAnim.innerWidth();
+            var itemPosNewAnimTop = activeItemNewAnim.position();
+            var itemPosNewAnimLeft = activeItemNewAnim.position();
+            $(".hori-selector").css({
+                "top":itemPosNewAnimTop.top + "px",
+                "left":itemPosNewAnimLeft.left + "px",
+                "height": activeWidthNewAnimHeight + "px",
+                "width": activeWidthNewAnimWidth + "px"
+            });
+            $("#navbarSupportedContent").on("click","li",function(e){
+                $('#navbarSupportedContent ul li').removeClass("active");
+                $(this).addClass('active');
+                var activeWidthNewAnimHeight = $(this).innerHeight();
+                var activeWidthNewAnimWidth = $(this).innerWidth();
+                var itemPosNewAnimTop = $(this).position();
+                var itemPosNewAnimLeft = $(this).position();
+                $(".hori-selector").css({
+                    "top":itemPosNewAnimTop.top + "px",
+                    "left":itemPosNewAnimLeft.left + "px",
+                    "height": activeWidthNewAnimHeight + "px",
+                    "width": activeWidthNewAnimWidth + "px"
+                });
+            });
+        }
+        $(document).ready(function(){
+            setTimeout(function(){ test(); });
+        });
+        $(window).on('resize', function(){
+            setTimeout(function(){ test(); }, 500);
+        });
+        $(".navbar-toggler").click(function(){
+            $(".navbar-collapse").slideToggle(300);
+            setTimeout(function(){ test(); });
+        });
+    </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 import sqlite3
 import hashlib
 import BlindSig as bs
@@ -9,7 +9,7 @@ import base64
 from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'AdminKitaBersama'
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -24,6 +24,14 @@ def get_existing_keys():
         return n, e, d
     else:
         return None
+
+def is_ip_whitelisted(ip_address):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
 
 @app.route('/')
 def index():
@@ -106,8 +114,32 @@ def approve_voter():
     conn.close()
     return render_template('approve_voter.html', voters=voters)
 
+@app.route('/manage_ips', methods=['GET', 'POST'])
+def manage_ips():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    c = conn.cursor()
+    if request.method == 'POST':
+        ip_address = request.form['ip_address']
+        action = request.form['action']
+        if action == 'add':
+            c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
+            flash('IP address added to whitelist')
+        elif action == 'remove':
+            c.execute("DELETE FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
+            flash('IP address removed from whitelist')
+        conn.commit()
+    c.execute("SELECT ip_address FROM whitelisted_ips")
+    whitelisted_ips = c.fetchall()
+    conn.close()
+    return render_template('manage_ips.html', whitelisted_ips=whitelisted_ips)
+
 @app.route('/vote', methods=['GET', 'POST'])
 def vote():
+    if not is_ip_whitelisted(request.remote_addr):
+        abort(403)  # Forbidden
+
     if request.method == 'POST':
         candidate_id = request.form['candidate']
         id_number = request.form['id_number']
@@ -159,4 +191,4 @@ def vote():
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
