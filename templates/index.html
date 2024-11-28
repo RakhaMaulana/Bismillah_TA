@@ -1,31 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="hero">
-    <div class="hero-content">
-        <h1>Welcome to eVoting</h1>
-        <p>Secure and anonymous voting system.</p>
-        <div class="hero-buttons">
-            <a href="{{ url_for('register_voter') }}" class="btn btn-primary">Register</a>
-            <a href="{{ url_for('vote') }}" class="btn btn-secondary">Vote</a>
-        </div>
-    </div>
-</div>
-<div class="features">
-    <div class="feature">
-        <i class="fas fa-lock"></i>
-        <h3>Secure</h3>
-        <p>Your votes are securely encrypted and stored.</p>
-    </div>
-    <div class="feature">
-        <i class="fas fa-user-secret"></i>
-        <h3>Anonymous</h3>
-        <p>Your identity is protected and your votes are anonymous.</p>
-    </div>
-    <div class="feature">
-        <i class="fas fa-check-circle"></i>
-        <h3>Reliable</h3>
-        <p>Our system ensures that every vote is counted accurately.</p>
-    </div>
-</div>
+<h1>Welcome to eVoting</h1>
+<p>Secure and anonymous voting system.</p>
 {% endblock %}

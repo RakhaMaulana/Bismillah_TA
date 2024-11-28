@@ -2,16 +2,14 @@
 
 {% block content %}
 <h1>Manage Whitelisted IPs</h1>
-<form method="post" class="manage-ips-form">
+<form method="post">
     <label for="ip_address">IP Address:</label>
     <input type="text" id="ip_address" name="ip_address" required>
-    <div class="form-buttons">
-        <button type="submit" name="action" value="add" class="btn btn-primary">Add IP</button>
-        <button type="submit" name="action" value="remove" class="btn btn-danger">Remove IP</button>
-    </div>
+    <button type="submit" name="action" value="add">Add IP</button>
+    <button type="submit" name="action" value="remove">Remove IP</button>
 </form>
-<h1>Whitelisted IPs</h1>
-<ul class="whitelisted-ips">
+<h2>Whitelisted IPs</h2>
+<ul>
     {% for ip in whitelisted_ips %}
         <li>{{ ip[0] }}</li>
     {% endfor %}

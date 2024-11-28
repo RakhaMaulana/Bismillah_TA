@@ -2,13 +2,13 @@
 
 {% block content %}
 <h1>Register Candidate</h1>
-<form method="post" enctype="multipart/form-data" class="register-candidate-form">
+<form method="post" enctype="multipart/form-data">
     <label for="name">Candidate Name:</label>
     <input type="text" id="name" name="name" required>
     <label for="class">Class:</label>
     <input type="text" id="class" name="class" required>
     <label for="photo">Photo:</label>
     <input type="file" id="photo" name="photo" accept="image/*" required>
-    <button type="submit" class="btn btn-primary">Register</button>
+    <button type="submit">Register</button>
 </form>
 {% endblock %}
