@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="error-page">
+    <h1>403 Forbidden</h1>
+    <p>Your IP address is not whitelisted. Please contact the administrator for access.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Go to Home</a>
+</div>
+{% endblock %}

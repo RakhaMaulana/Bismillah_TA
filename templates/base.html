@@ -10,7 +10,6 @@
 </head>
 <body>
     <nav class="navbar navbar-expand-custom navbar-mainbg">
-        <a class="navbar-brand navbar-logo" href="{{ url_for('index') }}">eVoting</a>
         <button class="navbar-toggler" type="button" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <i class="fas fa-bars text-white"></i>
         </button>
@@ -28,17 +27,14 @@
                         <a class="nav-link" href="{{ url_for('approve_voter') }}"><i class="fas fa-check"></i>APPROVE VOTER</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_ips') }}"><i class="fas fa-cogs"></i>MANAGE IPS</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>LOGOUT</a>
                     </li>
                 {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i>ADMIN LOGIN</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register_voter') }}"><i class="fas fa-user"></i>REGISTER</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('vote') }}"><i class="fas fa-vote-yea"></i>VOTE</a>
+                        <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i>LOGIN</a>
                     </li>
                 {% endif %}
             </ul>
