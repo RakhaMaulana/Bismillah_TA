@@ -9,3 +9,15 @@ services:
       - .:/app
     environment:
       - FLASK_ENV=development
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+    volumes:
+      - ./certs:/etc/nginx/certs

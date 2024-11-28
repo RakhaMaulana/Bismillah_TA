@@ -7,11 +7,23 @@ import cryptomath
 import os
 import base64
 from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection
+from wtforms import Form, StringField, PasswordField, validators
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired
+from werkzeug.security import generate_password_hash, check_password_hash
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
 
 app = Flask(__name__)
-app.secret_key = 'AdminKitaBersama'
+app.secret_key = 'your_secret_key'
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['WTF_CSRF_SECRET_KEY'] = 'your_csrf_secret_key'
 
 def get_existing_keys():
     conn = get_db_connection()
@@ -39,21 +51,22 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashlib.sha256(password.encode()).hexdigest()))
+        c.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = c.fetchone()
         conn.close()
-        if user:
+        if user and check_password_hash(user[2], password):
             session['user_id'] = user[0]
             session['username'] = user[1]
             return redirect(url_for('register_candidate'))
         else:
             flash('Invalid credentials')
-    return render_template('login.html')
+    return render_template('login.html', form=form)
 
 @app.route('/logout')
 def logout():
@@ -116,7 +129,7 @@ def approve_voter():
 
 @app.route('/manage_ips', methods=['GET', 'POST'])
 def manage_ips():
-    if 'user_id' not in session:
+    if 'user_id' not in session or not session.get('is_admin'):
         return redirect(url_for('login'))
     conn = get_db_connection()
     c = conn.cursor()
@@ -138,7 +151,7 @@ def manage_ips():
 @app.route('/vote', methods=['GET', 'POST'])
 def vote():
     if not is_ip_whitelisted(request.remote_addr):
-        abort(403)  # Forbidden
+        return render_template('403.html'), 403  # Render halaman error
 
     if request.method == 'POST':
         candidate_id = request.form['candidate']
@@ -187,6 +200,11 @@ def vote():
     candidates = c.fetchall()
     conn.close()
     return render_template('vote.html', candidates=candidates)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' https://code.jquery.com"
+    return response
 
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
