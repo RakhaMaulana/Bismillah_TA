@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eVoting</title>
+    <title>{% block title %}My App{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
@@ -19,9 +19,15 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i>HOME</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('vote') }}"><i class="fas fa-vote-yea"></i>VOTE</a>
+                </li>
                 {% if session.username %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('register_candidate') }}"><i class="fas fa-user-plus"></i>REGISTER CANDIDATE</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('register_voter') }}"><i class="fas fa-user-plus"></i>REGISTER VOTER</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('approve_voter') }}"><i class="fas fa-check"></i>APPROVE VOTER</a>
@@ -41,11 +47,11 @@
         </div>
     </nav>
     <div class="container">
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <ul class="flashes">
-                    {% for message in messages %}
-                        <li>{{ message }}</li>
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
                     {% endfor %}
                 </ul>
             {% endif %}

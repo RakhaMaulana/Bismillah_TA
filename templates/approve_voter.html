@@ -3,6 +3,7 @@
 {% block content %}
 <h1>Approve Voter</h1>
 <form method="post" class="approve-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="voter_id">Select Voter to Approve:</label>
     <select id="voter_id" name="voter_id" required>
         {% for voter in voters %}

@@ -23,16 +23,22 @@ nav a:hover {
 }
 
 .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: 20px;
 }
 
 h1 {
     color: #333;
     text-align: center;
+    margin-bottom: 20px;
 }
 
 form {
     max-width: 500px;
+    width: 100%;
     margin: 0 auto;
     padding: 20px;
     background-color: #fff;
@@ -55,7 +61,7 @@ input, select, button {
 }
 
 button {
-    background-color: #333;
+    background-color: #007bff;
     color: #fff;
     border: none;
     cursor: pointer;
@@ -63,14 +69,13 @@ button {
 }
 
 button:hover {
-    background-color: #555;
+    background-color: #0056b3;
 }
 
 .flashes {
     list-style-type: none;
     padding: 0;
-    max-width: 500px;
-    margin: 20px auto;
+    margin-top: 20px;
 }
 
 .flashes li {
@@ -140,25 +145,38 @@ button.take-photo:hover {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 20px; /* Add gap between items */
     margin-top: 20px;
+    padding: 0 10px; /* Add padding to the container */
 }
 
 .candidate-item {
     background-color: #fff;
     border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
+    border-radius: 10px; /* Increase border radius for a smoother look */
+    padding: 20px; /* Increase padding for better spacing */
     margin: 10px;
     text-align: center;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Increase shadow for better depth */
+    transition: transform 0.3s, box-shadow 0.3s; /* Add transition for hover effect */
+}
+
+.candidate-item:hover {
+    transform: translateY(-5px); /* Add hover effect */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Enhance shadow on hover */
 }
 
 .candidate-item h3 {
-    margin: 10px 0;
+    margin: 15px 0; /* Increase margin for better spacing */
+    font-size: 1.2em; /* Increase font size */
+    color: #333; /* Set text color */
 }
 
 .candidate-item img {
-    border-radius: 5px;
+    border-radius: 10px; /* Match border radius with container */
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 15px; /* Add margin below the image */
 }
 
 /* Custom Navbar CSS */
@@ -569,4 +587,58 @@ button.take-photo:hover {
 
 .error-page .btn-primary:hover {
     background-color: #0056b3;
+}
+
+/* Login Page */
+.login-card {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+    width: 100%;
+}
+
+.form-group {
+    margin: 15px;
+}
+
+.captcha {
+    font-weight: bold;
+    background-color: #e0e0e0;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+    margin-left: 10px;
+}
+
+button.btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button.btn:hover {
+    background-color: #0056b3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    form {
+        padding: 15px;
+    }
+
+    .candidate-item {
+        width: 100%;
+        margin: 10px 0;
+    }
 }

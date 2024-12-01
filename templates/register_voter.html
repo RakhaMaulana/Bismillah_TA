@@ -3,6 +3,7 @@
 {% block content %}
 <h1>Register Voter</h1>
 <form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="id_number">ID Number:</label>
     <input type="text" id="id_number" name="id_number" required>
     <label for="photo">Photo:</label>

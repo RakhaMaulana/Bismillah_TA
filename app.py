@@ -6,24 +6,31 @@ import random
 import cryptomath
 import os
 import base64
-from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection
+from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys
+from werkzeug.utils import secure_filename
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
+import string
 
 app = Flask(__name__)
 app.secret_key = 'AdminKitaBersama'
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
 
-def get_existing_keys():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
-    key = c.fetchone()
-    conn.close()
-    if key:
-        n, e, d = int(key[0]), int(key[1]), int(key[2])
-        return n, e, d
-    else:
-        return None
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
+# Initialize Flask-Limiter for rate limiting
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 def is_ip_whitelisted(ip_address):
     conn = get_db_connection()
@@ -33,11 +40,16 @@ def is_ip_whitelisted(ip_address):
     conn.close()
     return result is not None
 
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     if request.method == 'POST':
         username = request.form['username']
@@ -61,6 +73,7 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/register_candidate', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def register_candidate():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -68,13 +81,18 @@ def register_candidate():
         name = request.form['name']
         candidate_class = request.form['class']
         photo = request.files['photo']
-        photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"candidate_{name}.jpg")
-        photo.save(photo_filename)
-        save_candidate(name, photo_filename, candidate_class)
-        flash('Candidate registered successfully')
+        if photo and allowed_file(photo.filename):
+            filename = secure_filename(photo.filename)
+            photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            photo.save(photo_filename)
+            save_candidate(name, photo_filename, candidate_class)
+            flash('Candidate registered successfully')
+        else:
+            flash('Invalid file type')
     return render_template('register_candidate.html')
 
 @app.route('/register_voter', methods=['GET', 'POST'])
+@limiter.limit("100 per minute")
 def register_voter():
     if request.method == 'POST':
         id_number = request.form['id_number']
@@ -99,6 +117,7 @@ def register_voter():
     return render_template('register_voter.html')
 
 @app.route('/approve_voter', methods=['GET', 'POST'])
+@limiter.limit("100 per minute")
 def approve_voter():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -115,6 +134,7 @@ def approve_voter():
     return render_template('approve_voter.html', voters=voters)
 
 @app.route('/manage_ips', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def manage_ips():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -124,8 +144,12 @@ def manage_ips():
         ip_address = request.form['ip_address']
         action = request.form['action']
         if action == 'add':
-            c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
-            flash('IP address added to whitelist')
+            c.execute("SELECT * FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
+            if c.fetchone():
+                flash('IP address already exists')
+            else:
+                c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
+                flash('IP address added to whitelist')
         elif action == 'remove':
             c.execute("DELETE FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
             flash('IP address removed from whitelist')
@@ -136,6 +160,7 @@ def manage_ips():
     return render_template('manage_ips.html', whitelisted_ips=whitelisted_ips)
 
 @app.route('/vote', methods=['GET', 'POST'])
+@limiter.limit("100 per minute")
 def vote():
     if not is_ip_whitelisted(request.remote_addr):
         abort(403)  # Forbidden
@@ -148,15 +173,16 @@ def vote():
         c.execute("SELECT approved FROM voters WHERE id_number = ?", (id_number,))
         voter = c.fetchone()
         if not voter:
-            flash('Voter not registered')
+            flash('Voter not found')
             return redirect(url_for('vote'))
         if voter[0] == 0:
-            flash('Voter not approved by admin')
+            flash('Voter not approved')
             return redirect(url_for('vote'))
         c.execute("SELECT * FROM ballots WHERE concatenated_message LIKE ?", (id_number + '%',))
         if c.fetchone():
-            flash('Voter has already voted')
+            flash('Vote already cast')
             return redirect(url_for('vote'))
+
         existing_keys = get_existing_keys()
         if existing_keys:
             n, e, d = existing_keys
@@ -181,6 +207,7 @@ def vote():
         signedMessage = voter.unwrapSignature(signedBlindMessage, n)
         save_ballot(x, concat_message, message_hash, blindMessage, signedBlindMessage, signedMessage)
         flash('Vote cast successfully')
+
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT id, name, photo, class FROM candidates")
