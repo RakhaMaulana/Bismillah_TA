@@ -149,96 +149,15 @@ def get_existing_keys():
         return None
 
 def generate_and_save_keys():
-    p = cryptomath.findPrime()
-    q = cryptomath.findPrime()
+    p = cryptomath.find_prime()
+    q = cryptomath.find_prime()
     n = p * q
     phi = (p - 1) * (q - 1)
     e = 65537
-    d = cryptomath.findModInverse(e, phi)
+    d = cryptomath.find_mod_inverse(e, phi)
     save_keys(n, e, d)
     print("Keys generated and saved")
 
 # Generate and save keys if they don't exist
 if not get_existing_keys():
     generate_and_save_keys()
-
-app = Flask(__name__)
-app.secret_key = 'AdminKitaBersama'
-UPLOAD_FOLDER = 'static/uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-@app.route('/manage_ips', methods=['GET', 'POST'])
-def manage_ips():
-    if request.method == 'POST':
-        ip_address = request.form['ip_address']
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT * FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
-        result = c.fetchone()
-        if result:
-            flash('IP address already exists')
-        else:
-            c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
-            conn.commit()
-            flash('IP address added successfully')
-        conn.close()
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM whitelisted_ips")
-    ips = c.fetchall()
-    conn.close()
-    return render_template('manage_ips.html', ips=ips)
-
-@app.route('/vote', methods=['GET', 'POST'])
-def vote():
-    if not is_ip_whitelisted(request.remote_addr):
-        abort(403)  # Forbidden
-
-    if request.method == 'POST':
-        candidate_id = request.form['candidate']
-        id_number = request.form['id_number']
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT approved FROM voters WHERE id_number = ?", (id_number,))
-        voter = c.fetchone()
-        if not voter:
-            flash('Voter not found')
-            return redirect(url_for('vote'))
-        if voter[0] == 0:
-            flash('Voter not approved')
-            return redirect(url_for('vote'))
-        c.execute("SELECT * FROM ballots WHERE concatenated_message LIKE ?", (id_number + '%',))
-        if c.fetchone():
-            flash('Vote already cast')
-            return redirect(url_for('vote'))
-
-        existing_keys = get_existing_keys()
-        if existing_keys:
-            n, e, d = existing_keys
-        else:
-            flash('No keys found')
-            return redirect(url_for('vote'))
-
-        x = random.randint(1, n)
-        concat_message = str(candidate_id) + str(x)
-        message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
-        message_hash = int(message_hash, 16)
-        voter = bs.Voter(n, "y")
-        blindMessage = voter.blindMessage(message_hash, n, e)
-        signer = bs.Signer()
-        signedBlindMessage = signer.signMessage(blindMessage, voter.getEligibility())
-        signedMessage = voter.unwrapSignature(signedBlindMessage, n)
-        save_ballot(x, concat_message, message_hash, str(blindMessage), str(signedBlindMessage), str(signedMessage))
-        flash('Vote cast successfully')
-
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT id, name, photo, class FROM candidates")
-    candidates = c.fetchall()
-    conn.close()
-    return render_template('vote.html', candidates=candidates)
-
-if __name__ == '__main__':
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER)
-    app.run(host='0.0.0.0', port=5000, debug=True)

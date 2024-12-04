@@ -12,9 +12,12 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 import string
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'AdminKitaBersama'
+app.secret_key = os.getenv('SECRET_KEY')
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
@@ -97,7 +100,7 @@ def register_voter():
     if request.method == 'POST':
         id_number = request.form['id_number']
         photo_data = request.form['photo']
-        photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{id_number}.jpg")
+        photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f"{id_number}.jpg"))
 
         # Decode the base64 image data and save it as a file
         photo_data = photo_data.split(',')[1]
@@ -185,27 +188,27 @@ def vote():
 
         existing_keys = get_existing_keys()
         if existing_keys:
-            n, e, d = existing_keys
+            n, e, _ = existing_keys
             signer = bs.Signer()
-            signer.publicKey = {'n': n, 'e': e}
-            signer.privateKey = {'d': d}
+            signer.public_key = {'n': n, 'e': e}
+            signer.private_key = {'d': _}
         else:
             signer = bs.Signer()
-            publicKey = signer.getPublicKey()
-            n = publicKey['n']
-            e = publicKey['e']
-            d = signer.privateKey['d']
-            save_keys(n, e, d)  # Save keys to the database
+            public_key = signer.get_public_key()
+            n = public_key['n']
+            e = public_key['e']
+            _ = signer.private_key['d']
+            save_keys(n, e, _)  # Save keys to the database
 
         x = random.randint(1, n)
         concat_message = str(candidate_id) + str(x)
         message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
         message_hash = int(message_hash, 16)
         voter = bs.Voter(n, "y")
-        blindMessage = voter.blindMessage(message_hash, n, e)
-        signedBlindMessage = signer.signMessage(blindMessage, voter.getEligibility())
-        signedMessage = voter.unwrapSignature(signedBlindMessage, n)
-        save_ballot(x, concat_message, message_hash, blindMessage, signedBlindMessage, signedMessage)
+        blind_message = voter.blind_message(message_hash, n, e)
+        signed_blind_message = signer.sign_message(blind_message, voter.get_eligibility())
+        signed_message = voter.unwrap_signature(signed_blind_message, n)
+        save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
         flash('Vote cast successfully')
 
     conn = get_db_connection()

@@ -17,7 +17,7 @@
     {% for voter in voters %}
         <div class="voter-item">
             <h3>ID: {{ voter[1] }}</h3>
-            <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" alt="Voter Photo" width="200">
+            <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" alt="Voter {{ voter[1] }}" width="200">
         </div>
     {% endfor %}
 </div>

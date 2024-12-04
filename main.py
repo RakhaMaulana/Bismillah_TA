@@ -22,33 +22,33 @@ def get_existing_keys():
     else:
         return None
 
-class poll:
+class Poll:
     def __init__(self):
         existing_keys = get_existing_keys()
         if existing_keys:
             self.n, self.e, self.d = existing_keys
         else:
             self.signer = bs.Signer()
-            self.publicKey = self.signer.getPublicKey()
-            self.n = self.publicKey['n']
-            self.e = self.publicKey['e']
-            self.d = self.signer.privateKey['d']
+            self.public_key = self.signer.get_public_key()
+            self.n = self.public_key['n']
+            self.e = self.public_key['e']
+            self.d = self.signer.private_key['d']
             save_keys(self.n, self.e, self.d)  # Save keys to the database
 
-    def poll_response(self, poll_answer, eligble_answer):
-        if (eligble_answer == 0):
-            eligble_answer = "n"
-        elif (eligble_answer == 1):
-            eligble_answer = "y"
+    def poll_response(self, poll_answer, eligible_answer):
+        if eligible_answer == 0:
+            eligible_answer = "n"
+        elif eligible_answer == 1:
+            eligible_answer = "y"
 
         print('\n\n')
-        for i in range(100):
+        for _ in range(100):
             print("-", end="")
         print()
-        for i in range(50):
+        for _ in range(50):
             print(" ", end="")
         print("\u001b[31mMODULE 2\u001b[37m")
-        for i in range(100):
+        for _ in range(100):
             print("-", end="")
         print('\n\n')
         print("\u001b[32;1m2. Voter Prepares Ballot for getting signed by Signing Authority:\u001b[0m", end='\n\n')
@@ -66,32 +66,32 @@ class poll:
         message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
         message_hash = int(message_hash, 16)
         print("\u001b[33;1mhash(concatenated_message), m= \u001b[0m", message_hash, end="\n\n")
-        voter = bs.Voter(self.n, eligble_answer)
+        voter = bs.Voter(self.n, eligible_answer)
 
-        blindMessage = voter.blindMessage(message_hash, self.n, self.e)
-        if eligble_answer == 1:
-            print("\u001b[33;1mBlinded message: \u001b[0m" + str(blindMessage))
+        blind_message = voter.blind_message(message_hash, self.n, self.e)
+        if eligible_answer == 1:
+            print("\u001b[33;1mBlinded message: \u001b[0m" + str(blind_message))
         print()
 
         print("\u001b[35;1m(f) Sends m'(blinded message) to signing authority\u001b[0m")
-        signedBlindMessage = self.signer.signMessage(blindMessage, voter.getEligibility())
+        signed_blind_message = self.signer.sign_message(blind_message, voter.get_eligibility())
 
-        if signedBlindMessage is None:
+        if signed_blind_message is None:
             print("\u001b[31;1mINELIGIBLE VOTER....VOTE NOT AUTHORIZED!\u001b[0m")
         else:
-            print("\u001b[33;1mSigned blinded message: \u001b[0m" + str(signedBlindMessage))
+            print("\u001b[33;1mSigned blinded message: \u001b[0m" + str(signed_blind_message))
             print()
-            signedMessage = voter.unwrapSignature(signedBlindMessage, self.n)
+            signed_message = voter.unwrap_signature(signed_blind_message, self.n)
 
             print('\n\n')
-            for i in range(100):
+            for _ in range(100):
                 print("-", end="")
             print()
-            for i in range(50):
+            for _ in range(50):
                 print(" ", end="")
 
             print("\u001b[31mMODULE 5\u001b[37m")
-            for i in range(100):
+            for _ in range(100):
                 print("-", end="")
             print('\n\n')
 
@@ -99,23 +99,23 @@ class poll:
             print("\u001b[35;1mA voter's vote in the ballot shall consist of the following: \u001b[0m", end='\n\n')
             print("\u001b[33;1m(a) His vote concatened with a number x: \u001b[0m", concat_message)
             print()
-            print("\u001b[33;1m(b) The hash of his concatenated vote signed by authority which is basically the hashed message encrypted with signing authority's private key (m^d) mod n : \u001b[0m", signedMessage)
+            print("\u001b[33;1m(b) The hash of his concatenated vote signed by authority which is basically the hashed message encrypted with signing authority's private key (m^d) mod n : \u001b[0m", signed_message)
             print()
-            verificationStatus, decoded_message = bs.verifySignature(message, x, signedMessage, self.e, self.n)
+            verification_status, decoded_message = bs.verify_signature(message, x, signed_message, self.e, self.n)
 
             print()
-            print("\u001b[33;1mVerification status: \u001b[0m" + str(verificationStatus), end="\n\n")
-            if verificationStatus:
+            print("\u001b[33;1mVerification status: \u001b[0m" + str(verification_status), end="\n\n")
+            if verification_status:
                 print("\u001b[35;1mSince the verification is true, Hence the vote is the first digit of the concatenated message: \u001b[0m", decoded_message, end='\n\n\n\n')
 
             # Save ballot to the database
-            save_ballot(x, concat_message, message_hash, blindMessage, signedBlindMessage, signedMessage)
+            save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
 
 
-class poll_machine:
+class PollMachine:
 
     def __init__(self):
-        self.p = poll()
+        self.p = Poll()
         while True:
             print("\u001b[32;1mEnter your choice\u001b[0m")
             print()
@@ -129,21 +129,21 @@ class poll_machine:
                 print()
             print()
 
-            for i in range(100):
+            for _ in range(100):
                 print("-", end="")
             print()
-            for i in range(30):
+            for _ in range(30):
                 print(" ", end="")
             print("\u001b[31m Digital Signature Authentication \u001b[0m")
-            for i in range(100):
+            for _ in range(100):
                 print("-", end="")
             print('\n\n')
 
             print("\u001b[35;1m(a)Choose two large prime numbers p and q \u001b[0m", end="\n\n")
-            p = cryptomath.findPrime()
+            p = cryptomath.find_prime()
             print("\u001b[33;1m p: \u001b[0m", p, end="\n\n")
 
-            q = cryptomath.findPrime()
+            q = cryptomath.find_prime()
             print("\u001b[33;1m q: \u001b[0m", q, end="\n\n")
 
             print("\u001b[35;1m(b)Calculate n=p*q \u001b[0m", end="\n\n")
@@ -157,39 +157,39 @@ class poll_machine:
 
             print("\u001b[35;1m(d) Picks public_key such that gcd(ϕ(n),public_key)=1 & 1<public_key<ϕ(n):\u001b[0m", end='\n\n')
 
-            foundEncryptionKey = False
-            while not foundEncryptionKey:
+            found_encryption_key = False
+            while not found_encryption_key:
                 public_key = random.randint(2, phi - 1)
                 if cryptomath.gcd(public_key, phi) == 1:
-                    foundEncryptionKey = True
+                    found_encryption_key = True
             print("\u001b[33;1me: \u001b[0m", public_key, end='\n\n')
 
             print("\u001b[35;1m(e) Computes private_key, where private_key is the inverse of public_key modulo ϕ(n)\u001b[0m", end='\n\n')
-            private_key = cryptomath.findModInverse(public_key, phi)
+            private_key = cryptomath.find_mod_inverse(public_key, phi)
             print("\u001b[33;1md: \u001b[0m", private_key, end='\n\n')
 
             print("\u001b[32;1mEnter id Number: \u001b[0m", end="\n\n")
-            idNumber = int(input())
-            concat_message = str(idNumber)
+            id_number = int(input())
+            concat_message = str(id_number)
             print("\n\n")
 
             print("\u001b[35;1m(f) Hash the message (here, message= idNumber) \u001b[0m", end="\n\n")
-            idNumber_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
-            idNumber_hash = int(idNumber_hash, 16)
-            print("\u001b[33;1mHash(idNumber): \u001b[0m", idNumber_hash, end="\n\n")
+            id_number_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
+            id_number_hash = int(id_number_hash, 16)
+            print("\u001b[33;1mHash(idNumber): \u001b[0m", id_number_hash, end="\n\n")
 
             print("\u001b[35;1m(g) Voter creates Digital Signature using s=(message_hash)^(private key)mod n \u001b[0m", end="\n\n")
-            s = pow(idNumber_hash, private_key, n)  # ERR2
+            s = pow(id_number_hash, private_key, n)  # ERR2
             print("\u001b[33;1mDigital Signature, s: \u001b[0m", s, end="\n\n")
             a = 0
 
             # Save voter to the database
-            save_voter(idNumber_hash, s)
+            save_voter(id_number, s, "placeholder_photo_filename")
 
             ## verification:
             print("\u001b[35;1m(h) Digital Signature, s, and original message, idNumber (without hash) are made available to the Verifier \u001b[0m", end="\n\n")
             print("\u001b[35;1m(i) The Verifier calculates and compares the values of the \u001b[0m", '\n\n', "    1. Decrypted message and", '\n\n', "    2. Hash(idNumber)", '\n\n', "\u001b[35;1mIf these 2 values are same then its authenticated using Digital Signature \u001b[0m", end="\n\n")
-            concat_message = str(idNumber)
+            concat_message = str(id_number)
             print("\u001b[35;1m(j) Hash of the message is calculated: \u001b[0m", end="\n\n")
             verification_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
             verification_hash = int(verification_hash, 16)
@@ -213,4 +213,4 @@ class poll_machine:
 
 
 if __name__ == "__main__":
-    pm = poll_machine()
+    pm = PollMachine()

@@ -23,7 +23,7 @@
         {% for candidate in candidates %}
             <div class="candidate-item">
                 <h3>{{ candidate[1] }}</h3>
-                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('/')[-1]) }}" alt="Candidate Photo" width="200">
+                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('/')[-1]) }}" alt="Candidate {{ candidate[1] }}" width="200">
                 <p>{{ candidate[3] }}</p>
             </div>
         {% endfor %}
