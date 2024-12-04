@@ -69,6 +69,24 @@ def rabin_miller(n):
             return False
     return True
 
+def is_small_prime(n, small_primes):
+    # See if n is a small prime.
+    return n in small_primes
+
+def is_divisible_by_small_prime(n, small_primes):
+    # See if n is divisible by a small prime.
+    for p in small_primes:
+        if n % p == 0:
+            return True
+    return False
+
+def apply_fermat_test(n, bases):
+    # Apply Fermat test for compositeness.
+    for base in bases:
+        if pow(base, n - 1, n) != 1:
+            return False
+    return True
+
 def is_prime(n):
     # Determines whether a positive integer n is composite or probably prime.
     if n < 2:
@@ -87,18 +105,12 @@ def is_prime(n):
                     797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863,
                     877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953,
                     967, 971, 977, 983, 991, 997]
-    # See if n is a small prime.
-    if n in small_primes:
+    if is_small_prime(n, small_primes):
         return True
-    # See if n is divisible by a small prime.
-    for p in small_primes:
-        if n % p == 0:
-            return False
-    # Apply Fermat test for compositeness.
-    for base in [2, 3, 5, 7, 11]:
-        if pow(base, n - 1, n) != 1:
-            return False
-    # Apply Rabin-Miller test.
+    if is_divisible_by_small_prime(n, small_primes):
+        return False
+    if not apply_fermat_test(n, [2, 3, 5, 7, 11]):
+        return False
     return rabin_miller(n)
 
 def find_prime(bits=1024, tries=10000):

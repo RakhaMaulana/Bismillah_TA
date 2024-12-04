@@ -1,8 +1,10 @@
 import sqlite3
 import hashlib
 
+DATABASE_NAME = 'evoting.db'
+
 def fetch_all_keys():
-    conn = sqlite3.connect('evoting.db')
+    conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
     c.execute("SELECT n, e FROM keys")
     keys = c.fetchall()
@@ -24,7 +26,7 @@ def verify_vote(concatenated_message, unblinded_signature, public_key, n):
     return decrypted_message == calculated_hash
 
 def print_database_contents():
-    conn = sqlite3.connect('evoting.db')
+    conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
 
     # Print keys table
@@ -55,7 +57,7 @@ def print_database_contents():
 
 def recap_votes():
     # Connect to the database
-    conn = sqlite3.connect('evoting.db')
+    conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
 
     # Retrieve all keys from the database
