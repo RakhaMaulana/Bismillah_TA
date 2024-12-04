@@ -139,6 +139,8 @@ button.take-photo:hover {
 
 .voter-item img {
     border-radius: 5px;
+    max-width: 100%;
+    height: auto;
 }
 
 .candidate-list {
@@ -453,33 +455,6 @@ button.take-photo:hover {
     background-color: #fff;
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.voter-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 20px;
-}
-
-.voter-item {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    margin: 10px;
-    text-align: center;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.voter-item h3 {
-    margin: 10px 0;
-}
-
-.voter-item img {
-    border-radius: 5px;
-    max-width: 100%;
-    height: auto;
 }
 
 /* Manage IPs Page */
