@@ -31,17 +31,9 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["1000 per day", "50 per hour"],
     storage_uri="memory://"
 )
-
-def is_ip_whitelisted(ip_address):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
-    result = c.fetchone()
-    conn.close()
-    return result is not None
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -136,38 +128,10 @@ def approve_voter():
     conn.close()
     return render_template('approve_voter.html', voters=voters)
 
-@app.route('/manage_ips', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
-def manage_ips():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    conn = get_db_connection()
-    c = conn.cursor()
-    if request.method == 'POST':
-        ip_address = request.form['ip_address']
-        action = request.form['action']
-        if action == 'add':
-            c.execute("SELECT * FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
-            if c.fetchone():
-                flash('IP address already exists')
-            else:
-                c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
-                flash('IP address added to whitelist')
-        elif action == 'remove':
-            c.execute("DELETE FROM whitelisted_ips WHERE ip_address = ?", (ip_address,))
-            flash('IP address removed from whitelist')
-        conn.commit()
-    c.execute("SELECT ip_address FROM whitelisted_ips")
-    whitelisted_ips = c.fetchall()
-    conn.close()
-    return render_template('manage_ips.html', whitelisted_ips=whitelisted_ips)
 
 @app.route('/vote', methods=['GET', 'POST'])
 @limiter.limit("100 per minute")
 def vote():
-    if not is_ip_whitelisted(request.remote_addr):
-        abort(403)  # Forbidden
-
     if request.method == 'POST':
         candidate_id = request.form['candidate']
         id_number = request.form['id_number']
