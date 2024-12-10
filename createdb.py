@@ -14,9 +14,6 @@ c = conn.cursor()
 # Drop the keys table if it exists
 c.execute("DROP TABLE IF EXISTS keys")
 
-# Drop the whitelisted_ips table if it exists
-c.execute("DROP TABLE IF EXISTS whitelisted_ips")
-
 # Create tables
 c.execute('''CREATE TABLE keys (
                 id INTEGER PRIMARY KEY,
@@ -51,10 +48,6 @@ c.execute('''CREATE TABLE IF NOT EXISTS ballots (
                 blinded_message TEXT,
                 signed_blind_message TEXT,
                 unblinded_signature TEXT)''')
-
-c.execute('''CREATE TABLE IF NOT EXISTS whitelisted_ips (
-                id INTEGER PRIMARY KEY,
-                ip_address TEXT UNIQUE)''')
 
 conn.commit()
 
@@ -123,18 +116,8 @@ def create_admin():
     conn.commit()
     conn.close()
 
-def create_local():
-    conn = get_db_connection()
-    c = conn.cursor()
-    ip_address = "127.0.0.1"
-    c.execute("INSERT INTO whitelisted_ips (ip_address) VALUES (?)", (ip_address,))
-    conn.commit()
-    conn.close()
-    print("Localhost whitelisted")
-
 # Create admin user
 create_admin()
-create_local()
 
 def get_existing_keys():
     conn = get_db_connection()

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, make_response
 import sqlite3
 import hashlib
 import BlindSig as bs
@@ -12,6 +12,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 import string
+import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,7 +32,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["1000 per day", "50 per hour"],
+    default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"
 )
 
@@ -44,7 +45,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("200 per minute")
 def login():
     if request.method == 'POST':
         username = request.form['username']
@@ -68,7 +69,7 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/register_candidate', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("200 per minute")
 def register_candidate():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -77,7 +78,8 @@ def register_candidate():
         candidate_class = request.form['class']
         photo = request.files['photo']
         if photo and allowed_file(photo.filename):
-            filename = secure_filename(photo.filename)
+            # Generate a unique filename
+            filename = secure_filename(str(uuid.uuid4()) + os.path.splitext(photo.filename)[1])
             photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             photo.save(photo_filename)
             save_candidate(name, photo_filename, candidate_class)
@@ -87,7 +89,7 @@ def register_candidate():
     return render_template('register_candidate.html')
 
 @app.route('/register_voter', methods=['GET', 'POST'])
-@limiter.limit("100 per minute")
+@limiter.limit("200 per minute")
 def register_voter():
     if request.method == 'POST':
         id_number = request.form['id_number']
@@ -112,7 +114,7 @@ def register_voter():
     return render_template('register_voter.html')
 
 @app.route('/approve_voter', methods=['GET', 'POST'])
-@limiter.limit("100 per minute")
+@limiter.limit("200 per minute")
 def approve_voter():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -120,17 +122,21 @@ def approve_voter():
     c = conn.cursor()
     if request.method == 'POST':
         voter_id = request.form['voter_id']
-        c.execute("UPDATE voters SET approved = 1 WHERE id = ?", (voter_id,))
+        action = request.form['action']
+        if action == 'approve':
+            c.execute("UPDATE voters SET approved = 1 WHERE id = ?", (voter_id,))
+            flash('Voter approved successfully')
+        elif action == 'reject':
+            c.execute("DELETE FROM voters WHERE id = ?", (voter_id,))
+            flash('Voter rejected successfully')
         conn.commit()
-        flash('Voter approved successfully')
     c.execute("SELECT id, id_number, photo FROM voters WHERE approved = 0")
     voters = c.fetchall()
     conn.close()
     return render_template('approve_voter.html', voters=voters)
 
-
 @app.route('/vote', methods=['GET', 'POST'])
-@limiter.limit("100 per minute")
+@limiter.limit("200 per minute")
 def vote():
     if request.method == 'POST':
         candidate_id = request.form['candidate']
@@ -185,4 +191,10 @@ def vote():
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+
+    # Path to the certificate and private key
+    cert_path = "dev.certificate.crt"
+    key_path = "dev.private.key"
+
+    # Run the Flask app with HTTPS
+    app.run(host='0.0.0.0', port=5000, ssl_context=(cert_path, key_path), debug=True)

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container">
     <h1>Vote</h1>
-    <form method="post" class="vote-form">
+    <form method="post" class="vote-form" onsubmit="return validateForm()">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="id_number">ID Number:</label>
@@ -13,20 +13,37 @@
             <label for="candidate">Choose Candidate:</label>
             <select id="candidate" name="candidate" class="form-control" required>
                 {% for candidate in candidates %}
-                    <option value="{{ candidate[0] }}">{{ candidate[1] }}</option>
+                    <option value="{{ candidate[0] }}">{{ candidate[1] | escape }}</option>
                 {% endfor %}
             </select>
         </div>
         <button type="submit" class="btn btn-primary">Vote</button>
     </form>
-    <div class="candidate-list">
+    <div class="candidate-list mt-4">
         {% for candidate in candidates %}
-            <div class="candidate-item">
-                <h3>{{ candidate[1] }}</h3>
-                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('/')[-1]) }}" alt="Candidate {{ candidate[1] }}" width="200">
-                <p>{{ candidate[3] }}</p>
+            <div class="candidate-item mb-3">
+                <h3>{{ candidate[1] | escape }}</h3>
+                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('/')[-1]) }}" alt="Candidate {{ candidate[1] | escape }}" width="200">
+                <p>{{ candidate[3] | escape }}</p>
             </div>
         {% endfor %}
     </div>
 </div>
+
+<script>
+    function validateForm() {
+        const idNumber = document.getElementById('id_number').value;
+        const candidate = document.getElementById('candidate').value;
+
+        if (!idNumber) {
+            alert("Please enter your ID number.");
+            return false;
+        }
+        if (!candidate) {
+            alert("Please choose a candidate.");
+            return false;
+        }
+        return true;
+    }
+</script>
 {% endblock %}

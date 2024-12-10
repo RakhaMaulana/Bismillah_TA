@@ -32,26 +32,23 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('approve_voter') }}"><i class="fas fa-check"></i>APPROVE VOTER</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('manage_ips') }}"><i class="fas fa-cogs"></i>MANAGE IPS</a>
-                    </li>
-                    <li class="nav-item">
+                    <li class="nav-item ml-auto">
                         <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>LOGOUT</a>
                     </li>
                 {% else %}
-                    <li class="nav-item">
+                    <li class="nav-item ml-auto">
                         <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i>LOGIN</a>
                     </li>
                 {% endif %}
             </ul>
         </div>
     </nav>
-    <div class="container">
+    <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <ul class="flashes">
                     {% for category, message in messages %}
-                        <li class="{{ category }}">{{ message }}</li>
+                        <li class="{{ category }}">{{ message | escape }}</li>
                     {% endfor %}
                 </ul>
             {% endif %}

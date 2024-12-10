@@ -4,17 +4,21 @@
 <h1>Register Voter</h1>
 <form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="id_number">ID Number:</label>
-    <input type="text" id="id_number" name="id_number" required>
-    <label for="photo">Photo:</label>
-    <input type="hidden" id="photo" name="photo">
+    <div class="form-group">
+        <label for="id_number">ID Number:</label>
+        <input type="text" id="id_number" name="id_number" class="form-control" required>
+    </div>
+    <div class="form-group">
+        <label for="photo">Photo:</label>
+        <input type="hidden" id="photo" name="photo" required>
+    </div>
     <div class="video-container">
         <video id="video" width="320" height="240" autoplay></video>
-        <button type="button" class="take-photo" onclick="takePhoto()">Take Photo</button>
+        <button type="button" class="take-photo btn btn-secondary mt-2" onclick="takePhoto()">Take Photo</button>
     </div>
     <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-    <img id="photo-preview" src="" alt="Preview" style="display:none;">
-    <button type="submit">Register</button>
+    <img id="photo-preview" src="" alt="Preview" class="img-fluid mt-2" style="display:none;">
+    <button type="submit" class="btn btn-primary mt-3">Register</button>
 </form>
 
 <script>
@@ -42,6 +46,11 @@
     }
 
     function capturePhoto() {
+        const idNumber = document.getElementById('id_number').value;
+        if (!idNumber) {
+            alert("Please enter your ID number.");
+            return false;
+        }
         if (!photoInput.value) {
             alert("Please take a photo before submitting.");
             return false;

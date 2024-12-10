@@ -2,7 +2,7 @@
 
 {% block content %}
 <h1>Approve Voter</h1>
-<form method="post" class="approve-form">
+<form method="post" class="approve-form" onsubmit="return validateForm()">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="voter_id">Select Voter to Approve:</label>
     <select id="voter_id" name="voter_id" required>
@@ -10,15 +10,27 @@
             <option value="{{ voter[0] }}">{{ voter[1] }}</option>
         {% endfor %}
     </select>
-    <button type="submit">Approve</button>
+    <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
 </form>
 
-<div class="voter-list">
+<div class="voter-list mt-4">
     {% for voter in voters %}
-        <div class="voter-item">
-            <h3>ID: {{ voter[1] }}</h3>
-            <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" alt="Voter {{ voter[1] }}" width="200">
+        <div class="voter-item mb-3">
+            <h3>ID: {{ voter[1] | escape }}</h3>
+            <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" alt="Voter {{ voter[1] | escape }}" width="200">
         </div>
     {% endfor %}
 </div>
+
+<script>
+    function validateForm() {
+        const voterId = document.getElementById('voter_id').value;
+        if (!voterId) {
+            alert('Please select a voter.');
+            return false;
+        }
+        return true;
+    }
+</script>
 {% endblock %}

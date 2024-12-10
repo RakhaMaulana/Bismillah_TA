@@ -2,20 +2,41 @@
 
 {% block content %}
 <h1>Register Candidate</h1>
-<form method="post" enctype="multipart/form-data" class="register-candidate-form">
+<form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm()">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required>
+        <input type="text" id="name" name="name" class="form-control" required>
     </div>
     <div class="form-group">
         <label for="class">Class:</label>
-        <input type="text" id="class" name="class" required>
+        <input type="text" id="class" name="class" class="form-control" required>
     </div>
     <div class="form-group">
         <label for="photo">Photo:</label>
-        <input type="file" id="photo" name="photo" accept=".png, .jpg, .jpeg" required>
+        <input type="file" id="photo" name="photo" class="form-control" accept=".png, .jpg, .jpeg" required>
     </div>
-    <button type="submit" class="btn">Register</button>
+    <button type="submit" class="btn btn-primary">Register</button>
 </form>
+
+<script>
+    function validateForm() {
+        const name = document.getElementById('name').value;
+        const classInput = document.getElementById('class').value;
+        const photo = document.getElementById('photo').value;
+
+        if (!name || !classInput || !photo) {
+            alert('All fields are required.');
+            return false;
+        }
+
+        const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
+        if (!allowedExtensions.exec(photo)) {
+            alert('Invalid file type. Only JPG, JPEG, and PNG are allowed.');
+            return false;
+        }
+
+        return true;
+    }
+</script>
 {% endblock %}

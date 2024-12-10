@@ -223,7 +223,7 @@ button.take-photo:hover {
 }
 
 #navbarSupportedContent>ul>li.active>a {
-    color: #5161ce;
+    background: #007bff;
     background-color: transparent;
     transition: all 0.7s;
 }
@@ -457,40 +457,21 @@ button.take-photo:hover {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Manage IPs Page */
-.manage-ips-form {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.manage-ips-form .form-buttons {
-    display: flex;
-    justify-content: space-between;
-}
-
-.manage-ips-form .btn {
-    width: 48%;
-}
-
-.whitelisted-ips {
-    max-width: 500px;
-    margin: 20px auto;
-    padding: 0;
-    list-style-type: none;
-}
-
-.whitelisted-ips li {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 10px;
+.voter-photo-container {
     text-align: center;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+}
+
+.reject-button {
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.reject-button:hover {
+    background-color: #c82333;
 }
 
 /* Register Candidate Page */
