@@ -2,12 +2,7 @@ import sqlite3
 import hashlib
 import secrets
 import string
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
-import BlindSig as bs
 import cryptomath
-import os
-import base64
-import uuid
 
 # Create a new SQLite database (or connect to an existing one)
 conn = sqlite3.connect('evoting.db')
@@ -131,8 +126,7 @@ def get_existing_keys():
     if key:
         n, e, d = int(key[0]), int(key[1]), int(key[2])
         return n, e, d
-    else:
-        return None
+    return None
 
 def generate_and_save_keys():
     p = cryptomath.find_prime()

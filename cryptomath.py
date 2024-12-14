@@ -47,7 +47,8 @@ def rabin_miller(n):
 
     d, s = decompose(n - 1)
     for _ in range(50):
-        a = secrets.randbelow(n - 2) + 2  # Generate a random number in the range [2, n-1]
+        a = secrets.randbelow(n - 2) + 2  # Generate a random number in the range
+                                          # [2, n-1]
         if not is_composite(a, d, n, s):
             continue
         return False
@@ -67,7 +68,7 @@ def is_composite(a, d, n, s):
     if gcd(a, n) != 1:
         return True
     b = pow(a, d, n)
-    if b == 1 or b == n - 1:
+    if b in {1, n - 1}:
         return False
     for _ in range(s - 1):
         b = pow(b, 2, n)
@@ -84,6 +85,7 @@ def is_divisible_by_small_prime(n, small_primes):
     for p in small_primes:
         if n % p == 0:
             return True
+    return any(n % p == 0 for p in small_primes)
     return False
 
 def apply_fermat_test(n, bases):

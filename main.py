@@ -19,8 +19,7 @@ def get_existing_keys():
     if key:
         n, e, d = int(key[0]), int(key[1]), int(key[2])
         return n, e, d
-    else:
-        return None
+    return None
 
 class Poll:
     def __init__(self):

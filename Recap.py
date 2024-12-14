@@ -16,7 +16,8 @@ def verify_vote(concatenated_message, unblinded_signature, public_key, n):
     decrypted_message = pow(int(unblinded_signature), public_key, n)
 
     # Calculate the hash of the concatenated message
-    calculated_hash = int(hashlib.sha256(concatenated_message.encode('utf-8')).hexdigest(), 16)
+    calculated_hash = int(hashlib.sha256(
+        concatenated_message.encode('utf-8')).hexdigest(), 16)
 
     # Compare the decrypted message with the calculated hash
     return decrypted_message == calculated_hash
@@ -74,7 +75,8 @@ def recap_votes():
         concatenated_message, unblinded_signature = ballot
         for n, public_key in keys:
             if verify_vote(concatenated_message, unblinded_signature, public_key, n):
-                vote = concatenated_message[0]  # Assuming the vote is the first character of concatenated_message
+                vote = concatenated_message[0]  # Assuming the vote is the first character
+                                               # of concatenated_message
                 if vote in vote_counts:
                     vote_counts[vote] += 1
                 else:

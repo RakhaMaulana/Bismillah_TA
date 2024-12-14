@@ -71,9 +71,9 @@ def login():
         session['user_id'] = user[0]
         session['username'] = user[1]
         return redirect(url_for('register_candidate_page'))
-    else:
-        flash('Invalid credentials')
-        return redirect(url_for('login_page'))
+
+    flash('Invalid credentials')
+    return redirect(url_for('login_page'))
 
 @app.route('/logout', methods=['GET'])
 def logout():
@@ -246,9 +246,9 @@ def get_local_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
+        outer_local_ip = s.getsockname()[0]
         s.close()
-        return local_ip
+        return outer_local_ip
     except Exception as e:
         print(f"Error detecting local IP: {e}")
         return "127.0.0.1"

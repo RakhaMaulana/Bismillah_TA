@@ -75,7 +75,6 @@ class Signer:
         return self.public_key
 
     def sign_message(self, message, eligible):
-
         print('\n\n')
         for _ in range(100):
             print("-", end="")
@@ -94,10 +93,8 @@ class Signer:
             print("\u001b[35;1m(c) If voter is eligible, signing authority signs ballot: sign = ((blinded message)^d)mod n = ((m* (r^e))^d) mod n = (m^d * r^(ed)) mod n = (m^d * r^1) mod n = (m^d * r) mod n(where d is the private key of the signing authority)\u001b[0m", end='\n\n')
             s = pow(message, self.private_key['d'], self.public_key['n'])  # important # ERR1
             print("\u001b[33;1mSign by Signing Authority: \u001b[0m", s, end='\n\n')
-            print("\u001b[35;1m(d) Sends s' back to voter\u001b[0m", end='\n\n')
             return s
-        else:
-            return None
+        return None
 
     def verify_voter(self, eligible):
         # This method is intentionally left empty
@@ -145,20 +142,20 @@ class Voter:
         print("\u001b[33;1mChecking whether r * r_inv mod n is 1 (which is the required condition for r_inv to be inverse of r mod n): \u001b[0m")
         print(self.r, "*", r_inv, "mod", n, '\n' ,"=", self.r * r_inv % n, end='\n')
         v = False
-        if (self.r * r_inv % n) == 1:
+        if self.r * r_inv % n == 1:
             v = True
         print("\u001b[33;1mVerification Status: \u001b[0m", v, end='\n\n')
         print("\u001b[35;1m(b) Computes s = (s')*(r_inv) mod n = (m^d * r)*(r_inv) mod n = (m^d * 1) mod n = (m^d) mod n \u001b[0m", end='\n\n')
-        s = ((signed_blind_message * r_inv) % n)
+        s = (signed_blind_message * r_inv) % n
         print("\u001b[33;1mSigned message, s: \u001b[0m", s, end='\n\n')
         print("\u001b[35;1m(c) Sends the signature s in to the ballot receiving location\u001b[0m", end='\n\n')
         return s
 
     def blind_message(self, m, n, e):
-         print("\u001b[35;1m(e) Computes blinded message (disguises his message): m' = (m* (r^e)) mod n (where n and e are public knowledge)\u001b[0m", end='\n\n')
-         blind_message = (m * pow(self.r, e, n)) % n  # returns r to the power of e, modulus n.
-         print("\u001b[33;1mBlind Message: \u001b[0m", blind_message)
-         return blind_message
+        print("\u001b[35;1m(e) Computes blinded message (disguises his message): m' = (m* (r^e)) mod n (where n and e are public knowledge)\u001b[0m", end='\n\n')
+        blind_message = (m * pow(self.r, e, n)) % n  # returns r to the power of e, modulus n.
+        print("\u001b[33;1mBlind Message: \u001b[0m", blind_message)
+        return blind_message
 
     def get_eligibility(self):
         return self.eligible
