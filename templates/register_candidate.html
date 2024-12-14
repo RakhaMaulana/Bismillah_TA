@@ -1,23 +1,27 @@
 {% extends "base.html" %}
 
+{% block title %}Register Candidate{% endblock %}
+
 {% block content %}
-<h1>Register Candidate</h1>
-<form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm()">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="form-group">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" class="form-control" required>
-    </div>
-    <div class="form-group">
-        <label for="class">Class:</label>
-        <input type="text" id="class" name="class" class="form-control" required>
-    </div>
-    <div class="form-group">
-        <label for="photo">Photo:</label>
-        <input type="file" id="photo" name="photo" class="form-control" accept=".png, .jpg, .jpeg" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Register</button>
-</form>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Register Candidate</h1>
+    <form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm()">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group mb-3">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="class">Class:</label>
+            <input type="text" id="class" name="class" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="photo">Photo:</label>
+            <input type="file" id="photo" name="photo" class="form-control" accept=".png, .jpg, .jpeg" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Register</button>
+    </form>
+</div>
 
 <script>
     function validateForm() {

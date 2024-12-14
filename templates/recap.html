@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Vote Recap{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Vote Recap</h1>
+    <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">Candidate</th>
+                <th scope="col">Votes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for candidate, count in vote_counts.items() %}
+            <tr>
+                <td>{{ candidate | e }}</td>
+                <td>{{ count | e }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="text-center mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Home</a>
+    </div>
+</div>
+{% endblock %}

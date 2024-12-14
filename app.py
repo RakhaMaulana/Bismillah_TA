@@ -14,6 +14,7 @@ from flask_wtf.csrf import CSRFProtect
 import string
 import uuid
 from dotenv import load_dotenv
+from Recap import recap_votes
 
 load_dotenv()
 
@@ -187,6 +188,17 @@ def vote():
     candidates = c.fetchall()
     conn.close()
     return render_template('vote.html', candidates=candidates)
+
+@app.route('/recap')
+@limiter.limit("200 per minute")
+def recap():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Fetch the vote recap
+    vote_counts = recap_votes()
+
+    return render_template('recap.html', vote_counts=vote_counts)
 
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):

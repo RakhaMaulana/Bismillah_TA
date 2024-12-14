@@ -4,40 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My App{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
 </head>
 <body>
-    <nav class="navbar navbar-expand-custom navbar-mainbg">
-        <button class="navbar-toggler" type="button" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <i class="fas fa-bars text-white"></i>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="{{ url_for('index') }}">eVoting</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ml-auto">
-                <div class="hori-selector"><div class="left"></div><div class="right"></div></div>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i>HOME</a>
+                    <a class="nav-link" href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('vote') }}"><i class="fas fa-vote-yea"></i>VOTE</a>
+                    <a class="nav-link" href="{{ url_for('vote') }}"><i class="fas fa-vote-yea"></i> Vote</a>
                 </li>
                 {% if session.username %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register_candidate') }}"><i class="fas fa-user-plus"></i>REGISTER CANDIDATE</a>
+                        <a class="nav-link" href="{{ url_for('register_candidate') }}"><i class="fas fa-user-plus"></i> Register Candidate</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register_voter') }}"><i class="fas fa-user-plus"></i>REGISTER VOTER</a>
+                        <a class="nav-link" href="{{ url_for('register_voter') }}"><i class="fas fa-user-plus"></i> Register Voter</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('approve_voter') }}"><i class="fas fa-check"></i>APPROVE VOTER</a>
+                        <a class="nav-link" href="{{ url_for('approve_voter') }}"><i class="fas fa-check"></i> Approve Voter</a>
                     </li>
-                    <li class="nav-item ml-auto">
-                        <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>LOGOUT</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
                     </li>
                 {% else %}
-                    <li class="nav-item ml-auto">
-                        <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i>LOGIN</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
                     </li>
                 {% endif %}
             </ul>
@@ -46,55 +49,16 @@
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <ul class="flashes">
+                <div class="alert alert-info">
                     {% for category, message in messages %}
-                        <li class="{{ category }}">{{ message | escape }}</li>
+                        <div class="alert alert-{{ category }}">{{ message | escape }}</div>
                     {% endfor %}
-                </ul>
+                </div>
             {% endif %}
         {% endwith %}
         {% block content %}{% endblock %}
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        function test(){
-            var tabsNewAnim = $('#navbarSupportedContent');
-            var activeItemNewAnim = tabsNewAnim.find('.active');
-            var activeWidthNewAnimHeight = activeItemNewAnim.innerHeight();
-            var activeWidthNewAnimWidth = activeItemNewAnim.innerWidth();
-            var itemPosNewAnimTop = activeItemNewAnim.position();
-            var itemPosNewAnimLeft = activeItemNewAnim.position();
-            $(".hori-selector").css({
-                "top":itemPosNewAnimTop.top + "px",
-                "left":itemPosNewAnimLeft.left + "px",
-                "height": activeWidthNewAnimHeight + "px",
-                "width": activeWidthNewAnimWidth + "px"
-            });
-            $("#navbarSupportedContent").on("click","li",function(e){
-                $('#navbarSupportedContent ul li').removeClass("active");
-                $(this).addClass('active');
-                var activeWidthNewAnimHeight = $(this).innerHeight();
-                var activeWidthNewAnimWidth = $(this).innerWidth();
-                var itemPosNewAnimTop = $(this).position();
-                var itemPosNewAnimLeft = $(this).position();
-                $(".hori-selector").css({
-                    "top":itemPosNewAnimTop.top + "px",
-                    "left":itemPosNewAnimLeft.left + "px",
-                    "height": activeWidthNewAnimHeight + "px",
-                    "width": activeWidthNewAnimWidth + "px"
-                });
-            });
-        }
-        $(document).ready(function(){
-            setTimeout(function(){ test(); });
-        });
-        $(window).on('resize', function(){
-            setTimeout(function(){ test(); }, 500);
-        });
-        $(".navbar-toggler").click(function(){
-            $(".navbar-collapse").slideToggle(300);
-            setTimeout(function(){ test(); });
-        });
-    </script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

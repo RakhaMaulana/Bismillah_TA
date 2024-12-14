@@ -1,25 +1,29 @@
 {% extends "base.html" %}
 
+{% block title %}Register Voter{% endblock %}
+
 {% block content %}
-<h1>Register Voter</h1>
-<form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="form-group">
-        <label for="id_number">ID Number:</label>
-        <input type="text" id="id_number" name="id_number" class="form-control" required>
-    </div>
-    <div class="form-group">
-        <label for="photo">Photo:</label>
-        <input type="hidden" id="photo" name="photo" required>
-    </div>
-    <div class="video-container">
-        <video id="video" width="320" height="240" autoplay></video>
-        <button type="button" class="take-photo btn btn-secondary mt-2" onclick="takePhoto()">Take Photo</button>
-    </div>
-    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-    <img id="photo-preview" src="" alt="Preview" class="img-fluid mt-2" style="display:none;">
-    <button type="submit" class="btn btn-primary mt-3">Register</button>
-</form>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Register Voter</h1>
+    <form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group mb-3">
+            <label for="id_number">ID Number:</label>
+            <input type="text" id="id_number" name="id_number" class="form-control" required>
+        </div>
+        <div class="form-group mb-3">
+            <label for="photo">Photo:</label>
+            <input type="hidden" id="photo" name="photo" required>
+        </div>
+        <div class="video-container text-center mb-3">
+            <video id="video" width="320" height="240" class="border" autoplay></video>
+            <button type="button" class="btn btn-secondary mt-2" onclick="takePhoto()">Take Photo</button>
+        </div>
+        <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+        <img id="photo-preview" src="" alt="Preview" class="img-fluid mt-2" style="display:none;">
+        <button type="submit" class="btn btn-primary w-100 mt-3">Register</button>
+    </form>
+</div>
 
 <script>
     // Access the webcam

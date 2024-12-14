@@ -18,10 +18,6 @@ def verify_vote(concatenated_message, unblinded_signature, public_key, n):
     # Calculate the hash of the concatenated message
     calculated_hash = int(hashlib.sha256(concatenated_message.encode('utf-8')).hexdigest(), 16)
 
-    # Debugging statements
-    print(f"Decrypted message: {decrypted_message}")
-    print(f"Calculated hash: {calculated_hash}")
-
     # Compare the decrypted message with the calculated hash
     return decrypted_message == calculated_hash
 
@@ -83,15 +79,9 @@ def recap_votes():
                     vote_counts[vote] += 1
                 else:
                     vote_counts[vote] = 1
-                print(f"Vote for candidate {vote} verified and counted.")
                 break  # Stop checking other keys if the vote is verified
-            else:
-                print(f"Vote for candidate {concatenated_message[0]} not verified with key (n={n}, e={public_key}).")
 
-    # Print the vote counts
-    print("Final vote counts:")
-    for candidate, count in vote_counts.items():
-        print(f"Candidate {candidate}: {count} votes")
+    return vote_counts
 
 # Run the functions
 if __name__ == "__main__":

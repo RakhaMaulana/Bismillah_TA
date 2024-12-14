@@ -1,31 +1,45 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="hero">
-    <div class="hero-content">
-        <h1>Welcome to eVoting</h1>
-        <p>Secure and anonymous voting system.</p>
-        <div class="hero-buttons">
-            <a href="{{ url_for('register_voter') }}" class="btn btn-primary">Register</a>
-            <a href="{{ url_for('vote') }}" class="btn btn-secondary">Vote</a>
+<div class="jumbotron text-center">
+    <div class="container">
+        <h1 class="display-4">Welcome to eVoting</h1>
+        <p class="lead">Secure and anonymous voting system.</p>
+        <div class="hero-buttons mt-4">
+            <a href="{{ url_for('register_voter') }}" class="btn btn-primary btn-lg mr-2">Register</a>
+            <a href="{{ url_for('vote') }}" class="btn btn-secondary btn-lg">Vote</a>
         </div>
     </div>
 </div>
-<div class="features">
-    <div class="feature">
-        <i class="fas fa-lock"></i>
-        <h3>Secure</h3>
-        <p>Your votes are securely encrypted and stored.</p>
-    </div>
-    <div class="feature">
-        <i class="fas fa-user-secret"></i>
-        <h3>Anonymous</h3>
-        <p>Your identity is protected and your votes are anonymous.</p>
-    </div>
-    <div class="feature">
-        <i class="fas fa-check-circle"></i>
-        <h3>Reliable</h3>
-        <p>Our system ensures that every vote is counted accurately.</p>
+<div class="container">
+    <div class="row text-center">
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-lock fa-3x mb-3"></i>
+                    <h3 class="card-title">Secure</h3>
+                    <p class="card-text">Your votes are securely encrypted and stored.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-user-secret fa-3x mb-3"></i>
+                    <h3 class="card-title">Anonymous</h3>
+                    <p class="card-text">Your identity is protected and your votes are anonymous.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-check-circle fa-3x mb-3"></i>
+                    <h3 class="card-title">Reliable</h3>
+                    <p class="card-text">Our system ensures that every vote is counted accurately.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

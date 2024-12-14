@@ -1,26 +1,38 @@
 {% extends "base.html" %}
 
-{% block content %}
-<h1>Approve Voter</h1>
-<form method="post" class="approve-form" onsubmit="return validateForm()">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="voter_id">Select Voter to Approve:</label>
-    <select id="voter_id" name="voter_id" required>
-        {% for voter in voters %}
-            <option value="{{ voter[0] }}">{{ voter[1] }}</option>
-        {% endfor %}
-    </select>
-    <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
-    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
-</form>
+{% block title %}Approve Voter{% endblock %}
 
-<div class="voter-list mt-4">
-    {% for voter in voters %}
-        <div class="voter-item mb-3">
-            <h3>ID: {{ voter[1] | escape }}</h3>
-            <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" alt="Voter {{ voter[1] | escape }}" width="200">
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Approve Voter</h1>
+    <form method="post" class="approve-form" onsubmit="return validateForm()">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label for="voter_id">Select Voter to Approve:</label>
+            <select id="voter_id" name="voter_id" class="form-control" required>
+                {% for voter in voters %}
+                    <option value="{{ voter[0] }}">{{ voter[1] }}</option>
+                {% endfor %}
+            </select>
         </div>
-    {% endfor %}
+        <div class="form-group d-flex justify-content-between">
+            <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+            <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+        </div>
+    </form>
+
+    <div class="voter-list mt-4 row">
+        {% for voter in voters %}
+            <div class="voter-item col-md-4 mb-3">
+                <div class="card">
+                    <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" class="card-img-top" alt="Voter {{ voter[1] | escape }}">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">ID: {{ voter[1] | escape }}</h5>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 </div>
 
 <script>

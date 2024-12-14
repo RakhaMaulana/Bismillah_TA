@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 
+{% block title %}Vote{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h1>Vote</h1>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Vote</h1>
     <form method="post" class="vote-form" onsubmit="return validateForm()">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="id_number">ID Number:</label>
             <input type="text" id="id_number" name="id_number" class="form-control" required>
         </div>
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="candidate">Choose Candidate:</label>
             <select id="candidate" name="candidate" class="form-control" required>
                 {% for candidate in candidates %}
@@ -17,14 +19,18 @@
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn btn-primary">Vote</button>
+        <button type="submit" class="btn btn-primary w-100">Vote</button>
     </form>
-    <div class="candidate-list mt-4">
+    <div class="candidate-list mt-4 row">
         {% for candidate in candidates %}
-            <div class="candidate-item mb-3">
-                <h3>{{ candidate[1] | escape }}</h3>
-                <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('/')[-1]) }}" alt="Candidate {{ candidate[1] | escape }}" width="200">
-                <p>{{ candidate[3] | escape }}</p>
+            <div class="candidate-item col-md-4 mb-3">
+                <div class="card">
+                    <img src="{{ url_for('static', filename='uploads/' ~ candidate[2].split('/')[-1]) }}" class="card-img-top" alt="Candidate {{ candidate[1] | escape }}">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">{{ candidate[1] | escape }}</h5>
+                        <p class="card-text">{{ candidate[3] | escape }}</p>
+                    </div>
+                </div>
             </div>
         {% endfor %}
     </div>
