@@ -8,7 +8,7 @@
         <p class="lead">A secure, reliable, and anonymous voting experience awaits you.</p>
         <div class="hero-buttons mt-4">
             <a href="{{ url_for('register_voter') }}" class="btn btn-outline-light btn-lg px-4 mr-3">Register</a>
-            <a href="{{ url_for('vote') }}" class="btn btn-outline-secondary btn-lg px-4">Vote Now</a>
+            <a href="{{ url_for('vote') }}" class="btn btn-outline-light btn-lg px-4 mr-3">Vote Now</a>
         </div>
     </div>
 </div>
@@ -65,14 +65,10 @@
                     <i class="fas fa-vote-yea fa-2x text-primary"></i>
                     <span class="ml-3">Cast your vote securely and anonymously.</span>
                 </li>
-                <li class="mb-3 d-flex align-items-start">
-                    <i class="fas fa-chart-bar fa-2x text-primary"></i>
-                    <span class="ml-3">View the results once the voting period is over.</span>
-                </li>
             </ul>
         </div>
         <div class="col-md-6" style="text-align: right;">
-            <img src="{{ url_for('static', filename='voting_process.png') }}" alt="Voting Process Image" class="img-fluid" style="max-width: 250px;">
+            <img src="{{ url_for('static', filename='voting_process.png') }}" alt="Voting Process Image" class="img-fluid" style="max-height: 300px;">
         </div>
     </div>
 </div>
