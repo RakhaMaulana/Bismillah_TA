@@ -1,11 +1,13 @@
 import sqlite3
 import hashlib
 import random
+import string
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 import BlindSig as bs
 import cryptomath
 import os
 import base64
+import uuid
 
 # Create a new SQLite database (or connect to an existing one)
 conn = sqlite3.connect('evoting.db')
@@ -38,7 +40,9 @@ c.execute('''CREATE TABLE IF NOT EXISTS voters (
                 id_number TEXT,
                 digital_signature TEXT,
                 approved INTEGER DEFAULT 0,
-                photo TEXT)''')
+                photo TEXT,
+                token TEXT,
+                token_used INTEGER DEFAULT 0)''')
 
 c.execute('''CREATE TABLE IF NOT EXISTS ballots (
                 id INTEGER PRIMARY KEY,
@@ -56,6 +60,9 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def generate_token(length=6):
+    return ''.join(random.choices(string.ascii_uppercase, k=length))
+
 def save_keys(n, e, d):
     conn = get_db_connection()
     c = conn.cursor()
@@ -67,11 +74,13 @@ def save_keys(n, e, d):
 def save_voter(id_number, digital_signature, photo_filename):
     conn = get_db_connection()
     c = conn.cursor()
-    params = (id_number, digital_signature, photo_filename)
-    c.execute("INSERT INTO voters (id_number, digital_signature, photo) VALUES (?, ?, ?)", params)
+    token = generate_token()
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+    params = (id_number, digital_signature, photo_filename, hashed_token)
+    c.execute("INSERT INTO voters (id_number, digital_signature, photo, token) VALUES (?, ?, ?, ?)", params)
     conn.commit()
     conn.close()
-    print(f"Saved voter: {id_number}")
+    return token
 
 def save_candidate(name, photo_filename, candidate_class):
     conn = get_db_connection()

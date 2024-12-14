@@ -5,22 +5,37 @@
 {% block content %}
 <div class="container mt-5">
     <h1 class="text-center mb-4">Register Voter</h1>
+    {% if token %}
+        <div class="alert alert-info text-center">
+            Your registration token is: <strong>{{ token }}</strong>
+        </div>
+    {% endif %}
     <form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
         <div class="form-group mb-3">
             <label for="id_number">ID Number:</label>
             <input type="text" id="id_number" name="id_number" class="form-control" required>
         </div>
+
         <div class="form-group mb-3">
             <label for="photo">Photo:</label>
             <input type="hidden" id="photo" name="photo" required>
         </div>
+
+        <!-- Video and Capture Button -->
         <div class="video-container text-center mb-3">
-            <video id="video" width="320" height="240" class="border" autoplay></video>
+            <video id="video" width="320" height="240" class="border mx-auto d-block" autoplay></video>
             <button type="button" class="btn btn-secondary mt-2" onclick="takePhoto()">Take Photo</button>
         </div>
+
+        <!-- Canvas for Capturing Image -->
         <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-        <img id="photo-preview" src="" alt="Preview" class="img-fluid mt-2" style="display:none;">
+
+        <!-- Image Preview (hidden initially) -->
+        <img id="photo-preview" src="" style="display:none;" class="img-fluid mt-2 mx-auto d-block">
+
+        <!-- Submit Button -->
         <button type="submit" class="btn btn-primary w-100 mt-3">Register</button>
     </form>
 </div>
@@ -32,6 +47,7 @@
     const photoInput = document.getElementById('photo');
     const photoPreview = document.getElementById('photo-preview');
 
+    // Activate webcam
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
             video.srcObject = stream;
@@ -40,15 +56,19 @@
             console.error("Error accessing webcam: " + err);
         });
 
+    // Function to capture photo
     function takePhoto() {
         const context = canvas.getContext('2d');
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataURL = canvas.toDataURL('image/jpeg');
+
+        // Set hidden input value and display preview
         photoInput.value = dataURL;
         photoPreview.src = dataURL;
         photoPreview.style.display = 'block';
     }
 
+    // Function to validate form
     function capturePhoto() {
         const idNumber = document.getElementById('id_number').value;
         if (!idNumber) {

@@ -5,37 +5,42 @@
 {% block content %}
 <div class="container mt-5">
     <h1 class="text-center mb-4">Approve Voter</h1>
-    <form method="post" class="approve-form" onsubmit="return validateForm()">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group">
-            <label for="voter_id">Select Voter to Approve:</label>
-            <select id="voter_id" name="voter_id" class="form-control" required>
-                {% for voter in voters %}
-                    <option value="{{ voter[0] }}">{{ voter[1] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group d-flex justify-content-between">
-            <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
-            <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
-        </div>
-    </form>
-
-    <div class="voter-list mt-4 row">
-        {% for voter in voters %}
-            <div class="voter-item col-md-4 mb-3">
-                <div class="card">
-                    <img src="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}" class="card-img-top" alt="Voter {{ voter[1] | escape }}">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">ID: {{ voter[1] | escape }}</h5>
-                    </div>
-                </div>
+    {% if voters %}
+        <form method="post" class="approve-form" onsubmit="return validateForm()">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="voter_id">Select Voter to Approve:</label>
+                <select id="voter_id" name="voter_id" class="form-control" onchange="updateVoterPhoto()" required>
+                    {% for voter in voters %}
+                        <option value="{{ voter[0] }}" data-photo="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}">{{ voter[1] }}</option>
+                    {% endfor %}
+                </select>
             </div>
-        {% endfor %}
-    </div>
+            <div class="form-group d-flex justify-content-between">
+                <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+            </div>
+        </form>
+
+        <div class="voter-photo-container text-center mt-4">
+            <img id="voter-photo" src="{{ url_for('static', filename='uploads/' ~ voters[0][1] ~ '.jpg') }}" class="img-fluid" alt="Voter Photo">
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center">
+            No voters to approve.
+        </div>
+    {% endif %}
 </div>
 
 <script>
+    function updateVoterPhoto() {
+        const voterSelect = document.getElementById('voter_id');
+        const selectedOption = voterSelect.options[voterSelect.selectedIndex];
+        const photoUrl = selectedOption.getAttribute('data-photo');
+        const voterPhoto = document.getElementById('voter-photo');
+        voterPhoto.src = photoUrl;
+    }
+
     function validateForm() {
         const voterId = document.getElementById('voter_id').value;
         if (!voterId) {
@@ -44,5 +49,12 @@
         }
         return true;
     }
+
+    // Initialize the photo display with the first voter's photo
+    window.onload = function() {
+        if (document.getElementById('voter_id')) {
+            updateVoterPhoto();
+        }
+    };
 </script>
 {% endblock %}

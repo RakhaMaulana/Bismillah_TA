@@ -92,27 +92,32 @@ def register_candidate():
 @app.route('/register_voter', methods=['GET', 'POST'])
 @limiter.limit("200 per minute")
 def register_voter():
+    token = None
     if request.method == 'POST':
         id_number = request.form['id_number']
         photo_data = request.form['photo']
         photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f"{id_number}.jpg"))
-
-        # Decode the base64 image data and save it as a file
-        photo_data = photo_data.split(',')[1]
-        with open(photo_filename, "wb") as fh:
-            fh.write(base64.b64decode(photo_data))
 
         conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT * FROM voters WHERE id_number = ?", (id_number,))
         existing_voter = c.fetchone()
         if existing_voter:
-            flash('ID number already registered')
+            if existing_voter['approved'] == 0:
+                flash('ID number already registered. Awaiting admin approval.')
+            else:
+                flash('ID number already registered and approved.')
             return redirect(url_for('register_voter'))
+
+        # Decode the base64 image data and save it as a file
+        photo_data = photo_data.split(',')[1]
+        with open(photo_filename, "wb") as fh:
+            fh.write(base64.b64decode(photo_data))
+
         digital_signature = hashlib.sha256(photo_data.encode()).hexdigest()
-        save_voter(id_number, digital_signature, photo_filename)
+        token = save_voter(id_number, digital_signature, photo_filename)
         flash('Voter registered successfully. Awaiting admin approval.')
-    return render_template('register_voter.html')
+    return render_template('register_voter.html', token=token)
 
 @app.route('/approve_voter', methods=['GET', 'POST'])
 @limiter.limit("200 per minute")
@@ -141,16 +146,21 @@ def approve_voter():
 def vote():
     if request.method == 'POST':
         candidate_id = request.form['candidate']
-        id_number = request.form['id_number']
+        token = request.form['token']
+        hashed_token = hashlib.sha256(token.encode()).hexdigest()
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT approved FROM voters WHERE id_number = ?", (id_number,))
+        c.execute("SELECT id_number, approved, token_used FROM voters WHERE token = ?", (hashed_token,))
         voter = c.fetchone()
         if not voter:
-            flash('Voter not found')
+            flash('Invalid token')
             return redirect(url_for('vote'))
-        if voter[0] == 0:
+        id_number, approved, token_used = voter
+        if approved == 0:
             flash('Voter not approved')
+            return redirect(url_for('vote'))
+        if token_used == 1:
+            flash('Token already used')
             return redirect(url_for('vote'))
         c.execute("SELECT * FROM ballots WHERE concatenated_message LIKE ?", (id_number + '%',))
         if c.fetchone():
@@ -180,6 +190,12 @@ def vote():
         signed_blind_message = signer.sign_message(blind_message, voter.get_eligibility())
         signed_message = voter.unwrap_signature(signed_blind_message, n)
         save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
+
+        # Mark token as used
+        c.execute("UPDATE voters SET token_used = 1 WHERE token = ?", (hashed_token,))
+        conn.commit()
+        conn.close()
+
         flash('Vote cast successfully')
 
     conn = get_db_connection()
@@ -187,7 +203,7 @@ def vote():
     c.execute("SELECT id, name, photo, class FROM candidates")
     candidates = c.fetchall()
     conn.close()
-    return render_template('vote.html', candidates=candidates)
+    return render_template('vote.html', candidates=candidates, no_candidates=len(candidates) == 0)
 
 @app.route('/recap')
 @limiter.limit("200 per minute")
