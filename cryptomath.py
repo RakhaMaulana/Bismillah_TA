@@ -1,5 +1,5 @@
 # Cryptomath Module
-import random
+import secrets
 
 def gcd(a, b):
     # Returns the GCD of positive integers a and b using the Euclidean Algorithm.
@@ -52,7 +52,7 @@ def rabin_miller(n):
     # At this point n - 1 = 2^s * d with d odd.
     # Try fifty times to prove that n is composite.
     for _ in range(50):
-        a = random.randint(2, n - 1)
+        a = secrets.randbelow(n - 2) + 2  # Generate a random number in the range [2, n-1]
         if gcd(a, n) != 1:
             return False
         b = pow(a, d, n)
@@ -91,20 +91,7 @@ def is_prime(n):
     # Determines whether a positive integer n is composite or probably prime.
     if n < 2:
         return False
-    small_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
-                    59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
-                    127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
-                    191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251,
-                    257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317,
-                    331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397,
-                    401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463,
-                    467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557,
-                    563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619,
-                    631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701,
-                    709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787,
-                    797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863,
-                    877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953,
-                    967, 971, 977, 983, 991, 997]
+    small_primes = get_small_primes()
     if is_small_prime(n, small_primes):
         return True
     if is_divisible_by_small_prime(n, small_primes):
@@ -113,12 +100,29 @@ def is_prime(n):
         return False
     return rabin_miller(n)
 
+def get_small_primes():
+    # Returns a list of small prime numbers.
+    return [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
+            59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
+            127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
+            191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251,
+            257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317,
+            331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397,
+            401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463,
+            467, 479, 487, 491, 499, 503, 509, 521, 523, 541, 547, 557,
+            563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 617, 619,
+            631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701,
+            709, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787,
+            797, 809, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863,
+            877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953,
+            967, 971, 977, 983, 991, 997]
+
 def find_prime(bits=1024, tries=10000):
     # Find a prime with the given number of bits.
     x = 2 ** (bits - 1)
     y = 2 * x
     for _ in range(tries):
-        n = random.randint(x, y)
+        n = secrets.randbelow(y - x) + x  # Generate a random number in the range [x, y)
         if n % 2 == 0:
             n += 1
         if is_prime(n):

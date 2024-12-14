@@ -319,3 +319,42 @@ button.btn:hover {
         margin: 10px 0;
     }
 }
+
+/* Hero Section */
+.jumbotron {
+    background: linear-gradient(135deg, #04305e 0%, #0056b3 100%);
+    color: white;
+    padding: 4rem 0;
+}
+
+.hero-buttons .btn {
+    border: 2px solid white;
+    transition: all 0.3s ease;
+}
+
+.hero-buttons .btn:hover {
+    background-color: white;
+    color: #0c2947;
+}
+
+/* Features Section */
+.feature-card {
+    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.feature-icon {
+    font-size: 3rem;
+}
+
+/* How It Works Section */
+.list-unstyled li {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}

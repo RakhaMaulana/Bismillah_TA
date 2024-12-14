@@ -1,6 +1,6 @@
 import BlindSig as bs
 import hashlib
-import random
+import secrets
 import cryptomath
 import sqlite3
 from createdb import save_keys, save_voter, save_ballot  # Import the functions from createdb.py
@@ -50,7 +50,7 @@ class Poll:
         self.process_signed_blind_message(signed_blind_message, concat_message, message_hash, blind_message, voter, x)
 
     def generate_random_x(self):
-        x = random.randint(1, self.n)
+        x = secrets.randbelow(self.n - 1) + 1
         print("\u001b[35;1m(a) Generates random x such that 1<=x<=n\u001b[0m", end='\n\n')
         print("\u001b[33;1mx: \u001b[0m", x, end="\n\n")
         return x
@@ -164,7 +164,7 @@ class PollMachine:
     def pick_public_key(self, phi):
         found_encryption_key = False
         while not found_encryption_key:
-            public_key = random.randint(2, phi - 1)
+            public_key = secrets.randbelow(phi - 1) + 1
             if cryptomath.gcd(public_key, phi) == 1:
                 found_encryption_key = True
         return public_key

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import hashlib
 import BlindSig as bs
-import random
+import secrets
 import cryptomath
 import os
 import base64
@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 16 MB max file size
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
 
@@ -33,7 +33,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["4000 per hour"],
     storage_uri="memory://"
 )
 
@@ -41,7 +41,7 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
@@ -64,7 +64,7 @@ def login():
             flash('Invalid credentials')
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET'])
 def logout():
     session.clear()
     return redirect(url_for('index'))
@@ -181,7 +181,7 @@ def vote():
             _ = signer.private_key['d']
             save_keys(n, e, _)  # Save keys to the database
 
-        x = random.randint(1, n)
+        x = secrets.randbelow(n - 1) + 1
         concat_message = str(candidate_id) + str(x)
         message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
         message_hash = int(message_hash, 16)
@@ -205,7 +205,7 @@ def vote():
     conn.close()
     return render_template('vote.html', candidates=candidates, no_candidates=len(candidates) == 0)
 
-@app.route('/recap')
+@app.route('/recap', methods=['GET'])
 @limiter.limit("200 per minute")
 def recap():
     if 'user_id' not in session:

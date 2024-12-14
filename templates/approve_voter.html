@@ -23,7 +23,7 @@
         </form>
 
         <div class="voter-photo-container text-center mt-4">
-            <img id="voter-photo" src="{{ url_for('static', filename='uploads/' ~ voters[0][1] ~ '.jpg') }}" class="img-fluid" alt="Voter Photo">
+            <img id="voter-photo" src="{{ url_for('static', filename='uploads/' ~ voters[0][1] ~ '.jpg') }}" class="img-fluid" alt="Voter">
         </div>
     {% else %}
         <div class="alert alert-info text-center">
