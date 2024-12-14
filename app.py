@@ -225,4 +225,4 @@ if __name__ == '__main__':
     key_path = "dev.private.key"
 
     # Run the Flask app with HTTPS
-    app.run(host='0.0.0.0', port=5000, ssl_context=(cert_path, key_path), debug=True)
+    app.run(host='0.0.0.0', port=5000, ssl_context=(cert_path, key_path))
