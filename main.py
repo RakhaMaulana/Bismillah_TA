@@ -134,10 +134,10 @@ class PollMachine:
 
     def authenticate_voter(self, poll_):
         self.print_module_header("Digital Signature Authentication")
-        p, q, n, phi, public_key, private_key = self.generate_keys()
-        id_number, id_number_hash, s = self.create_digital_signature(n, private_key)
+        _, _, n, _, public_key, private_key = self.generate_keys()
+        id_number, s = self.create_digital_signature(n, private_key)
         save_voter(id_number, s, "placeholder_photo_filename")
-        self.verify_digital_signature(id_number, id_number_hash, s, public_key, n)
+        self.verify_digital_signature(id_number, s, public_key, n)
         self.p.poll_response(poll_, 1)
 
     def generate_keys(self):
@@ -181,9 +181,9 @@ class PollMachine:
         print("\u001b[35;1m(g) Voter creates Digital Signature using s=(message_hash)^(private key)mod n \u001b[0m", end="\n\n")
         s = pow(id_number_hash, private_key, n)  # ERR2
         print("\u001b[33;1mDigital Signature, s: \u001b[0m", s, end="\n\n")
-        return id_number, id_number_hash, s
+        return id_number, s
 
-    def verify_digital_signature(self, id_number, id_number_hash, s, public_key, n):
+    def verify_digital_signature(self, id_number, s, public_key, n):
         print("\u001b[35;1m(h) Digital Signature, s, and original message, idNumber (without hash) are made available to the Verifier \u001b[0m", end="\n\n")
         print("\u001b[35;1m(i) The Verifier calculates and compares the values of the \u001b[0m", '\n\n', "    1. Decrypted message and", '\n\n', "    2. Hash(idNumber)", '\n\n', "\u001b[35;1mIf these 2 values are same then its authenticated using Digital Signature \u001b[0m", end="\n\n")
         concat_message = str(id_number)

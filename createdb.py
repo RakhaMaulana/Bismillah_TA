@@ -1,6 +1,6 @@
 import sqlite3
 import hashlib
-import random
+import secrets
 import string
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 import BlindSig as bs
@@ -54,6 +54,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS ballots (
                 unblinded_signature TEXT)''')
 
 conn.commit()
+conn.close()
 
 def get_db_connection():
     conn = sqlite3.connect('evoting.db')
@@ -61,51 +62,46 @@ def get_db_connection():
     return conn
 
 def generate_token(length=6):
-    return ''.join(random.choices(string.ascii_uppercase, k=length))
+    return ''.join(secrets.choice(string.ascii_uppercase) for _ in range(length))
 
 def save_keys(n, e, d):
-    conn = get_db_connection()
-    c = conn.cursor()
-    params = (str(n), str(e), str(d))
-    c.execute("INSERT INTO keys (n, e, d, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)", params)
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        params = (str(n), str(e), str(d))
+        c.execute("INSERT INTO keys (n, e, d, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)", params)
+        conn.commit()
 
 def save_voter(id_number, digital_signature, photo_filename):
-    conn = get_db_connection()
-    c = conn.cursor()
     token = generate_token()
     hashed_token = hashlib.sha256(token.encode()).hexdigest()
     params = (id_number, digital_signature, photo_filename, hashed_token)
-    c.execute("INSERT INTO voters (id_number, digital_signature, photo, token) VALUES (?, ?, ?, ?)", params)
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("INSERT INTO voters (id_number, digital_signature, photo, token) VALUES (?, ?, ?, ?)", params)
+        conn.commit()
     return token
 
 def save_candidate(name, photo_filename, candidate_class):
-    conn = get_db_connection()
-    c = conn.cursor()
     params = (name, photo_filename, candidate_class)
-    c.execute("INSERT INTO candidates (name, photo, class) VALUES (?, ?, ?)", params)
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("INSERT INTO candidates (name, photo, class) VALUES (?, ?, ?)", params)
+        conn.commit()
     print(f"Saved candidate: {name}")
 
 def save_ballot(x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature):
-    conn = get_db_connection()
-    c = conn.cursor()
     params = (str(x), concatenated_message, str(message_hash), str(blinded_message), str(signed_blind_message), str(unblinded_signature))
-    c.execute('''INSERT INTO ballots (x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature)
-                 VALUES (?, ?, ?, ?, ?, ?)''', params)
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute('''INSERT INTO ballots (x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature)
+                     VALUES (?, ?, ?, ?, ?, ?)''', params)
+        conn.commit()
 
 def verify_ballot(id_number, public_key, n):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT digital_signature FROM voters WHERE id_number=?", (id_number,))
-    voter = c.fetchone()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT digital_signature FROM voters WHERE id_number=?", (id_number,))
+        voter = c.fetchone()
     if voter:
         digital_signature = voter[0]
         decrypted_message = pow(int(digital_signature), public_key, n)
@@ -117,23 +113,21 @@ def verify_ballot(id_number, public_key, n):
         print("Voter not found")
 
 def create_admin():
-    conn = get_db_connection()
-    c = conn.cursor()
     username = 'AdminKitaBersama'
     password = hashlib.sha256('AdminKitaBersama'.encode()).hexdigest()
-    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
 
 # Create admin user
 create_admin()
 
 def get_existing_keys():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
-    key = c.fetchone()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
+        key = c.fetchone()
     if key:
         n, e, d = int(key[0]), int(key[1]), int(key[2])
         return n, e, d

@@ -33,7 +33,7 @@
         <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
 
         <!-- Image Preview (hidden initially) -->
-        <img id="photo-preview" src="" style="display:none;" class="img-fluid mt-2 mx-auto d-block">
+        <img id="photo-preview" style="display:none;" class="img-fluid mt-2 mx-auto d-block">
 
         <!-- Submit Button -->
         <button type="submit" class="btn btn-primary w-100 mt-3">Register</button>
@@ -71,15 +71,24 @@
     // Function to validate form
     function capturePhoto() {
         const idNumber = document.getElementById('id_number').value;
+
+        // Validation for ID Number
         if (!idNumber) {
             alert("Please enter your ID number.");
             return false;
         }
+
+        // Validation for Photo Input
         if (!photoInput.value) {
             alert("Please take a photo before submitting.");
             return false;
         }
         return true;
     }
+
+    // Ensure preview doesn't display a broken image icon
+    document.addEventListener("DOMContentLoaded", () => {
+        photoPreview.removeAttribute('src');
+    });
 </script>
 {% endblock %}

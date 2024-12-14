@@ -10,17 +10,8 @@ COPY requirements.txt requirements.txt
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only necessary files into the container
-COPY app.py .
-COPY createdb.py .
-COPY cryptomath.py .
-COPY BlindSig.py .
-COPY static/ static/
-COPY templates/ templates/
-
-# Create a non-root user and switch to that user
-RUN useradd -m myuser
-USER myuser
+# Copy the rest of the application code into the container
+COPY . .
 
 # Expose the port the app runs on
 EXPOSE 5000

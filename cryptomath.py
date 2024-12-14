@@ -44,28 +44,34 @@ def rabin_miller(n):
         return True
     if n % 2 == 0:
         return False
-    d = n - 1
+
+    d, s = decompose(n - 1)
+    for _ in range(50):
+        a = secrets.randbelow(n - 2) + 2  # Generate a random number in the range [2, n-1]
+        if not is_composite(a, d, n, s):
+            continue
+        return False
+    return True
+
+def decompose(n):
+    # Decomposes (n - 1) into d * 2^s with d odd.
+    d = n
     s = 0
     while d % 2 == 0:
         s += 1
-        d = d // 2
-    # At this point n - 1 = 2^s * d with d odd.
-    # Try fifty times to prove that n is composite.
-    for _ in range(50):
-        a = secrets.randbelow(n - 2) + 2  # Generate a random number in the range [2, n-1]
-        if gcd(a, n) != 1:
-            return False
-        b = pow(a, d, n)
-        if b == 1 or b == n - 1:
-            continue
-        is_witness = True
-        r = 1
-        while r < s and is_witness:
-            b = pow(b, 2, n)
-            if b == n - 1:
-                is_witness = False
-            r += 1
-        if is_witness:
+        d //= 2
+    return d, s
+
+def is_composite(a, d, n, s):
+    # Checks if n is composite using a single base a.
+    if gcd(a, n) != 1:
+        return True
+    b = pow(a, d, n)
+    if b == 1 or b == n - 1:
+        return False
+    for _ in range(s - 1):
+        b = pow(b, 2, n)
+        if b == n - 1:
             return False
     return True
 
