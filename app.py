@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, make_response, send_from_directory
-import sqlite3
+import socket
+import os
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import hashlib
 import BlindSig as bs
 import secrets
-import cryptomath
 import os
 import base64
 from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys
@@ -11,7 +11,6 @@ from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
-import string
 import uuid
 from dotenv import load_dotenv
 from Recap import recap_votes
@@ -230,6 +229,18 @@ def recap():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
+def get_local_ip():
+    try:
+        # Membuat koneksi socket dummy untuk mendeteksi IP lokal
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # Gunakan DNS publik Google
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception as e:
+        print(f"Error detecting local IP: {e}")
+        return "127.0.0.1"  # Fallback ke localhost jika gagal
+
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
@@ -238,5 +249,9 @@ if __name__ == '__main__':
     cert_path = "dev.certificate.crt"
     key_path = "dev.private.key"
 
+    # Dapatkan IP lokal adaptif
+    local_ip = get_local_ip()
+    print(f"Running Flask app on IP: {local_ip}")
+
     # Run the Flask app with HTTPS
-    app.run(host='0.0.0.0', port=5000, ssl_context=(cert_path, key_path))
+    app.run(host=local_ip, port=5000, ssl_context=(cert_path, key_path))
