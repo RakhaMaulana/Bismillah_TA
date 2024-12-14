@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, make_response, send_from_directory
 import sqlite3
 import hashlib
 import BlindSig as bs
@@ -15,6 +15,7 @@ import string
 import uuid
 from dotenv import load_dotenv
 from Recap import recap_votes
+from markupsafe import escape
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 16 MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 8 MB max file size
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
 
@@ -33,7 +34,7 @@ csrf = CSRFProtect(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["4000 per hour"],
+    default_limits=["40000000000 per hour"],
     storage_uri="memory://"
 )
 
@@ -41,16 +42,25 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@app.after_request
+def apply_security_headers(response):
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
+
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("200 per minute")
+@limiter.limit("20000000 per minute")
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = escape(request.form['username'])
+        password = escape(request.form['password'])
         conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashlib.sha256(password.encode()).hexdigest()))
@@ -70,13 +80,13 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/register_candidate', methods=['GET', 'POST'])
-@limiter.limit("200 per minute")
+@limiter.limit("20000000 per minute")
 def register_candidate():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     if request.method == 'POST':
-        name = request.form['name']
-        candidate_class = request.form['class']
+        name = escape(request.form['name'])
+        candidate_class = escape(request.form['class'])
         photo = request.files['photo']
         if photo and allowed_file(photo.filename):
             # Generate a unique filename
@@ -90,11 +100,11 @@ def register_candidate():
     return render_template('register_candidate.html')
 
 @app.route('/register_voter', methods=['GET', 'POST'])
-@limiter.limit("200 per minute")
+@limiter.limit("20000000 per minute")
 def register_voter():
     token = None
     if request.method == 'POST':
-        id_number = request.form['id_number']
+        id_number = escape(request.form['id_number'])
         photo_data = request.form['photo']
         photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f"{id_number}.jpg"))
 
@@ -120,15 +130,15 @@ def register_voter():
     return render_template('register_voter.html', token=token)
 
 @app.route('/approve_voter', methods=['GET', 'POST'])
-@limiter.limit("200 per minute")
+@limiter.limit("20000000 per minute")
 def approve_voter():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     conn = get_db_connection()
     c = conn.cursor()
     if request.method == 'POST':
-        voter_id = request.form['voter_id']
-        action = request.form['action']
+        voter_id = escape(request.form['voter_id'])
+        action = escape(request.form['action'])
         if action == 'approve':
             c.execute("UPDATE voters SET approved = 1 WHERE id = ?", (voter_id,))
             flash('Voter approved successfully')
@@ -142,11 +152,11 @@ def approve_voter():
     return render_template('approve_voter.html', voters=voters)
 
 @app.route('/vote', methods=['GET', 'POST'])
-@limiter.limit("200 per minute")
+@limiter.limit("20000000 per minute")
 def vote():
     if request.method == 'POST':
-        candidate_id = request.form['candidate']
-        token = request.form['token']
+        candidate_id = escape(request.form['candidate'])
+        token = escape(request.form['token'])
         hashed_token = hashlib.sha256(token.encode()).hexdigest()
         conn = get_db_connection()
         c = conn.cursor()
@@ -206,7 +216,7 @@ def vote():
     return render_template('vote.html', candidates=candidates, no_candidates=len(candidates) == 0)
 
 @app.route('/recap', methods=['GET'])
-@limiter.limit("200 per minute")
+@limiter.limit("20000000 per minute")
 def recap():
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -215,6 +225,10 @@ def recap():
     vote_counts = recap_votes()
 
     return render_template('recap.html', vote_counts=vote_counts)
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
