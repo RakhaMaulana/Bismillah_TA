@@ -101,7 +101,6 @@ def apply_fermat_test(n, bases):
         if pow(base, n - 1, n) != 1:
             return False
     return all(pow(base, n - 1, n) == 1 for base in bases)
-    return True
 
 
 def is_prime(n):
