@@ -51,13 +51,16 @@ c.execute('''CREATE TABLE IF NOT EXISTS ballots (
 conn.commit()
 conn.close()
 
+
 def get_db_connection():
     conn = sqlite3.connect('evoting.db')
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def generate_token(length=6):
     return ''.join(secrets.choice(string.ascii_uppercase) for _ in range(length))
+
 
 def save_keys(n, e, d):
     with get_db_connection() as conn:
@@ -65,6 +68,7 @@ def save_keys(n, e, d):
         params = (str(n), str(e), str(d))
         c.execute("INSERT INTO keys (n, e, d, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)", params)
         conn.commit()
+
 
 def save_voter(id_number, digital_signature, photo_filename):
     token = generate_token()
@@ -76,6 +80,7 @@ def save_voter(id_number, digital_signature, photo_filename):
         conn.commit()
     return token
 
+
 def save_candidate(name, photo_filename, candidate_class):
     params = (name, photo_filename, candidate_class)
     with get_db_connection() as conn:
@@ -84,6 +89,7 @@ def save_candidate(name, photo_filename, candidate_class):
         conn.commit()
     print(f"Saved candidate: {name}")
 
+
 def save_ballot(x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature):
     params = (str(x), concatenated_message, str(message_hash), str(blinded_message), str(signed_blind_message), str(unblinded_signature))
     with get_db_connection() as conn:
@@ -91,6 +97,7 @@ def save_ballot(x, concatenated_message, message_hash, blinded_message, signed_b
         c.execute('''INSERT INTO ballots (x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature)
                      VALUES (?, ?, ?, ?, ?, ?)''', params)
         conn.commit()
+
 
 def verify_ballot(id_number, public_key, n):
     with get_db_connection() as conn:
@@ -107,6 +114,7 @@ def verify_ballot(id_number, public_key, n):
     else:
         print("Voter not found")
 
+
 def create_admin():
     username = 'AdminKitaBersama'
     password = hashlib.sha256('AdminKitaBersama'.encode()).hexdigest()
@@ -115,8 +123,10 @@ def create_admin():
         c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
         conn.commit()
 
+
 # Create admin user
 create_admin()
+
 
 def get_existing_keys():
     with get_db_connection() as conn:
@@ -128,6 +138,7 @@ def get_existing_keys():
         return n, e, d
     return None
 
+
 def generate_and_save_keys():
     p = cryptomath.find_prime()
     q = cryptomath.find_prime()
@@ -137,6 +148,7 @@ def generate_and_save_keys():
     d = cryptomath.find_mod_inverse(e, phi)
     save_keys(n, e, d)
     print("Keys generated and saved")
+
 
 # Generate and save keys if they don't exist
 if not get_existing_keys():

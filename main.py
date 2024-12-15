@@ -3,12 +3,13 @@ import hashlib
 import secrets
 import cryptomath
 import sqlite3
-from createdb import save_keys, save_voter, save_ballot  # Import the functions from createdb.py
+from createdb import save_keys, save_voter, save_ballot
 
 yell = '\u001b[33;1m'
 reset = '\u001b[0m'
 red = '\u001b[31m'
 pink = '\u001b[35;1m'
+
 
 def get_existing_keys():
     conn = sqlite3.connect('evoting.db')
@@ -20,6 +21,7 @@ def get_existing_keys():
         n, e, d = int(key[0]), int(key[1]), int(key[2])
         return n, e, d
     return None
+
 
 class Poll:
     def __init__(self):

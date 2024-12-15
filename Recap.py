@@ -3,6 +3,7 @@ import hashlib
 
 DATABASE_NAME = 'evoting.db'
 
+
 def fetch_all_keys():
     conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
@@ -10,6 +11,7 @@ def fetch_all_keys():
     keys = c.fetchall()
     conn.close()
     return [(int(key[0]), int(key[1])) for key in keys]
+
 
 def verify_vote(concatenated_message, unblinded_signature, public_key, n):
     # Decrypt the signed message using the public key
@@ -21,6 +23,7 @@ def verify_vote(concatenated_message, unblinded_signature, public_key, n):
 
     # Compare the decrypted message with the calculated hash
     return decrypted_message == calculated_hash
+
 
 def print_database_contents():
     conn = sqlite3.connect(DATABASE_NAME)
@@ -52,6 +55,7 @@ def print_database_contents():
 
     conn.close()
 
+
 def recap_votes():
     # Connect to the database
     conn = sqlite3.connect(DATABASE_NAME)
@@ -75,8 +79,7 @@ def recap_votes():
         concatenated_message, unblinded_signature = ballot
         for n, public_key in keys:
             if verify_vote(concatenated_message, unblinded_signature, public_key, n):
-                vote = concatenated_message[0]  # Assuming the vote is the first character
-                                               # of concatenated_message
+                vote = concatenated_message[0]
                 if vote in vote_counts:
                     vote_counts[vote] += 1
                 else:
@@ -84,6 +87,7 @@ def recap_votes():
                 break  # Stop checking other keys if the vote is verified
 
     return vote_counts
+
 
 # Run the functions
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import cryptomath, random, hashlib
 
+
 # n has to be greater than m otherwise lossy message
 class Signer:
 

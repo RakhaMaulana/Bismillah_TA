@@ -1,5 +1,6 @@
 import socket
 
+
 def get_local_ip():
     try:
         # Membuat koneksi socket dummy untuk mendeteksi IP lokal
@@ -11,6 +12,7 @@ def get_local_ip():
     except Exception as e:
         print(f"Error detecting local IP: {e}")
         return "127.0.0.1"  # Fallback ke localhost jika gagal
+
 
 if __name__ == "__main__":
     # Panggil fungsi dan cetak hasilnya

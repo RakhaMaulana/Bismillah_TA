@@ -36,9 +36,11 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @app.after_request
 def apply_security_headers(response):
@@ -49,13 +51,16 @@ def apply_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     return response
 
+
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
+
 @app.route('/login', methods=['GET'])
 def login_page():
     return render_template('login.html')
+
 
 @app.route('/login', methods=['POST'])
 @limiter.limit("20000000 per minute")
@@ -75,16 +80,19 @@ def login():
     flash('Invalid credentials')
     return redirect(url_for('login_page'))
 
+
 @app.route('/logout', methods=['GET'])
 def logout():
     session.clear()
     return redirect(url_for('index'))
+
 
 @app.route('/register_candidate', methods=['GET'])
 def register_candidate_page():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
     return render_template('register_candidate.html')
+
 
 @app.route('/register_candidate', methods=['POST'])
 @limiter.limit("20000000 per minute")
@@ -104,9 +112,11 @@ def register_candidate():
         flash('Invalid file type')
     return redirect(url_for('register_candidate_page'))
 
+
 @app.route('/register_voter', methods=['GET'])
 def register_voter_page():
     return render_template('register_voter.html', token=None)
+
 
 @app.route('/register_voter', methods=['POST'])
 @limiter.limit("20000000 per minute")
@@ -135,6 +145,7 @@ def register_voter():
     flash('Voter registered successfully. Awaiting admin approval.')
     return render_template('register_voter.html', token=token)
 
+
 @app.route('/approve_voter', methods=['GET'])
 def approve_voter_page():
     if 'user_id' not in session:
@@ -145,6 +156,7 @@ def approve_voter_page():
     voters = c.fetchall()
     conn.close()
     return render_template('approve_voter.html', voters=voters)
+
 
 @app.route('/approve_voter', methods=['POST'])
 @limiter.limit("20000000 per minute")
@@ -165,6 +177,7 @@ def approve_voter():
     conn.close()
     return redirect(url_for('approve_voter_page'))
 
+
 @app.route('/vote', methods=['GET'])
 def vote_page():
     conn = get_db_connection()
@@ -173,6 +186,7 @@ def vote_page():
     candidates = c.fetchall()
     conn.close()
     return render_template('vote.html', candidates=candidates, no_candidates=len(candidates) == 0)
+
 
 @app.route('/vote', methods=['POST'])
 @limiter.limit("20000000 per minute")
@@ -230,6 +244,7 @@ def vote():
     flash('Vote cast successfully')
     return redirect(url_for('vote_page'))
 
+
 @app.route('/recap', methods=['GET'])
 @limiter.limit("20000000 per minute")
 def recap():
@@ -238,9 +253,11 @@ def recap():
     vote_counts = recap_votes()
     return render_template('recap.html', vote_counts=vote_counts)
 
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
 
 def get_local_ip():
     try:
@@ -252,6 +269,7 @@ def get_local_ip():
     except Exception as e:
         print(f"Error detecting local IP: {e}")
         return "127.0.0.1"
+
 
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
