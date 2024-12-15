@@ -7,7 +7,8 @@ class Signer:
     def __init__(self):
         self.public_key, self.private_key = self.generate_information()
 
-    def generate_information(self):
+    @staticmethod
+    def generate_information():
         # Generates public and private keys
         p = cryptomath.find_prime()
         q = cryptomath.find_prime()
