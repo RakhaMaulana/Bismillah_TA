@@ -1,4 +1,6 @@
-import cryptomath, random, hashlib
+import cryptomath
+import random
+import hashlib
 
 
 # n has to be greater than m otherwise lossy message
