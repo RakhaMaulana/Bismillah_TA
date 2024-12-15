@@ -56,7 +56,8 @@ class Poll:
         print("\u001b[33;1mx: \u001b[0m", x, end="\n\n")
         return x
 
-    def create_concatenated_message(self, poll_answer, x):
+    @staticmethod
+    def create_concatenated_message(poll_answer, x):
         print("\u001b[35;1m(b) Voter chooses favorite candidate, option, etc. on ballot\u001b[0m", end='\n\n')
         print("\u001b[33;1mpoll_answer: \u001b[0m", poll_answer, end="\n\n")
         concat_message = str(poll_answer) + str(x)
@@ -67,7 +68,8 @@ class Poll:
         print("\u001b[33;1mhash(concatenated_message), m= \u001b[0m", message_hash, end="\n\n")
         return concat_message, message_hash
 
-    def print_blind_message(self, blind_message, eligible_answer):
+    @staticmethod
+    def print_blind_message(blind_message, eligible_answer):
         if eligible_answer == "y":
             print("\u001b[33;1mBlinded message: \u001b[0m" + str(blind_message))
         print()
@@ -94,7 +96,8 @@ class Poll:
             print("\u001b[35;1mSince the verification is true, Hence the vote is the first digit of the concatenated message: \u001b[0m", decoded_message, end='\n\n\n\n')
         save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
 
-    def print_module_header(self, module_name, description):
+    @staticmethod
+    def print_module_header(module_name, description):
         print('\n\n')
         for _ in range(100):
             print("-", end="")
@@ -121,7 +124,8 @@ class PollMachine:
             if not self.ask_to_vote_again():
                 break
 
-    def get_poll_choice(self):
+    @staticmethod
+    def get_poll_choice():
         print("\u001b[32;1mEnter your choice\u001b[0m")
         print()
         print("(1) Apple     (2) Ball      (3) Rat      (4) Avengers    (5) Elephant")
@@ -162,7 +166,8 @@ class PollMachine:
         print("\u001b[33;1md: \u001b[0m", private_key, end='\n\n')
         return p, q, n, phi, public_key, private_key
 
-    def pick_public_key(self, phi):
+    @staticmethod
+    def pick_public_key(phi):
         found_encryption_key = False
         while not found_encryption_key:
             public_key = secrets.randbelow(phi - 1) + 1
@@ -170,7 +175,8 @@ class PollMachine:
                 found_encryption_key = True
         return public_key
 
-    def create_digital_signature(self, n, private_key):
+    @staticmethod
+    def create_digital_signature(n, private_key):
         print("\u001b[32;1mEnter id Number: \u001b[0m", end="\n\n")
         id_number = int(input())
         concat_message = str(id_number)
@@ -184,7 +190,8 @@ class PollMachine:
         print("\u001b[33;1mDigital Signature, s: \u001b[0m", s, end="\n\n")
         return id_number, s
 
-    def verify_digital_signature(self, id_number, s, public_key, n):
+    @staticmethod
+    def verify_digital_signature(id_number, s, public_key, n):
         print("\u001b[35;1m(h) Digital Signature, s, and original message, idNumber (without hash) are made available to the Verifier \u001b[0m", end="\n\n")
         print("\u001b[35;1m(i) The Verifier calculates and compares the values of the \u001b[0m", '\n\n', "    1. Decrypted message and", '\n\n', "    2. Hash(idNumber)", '\n\n', "\u001b[35;1mIf these 2 values are same then its authenticated using Digital Signature \u001b[0m", end="\n\n")
         concat_message = str(id_number)
@@ -198,7 +205,8 @@ class PollMachine:
         if decrypted_message == verification_hash:
             print("\u001b[32;1mVoter Authenticated\u001b[0m")
 
-    def print_module_header(self, module_name):
+    @staticmethod
+    def print_module_header(module_name):
         print('\n\n')
         for _ in range(100):
             print("-", end="")
@@ -210,7 +218,8 @@ class PollMachine:
             print("-", end="")
         print('\n\n')
 
-    def ask_to_vote_again(self):
+    @staticmethod
+    def ask_to_vote_again():
         print("\u001b[32;1mDo you want to vote again? (yes/no)\u001b[0m")
         vote_again = input().strip().lower()
         return vote_again == 'yes'
