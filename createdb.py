@@ -3,6 +3,8 @@ import hashlib
 import secrets
 import string
 import cryptomath
+import base64
+
 
 # Create a new SQLite database (or connect to an existing one)
 conn = sqlite3.connect('evoting.db')
@@ -72,14 +74,15 @@ def save_keys(n, e, d):
 
 def save_voter(id_number, digital_signature, photo_filename):
     token = generate_token()
-    hashed_token = hashlib.sha256(token.encode()).hexdigest()
-    params = (id_number, digital_signature, photo_filename, hashed_token)
+    salted_token = token + "PoltekSSN"
+    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+    encoded_token = base64.b64encode(hashed_token.encode()).decode()
+    params = (id_number, digital_signature, photo_filename, encoded_token)
     with get_db_connection() as conn:
         c = conn.cursor()
         c.execute("INSERT INTO voters (id_number, digital_signature, photo, token) VALUES (?, ?, ?, ?)", params)
         conn.commit()
     return token
-
 
 def save_candidate(name, photo_filename, candidate_class):
     params = (name, photo_filename, candidate_class)

@@ -123,7 +123,8 @@ def register_voter_page():
 def register_voter():
     id_number = escape(request.form['id_number'])
     photo_data = request.form['photo']
-    photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f"{id_number}.jpg"))
+    filename = secure_filename(f"{id_number}.jpg")
+    photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
     conn = get_db_connection()
     c = conn.cursor()
@@ -142,6 +143,10 @@ def register_voter():
 
     digital_signature = hashlib.sha256(photo_data.encode()).hexdigest()
     token = save_voter(id_number, digital_signature, photo_filename)
+    salted_token = token + "PoltekSSN"
+    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+    encoded_token = base64.b64encode(hashed_token.encode()).decode()
+
     flash('Voter registered successfully. Awaiting admin approval.')
     return render_template('register_voter.html', token=token)
 
@@ -193,10 +198,12 @@ def vote_page():
 def vote():
     candidate_id = escape(request.form['candidate'])
     token = escape(request.form['token'])
-    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+    salted_token = token + "PoltekSSN"
+    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+    encoded_token = base64.b64encode(hashed_token.encode()).decode()
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id_number, approved, token_used FROM voters WHERE token = ?", (hashed_token,))
+    c.execute("SELECT id_number, approved, token_used FROM voters WHERE token = ?", (encoded_token,))
     voter = c.fetchone()
     if not voter:
         flash('Invalid token')
@@ -237,7 +244,7 @@ def vote():
     signed_message = voter.unwrap_signature(signed_blind_message, n)
     save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
 
-    c.execute("UPDATE voters SET token_used = 1 WHERE token = ?", (hashed_token,))
+    c.execute("UPDATE voters SET token_used = 1 WHERE token = ?", (encoded_token,))
     conn.commit()
     conn.close()
 

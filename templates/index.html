@@ -2,13 +2,13 @@
 
 {% block content %}
 <!-- Hero Section -->
-<div class="jumbotron text-center bg-primary text-white">
+<div class="jumbotron text-center bg-primary text-white py-5">
     <div class="container">
-        <h1 class="display-4 font-weight-bold">Welcome to Crypvote</h1>
+        <h1 class="display-4 font-weight-bold mb-3">Welcome to Crypvote</h1>
         <p class="lead">A secure, reliable, and anonymous voting experience awaits you.</p>
-        <div class="hero-buttons mt-4">
+        <div class="hero-buttons mt-4 d-flex justify-content-center">
             <a href="{{ url_for('register_voter') }}" class="btn btn-outline-light btn-lg px-4 mr-3">Register</a>
-            <a href="{{ url_for('vote') }}" class="btn btn-outline-light btn-lg px-4 mr-3">Vote Now</a>
+            <a href="{{ url_for('vote') }}" class="btn btn-outline-light btn-lg px-4">Vote Now</a>
         </div>
     </div>
 </div>
@@ -16,28 +16,28 @@
 <!-- Features Section -->
 <div class="container mt-5">
     <div class="row text-center">
-        <div class="col-md-4">
-            <div class="card feature-card">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100 border-0 feature-card">
                 <div class="card-body">
-                    <i class="fas fa-lock feature-icon mb-3 text-primary"></i>
+                    <i class="fas fa-lock feature-icon mb-3 text-primary fa-3x"></i>
                     <h3 class="card-title">Secure</h3>
                     <p class="card-text">Your votes are securely encrypted and stored.</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card feature-card">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100 border-0 feature-card">
                 <div class="card-body">
-                    <i class="fas fa-user-secret feature-icon mb-3 text-primary"></i>
+                    <i class="fas fa-user-secret feature-icon mb-3 text-primary fa-3x"></i>
                     <h3 class="card-title">Anonymous</h3>
                     <p class="card-text">Your identity is protected, and your votes are anonymous.</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card feature-card">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100 border-0 feature-card">
                 <div class="card-body">
-                    <i class="fas fa-check-circle feature-icon mb-3 text-primary"></i>
+                    <i class="fas fa-check-circle feature-icon mb-3 text-primary fa-3x"></i>
                     <h3 class="card-title">Reliable</h3>
                     <p class="card-text">Our system ensures that every vote is counted accurately.</p>
                 </div>
@@ -48,10 +48,10 @@
 
 <!-- How It Works Section -->
 <div class="container mt-5">
-    <div class="row align-items-center">
+    <div class="row align-items-center how-it-works">
         <div class="col-md-6">
-            <h2>How It Works</h2>
-            <p>Our voting system is designed to be secure, anonymous, and reliable. Here's how it works:</p>
+            <h2 class="mb-4">How It Works</h2>
+            <p class="mb-4">Our voting system is designed to be secure, anonymous, and reliable. Here's how it works:</p>
             <ul class="list-unstyled">
                 <li class="mb-3 d-flex align-items-start">
                     <i class="fas fa-user-check fa-2x text-primary"></i>
@@ -67,8 +67,8 @@
                 </li>
             </ul>
         </div>
-        <div class="col-md-6" style="text-align: right;">
-            <img src="{{ url_for('static', filename='voting_process.png') }}" alt="Voting Process" class="img-fluid" style="max-height: 300px;">
+        <div class="col-md-6 text-end">
+            <img src="{{ url_for('static', filename='voting_process.png') }}" alt="Voting Process" class="img-fluid" style="max-height: 350px;">
         </div>
     </div>
 </div>

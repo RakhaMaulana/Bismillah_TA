@@ -6,24 +6,29 @@
 <div class="container mt-5">
     <h1 class="text-center mb-4">Approve Voter</h1>
     {% if voters %}
-        <form method="post" class="approve-form" onsubmit="return validateForm()">
+        <form method="post" class="card shadow p-4" onsubmit="return validateForm()">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label for="voter_id">Select Voter to Approve:</label>
-                <select id="voter_id" name="voter_id" class="form-control" onchange="updateVoterPhoto()" required>
+            <div class="form-group mb-3">
+                <label for="voter_id" class="form-label">Select Voter to Approve:</label>
+                <select id="voter_id" name="voter_id" class="form-select" onchange="updateVoterPhoto()" required>
                     {% for voter in voters %}
                         <option value="{{ voter[0] }}" data-photo="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}">{{ voter[1] }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-group d-flex justify-content-between">
-                <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
-                <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+            <div class="d-flex justify-content-between">
+                <button type="submit" name="action" value="approve" class="btn btn-success w-45">Approve</button>
+                <button type="submit" name="action" value="reject" class="btn btn-danger w-45">Reject</button>
             </div>
         </form>
 
         <div class="voter-photo-container text-center mt-4">
-            <img id="voter-photo" src="{{ url_for('static', filename='uploads/' ~ voters[0][1] ~ '.jpg') }}" class="img-fluid" alt="Voter">
+            <div class="card mx-auto" style="width: 18rem;">
+                <img id="voter-photo" src="{{ url_for('static', filename='uploads/' ~ voters[0][1] ~ '.jpg') }}" class="card-img-top img-fluid" alt="Voter">
+                <div class="card-body">
+                    <p class="card-text text-muted">Current Voter Photo</p>
+                </div>
+            </div>
         </div>
     {% else %}
         <div class="alert alert-info text-center">

@@ -354,3 +354,26 @@ button.btn:hover {
     display: flex;
     align-items: center;
 }
+
+.col-md-6.text-right img {
+    box-shadow: none;
+}
+
+.how-it-works ul {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.how-it-works li {
+    display: flex;
+    align-items: center;
+}
+
+.how-it-works i {
+    margin-right: 1rem;
+}
+
+.how-it-works img {
+    box-shadow: none;
+}
