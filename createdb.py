@@ -13,6 +13,9 @@ c = conn.cursor()
 # Drop the keys table if it exists
 c.execute("DROP TABLE IF EXISTS keys")
 
+# Drop the candidates table if it exists
+c.execute("DROP TABLE IF EXISTS candidates")
+
 # Create tables
 c.execute('''CREATE TABLE keys (
                 id INTEGER PRIMARY KEY,
@@ -30,7 +33,8 @@ c.execute('''CREATE TABLE IF NOT EXISTS candidates (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
                 photo TEXT,
-                class TEXT)''')
+                class TEXT,
+                type TEXT)''')
 
 c.execute('''CREATE TABLE IF NOT EXISTS voters (
                 id INTEGER PRIMARY KEY,
@@ -39,7 +43,8 @@ c.execute('''CREATE TABLE IF NOT EXISTS voters (
                 approved INTEGER DEFAULT 0,
                 photo TEXT,
                 token TEXT,
-                token_used INTEGER DEFAULT 0)''')
+                token_used_senat INTEGER DEFAULT 0,
+                token_used_dewan INTEGER DEFAULT 0)''')
 
 c.execute('''CREATE TABLE IF NOT EXISTS ballots (
                 id INTEGER PRIMARY KEY,
@@ -84,11 +89,11 @@ def save_voter(id_number, digital_signature, photo_filename):
         conn.commit()
     return token
 
-def save_candidate(name, photo_filename, candidate_class):
-    params = (name, photo_filename, candidate_class)
+def save_candidate(name, photo_filename, candidate_class, candidate_type):
+    params = (name, photo_filename, candidate_class, candidate_type)
     with get_db_connection() as conn:
         c = conn.cursor()
-        c.execute("INSERT INTO candidates (name, photo, class) VALUES (?, ?, ?)", params)
+        c.execute("INSERT INTO candidates (name, photo, class, type) VALUES (?, ?, ?, ?)", params)
         conn.commit()
     print(f"Saved candidate: {name}")
 

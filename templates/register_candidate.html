@@ -16,6 +16,13 @@
             <input type="text" id="class" name="class" class="form-control" required>
         </div>
         <div class="form-group mb-3">
+            <label for="candidate_type">Candidate Type:</label>
+            <select id="candidate_type" name="candidate_type" class="form-control" required>
+                <option value="senat">Senat</option>
+                <option value="demus">Dewan Musyawarah Taruna</option>
+            </select>
+        </div>
+        <div class="form-group mb-3">
             <label for="photo">Photo:</label>
             <input type="file" id="photo" name="photo" class="form-control" accept=".png, .jpg, .jpeg" required>
         </div>
@@ -27,9 +34,10 @@
     function validateForm() {
         const name = document.getElementById('name').value;
         const classInput = document.getElementById('class').value;
+        const candidateType = document.getElementById('candidate_type').value;
         const photo = document.getElementById('photo').value;
 
-        if (!name || !classInput || !photo) {
+        if (!name || !classInput || !candidateType || !photo) {
             alert('All fields are required.');
             return false;
         }

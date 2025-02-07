@@ -68,25 +68,38 @@ def recap_votes():
     c.execute("SELECT concatenated_message, unblinded_signature FROM ballots")
     ballots = c.fetchall()
 
+    # Retrieve candidate names and types
+    c.execute("SELECT id, name, type FROM candidates")
+    candidates = c.fetchall()
+    candidate_dict = {str(candidate[0]): (candidate[1], candidate[2]) for candidate in candidates}
+
     # Close the database connection
     conn.close()
 
-    # Initialize vote counts dynamically
-    vote_counts = {}
+    # Initialize vote counts for senat and demus
+    vote_counts = {'senat': {}, 'demus': {}}
 
     # Verify each ballot and count the votes
     for ballot in ballots:
         concatenated_message, unblinded_signature = ballot
         for n, public_key in keys:
             if verify_vote(concatenated_message, unblinded_signature, public_key, n):
-                vote = concatenated_message[0]
-                if vote in vote_counts:
-                    vote_counts[vote] += 1
+                candidate_id = concatenated_message[0]
+                candidate_name, candidate_type = candidate_dict[candidate_id]
+                if candidate_name in vote_counts[candidate_type]:
+                    vote_counts[candidate_type][candidate_name] += 1
                 else:
-                    vote_counts[vote] = 1
+                    vote_counts[candidate_type][candidate_name] = 1
                 break  # Stop checking other keys if the vote is verified
 
-    return vote_counts
+    # Ensure all candidates are included in the vote counts, even if they have 0 votes
+    all_candidates = {'senat': [], 'demus': []}
+    for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
+        all_candidates[candidate_type].append({'id': candidate_id, 'name': candidate_name})
+        if candidate_name not in vote_counts[candidate_type]:
+            vote_counts[candidate_type][candidate_name] = 0
+
+    return vote_counts, all_candidates
 
 
 # Run the functions

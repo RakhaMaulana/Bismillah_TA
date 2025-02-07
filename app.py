@@ -101,12 +101,13 @@ def register_candidate():
         return redirect(url_for('login_page'))
     name = escape(request.form['name'])
     candidate_class = escape(request.form['class'])
+    candidate_type = escape(request.form['candidate_type'])
     photo = request.files['photo']
     if photo and allowed_file(photo.filename):
         filename = secure_filename(str(uuid.uuid4()) + os.path.splitext(photo.filename)[1])
         photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         photo.save(photo_filename)
-        save_candidate(name, photo_filename, candidate_class)
+        save_candidate(name, photo_filename, candidate_class, candidate_type)
         flash('Candidate registered successfully')
     else:
         flash('Invalid file type')
@@ -187,10 +188,35 @@ def approve_voter():
 def vote_page():
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, photo, class FROM candidates")
+    c.execute("SELECT id, name, photo, class, type FROM candidates")
     candidates = c.fetchall()
     conn.close()
-    return render_template('vote.html', candidates=candidates, no_candidates=len(candidates) == 0)
+
+    # Filter candidates based on voting stage
+    senat_candidates = [candidate for candidate in candidates if candidate['type'] == 'senat']
+    demus_candidates = [candidate for candidate in candidates if candidate['type'] == 'demus']
+
+    # Determine voting stage based on token usage
+    token = request.args.get('token')
+    if token:
+        salted_token = token + "PoltekSSN"
+        hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+        encoded_token = base64.b64encode(hashed_token.encode()).decode()
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
+        voter = c.fetchone()
+        conn.close()
+        if voter:
+            token_used_senat, token_used_dewan = voter
+            if token_used_senat == 0:
+                return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat')
+            elif token_used_dewan == 0:
+                return render_template('vote.html', candidates=demus_candidates, no_candidates=len(demus_candidates) == 0, voting_stage='demus')
+            else:
+                flash('Token already used for both votes')
+                return redirect(url_for('vote_page'))
+    return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat')
 
 
 @app.route('/vote', methods=['POST'])
@@ -198,22 +224,23 @@ def vote_page():
 def vote():
     candidate_id = escape(request.form['candidate'])
     token = escape(request.form['token'])
+    voting_stage = escape(request.form['voting_stage'])
     salted_token = token + "PoltekSSN"
     hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
     encoded_token = base64.b64encode(hashed_token.encode()).decode()
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id_number, approved, token_used FROM voters WHERE token = ?", (encoded_token,))
+    c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
     voter = c.fetchone()
     if not voter:
         flash('Invalid token')
         return redirect(url_for('vote_page'))
-    id_number, approved, token_used = voter
+    id_number, approved, token_used_senat, token_used_dewan = voter
     if approved == 0:
         flash('Voter not approved')
         return redirect(url_for('vote_page'))
-    if token_used == 1:
-        flash('Token already used')
+    if token_used_senat == 1 and token_used_dewan == 1:
+        flash('Token already used for both votes')
         return redirect(url_for('vote_page'))
     c.execute("SELECT * FROM ballots WHERE concatenated_message LIKE ?", (id_number + '%',))
     if c.fetchone():
@@ -244,12 +271,17 @@ def vote():
     signed_message = voter.unwrap_signature(signed_blind_message, n)
     save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
 
-    c.execute("UPDATE voters SET token_used = 1 WHERE token = ?", (encoded_token,))
+    if voting_stage == 'senat':
+        c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
+        flash('Vote cast successfully for Ketua Senat. Please vote for Ketua Dewan Musyawarah Taruna.')
+    elif voting_stage == 'demus':
+        c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
+        flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna.')
+
     conn.commit()
     conn.close()
 
-    flash('Vote cast successfully')
-    return redirect(url_for('vote_page'))
+    return redirect(url_for('vote_page', token=token))
 
 
 @app.route('/recap', methods=['GET'])
@@ -257,9 +289,8 @@ def vote():
 def recap():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-    vote_counts = recap_votes()
-    return render_template('recap.html', vote_counts=vote_counts)
-
+    vote_counts, candidates = recap_votes()
+    return render_template('recap.html', vote_counts=vote_counts, candidates=candidates)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
