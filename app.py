@@ -14,6 +14,10 @@ import uuid
 from dotenv import load_dotenv
 from Recap import recap_votes
 from markupsafe import escape
+import time
+from flask import Response
+import json
+
 
 load_dotenv()
 
@@ -107,7 +111,7 @@ def register_candidate():
         filename = secure_filename(str(uuid.uuid4()) + os.path.splitext(photo.filename)[1])
         photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         photo.save(photo_filename)
-        save_candidate(name, photo_filename, candidate_class, candidate_type)
+        save_candidate(name, 'uploads/' + filename, candidate_class, candidate_type)
         flash('Candidate registered successfully')
     else:
         flash('Invalid file type')
@@ -210,13 +214,13 @@ def vote_page():
         if voter:
             token_used_senat, token_used_dewan = voter
             if token_used_senat == 0:
-                return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat')
+                return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat', token=token)
             elif token_used_dewan == 0:
-                return render_template('vote.html', candidates=demus_candidates, no_candidates=len(demus_candidates) == 0, voting_stage='demus')
+                return render_template('vote.html', candidates=demus_candidates, no_candidates=len(demus_candidates) == 0, voting_stage='demus', token=token)
             else:
                 flash('Token already used for both votes')
                 return redirect(url_for('vote_page'))
-    return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat')
+    return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat', token=token)
 
 
 @app.route('/vote', methods=['POST'])
@@ -289,12 +293,28 @@ def vote():
 def recap():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-    vote_counts, candidates = recap_votes()
+    verified_ballots, vote_counts, candidates = recap_votes()
     return render_template('recap.html', vote_counts=vote_counts, candidates=candidates)
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
+
+@app.route('/voter_status', methods=['GET'])
+@limiter.limit("20000000 per minute")
+def voter_status():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters")
+    voters = c.fetchall()
+    conn.close()
+
+    return render_template('voter_status.html', voters=voters)
 
 
 def get_local_ip():
@@ -309,6 +329,24 @@ def get_local_ip():
         return "127.0.0.1"
 
 
+@app.route('/live_count', methods=['GET'])
+@limiter.limit("20000000 per minute")
+def live_count():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+
+    vote_type = request.args.get('type')  # Dapatkan jenis vote dari parameter URL
+
+    def generate():
+        verified_ballots, _, _ = recap_votes()
+        for candidate_name, candidate_type in verified_ballots:
+            if candidate_type == vote_type:  # Hanya kirim data sesuai pilihan user
+                yield f"data: {json.dumps({'candidate': candidate_name, 'type': candidate_type})}\n\n"
+                time.sleep(1)  # Delay 1 detik
+
+    return Response(generate(), mimetype='text/event-stream')
+
+
 if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
@@ -319,4 +357,4 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print(f"Running Flask app on IP: {local_ip}")
 
-    app.run(host=local_ip, port=5000, ssl_context=(cert_path, key_path))
+    app.run(host=local_ip, port=5001, ssl_context=(cert_path, key_path))

@@ -1,71 +1,140 @@
 {% extends "base.html" %}
 
-{% block title %}Vote Recap{% endblock %}
+{% block title %}Live Vote Count{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
-    <h1 class="text-center mb-4">Vote Recap</h1>
+    <h1 class="text-center mb-4 fw-bold">Live Vote Count</h1>
 
-    <!-- Senat Recap -->
-    <div class="recap-section">
-        <h2 class="text-center mb-4">Ketua Senat</h2>
-        <table class="table table-striped table-bordered">
-            <thead class="thead-dark">
-                <tr>
-                    <th scope="col">Candidate</th>
-                    <th scope="col">Votes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for candidate in candidates.senat %}
-                <tr>
-                    <td>{{ candidate.name | e }}</td>
-                    <td>{{ vote_counts.senat[candidate.name] | default(0) | e }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="text-center mb-4">
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle shadow-sm" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                Select Chart
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                <li><a class="dropdown-item" href="#" onclick="showChart('senat')">Ketua Senat</a></li>
+                <li><a class="dropdown-item" href="#" onclick="showChart('demus')">Ketua Dewan Musyawarah Taruna</a></li>
+            </ul>
+        </div>
     </div>
 
-    <!-- Dewan Musyawarah Taruna Recap -->
-    <div class="recap-section mt-5">
-        <h2 class="text-center mb-4">Ketua Dewan Musyawarah Taruna</h2>
-        <table class="table table-striped table-bordered">
-            <thead class="thead-dark">
-                <tr>
-                    <th scope="col">Candidate</th>
-                    <th scope="col">Votes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for candidate in candidates.demus %}
-                <tr>
-                    <td>{{ candidate.name | e }}</td>
-                    <td>{{ vote_counts.demus[candidate.name] | default(0) | e }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="recap-section p-4 shadow-sm rounded bg-white">
+        <h2 class="text-center mb-4" id="chart-title">Ketua Senat <span id="voteCount" class="text-muted">(Votes: 0)</span></h2>
+        <canvas id="voteChart"></canvas>
     </div>
 
-    <div class="text-center mt-4">
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Home</a>
-    </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let voteChart;
+    let currentChart = 'senat';
+    let voteCount = 0;
+    let eventSource;
+
+    function fetchVoteCounts(chartType) {
+        if (eventSource) {
+            eventSource.close();
+        }
+        eventSource = new EventSource(`/live_count?type=${chartType}`);
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === currentChart) {
+                updateChart(data.candidate);
+                voteCount++;
+                document.getElementById('voteCount').textContent = `(Votes: ${voteCount})`;
+            }
+        };
+        eventSource.onerror = function() {
+            eventSource.close();
+        };
+    }
+
+    function updateChart(label) {
+        if (!voteChart) {
+            const ctx = document.getElementById('voteChart').getContext('2d');
+            voteChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Votes',
+                        data: [],
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const labelIndex = voteChart.data.labels.indexOf(label);
+        if (labelIndex === -1) {
+            voteChart.data.labels.push(label);
+            voteChart.data.datasets[0].data.push(1);
+        } else {
+            voteChart.data.datasets[0].data[labelIndex] += 1;
+        }
+        voteChart.update();
+    }
+
+    function resetChart() {
+        if (voteChart) {
+            voteChart.destroy();
+            voteChart = null;
+        }
+    }
+
+    function showChart(chartType) {
+        currentChart = chartType;
+        document.getElementById('chart-title').innerHTML = (chartType === 'senat' ? 'Ketua Senat' : 'Ketua Dewan Musyawarah Taruna') +
+            ' <span id="voteCount" class="text-muted">(Votes: 0)</span>';
+        voteCount = 0;
+        resetChart();
+        fetchVoteCounts(chartType);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        showChart('senat');
+    });
+</script>
+
 <style>
+    body {
+        background-color: #f8f9fa;
+    }
+
     .recap-section {
-        border: 1px solid #ddd;
-        padding: 20px;
-        border-radius: 8px;
-        background-color: #f9f9f9;
+        max-width: 800px;
+        margin: auto;
+        background-color: #fff;
+        border-radius: 10px;
     }
-    .table thead {
-        background-color: #343a40;
-        color: #fff;
+
+    .btn {
+        transition: all 0.3s ease-in-out;
     }
-    .table tbody tr:nth-child(even) {
-        background-color: #f2f2f2;
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .dropdown-menu a:hover {
+        background-color: rgba(54, 162, 235, 0.1);
     }
 </style>
 {% endblock %}

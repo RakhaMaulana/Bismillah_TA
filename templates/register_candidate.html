@@ -4,38 +4,98 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h1 class="text-center mb-4">Register Candidate</h1>
-    <form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm()">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group mb-3">
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" class="form-control" required>
-        </div>
-        <div class="form-group mb-3">
-            <label for="class">Class:</label>
-            <input type="text" id="class" name="class" class="form-control" required>
-        </div>
-        <div class="form-group mb-3">
-            <label for="candidate_type">Candidate Type:</label>
-            <select id="candidate_type" name="candidate_type" class="form-control" required>
-                <option value="senat">Senat</option>
-                <option value="demus">Dewan Musyawarah Taruna</option>
-            </select>
-        </div>
-        <div class="form-group mb-3">
-            <label for="photo">Photo:</label>
-            <input type="file" id="photo" name="photo" class="form-control" accept=".png, .jpg, .jpeg" required>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Register</button>
-    </form>
+    <div class="card shadow-lg p-4 border-0 rounded-3">
+        <h2 class="text-center mb-4 text-primary fw-bold">Register Candidate</h2>
+        <form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="name" class="form-label fw-semibold">Name:</label>
+                <input type="text" id="name" name="name" class="form-control shadow-sm" required>
+            </div>
+            <div class="mb-3">
+                <label for="class" class="form-label fw-semibold">Class:</label>
+                <input type="text" id="class" name="class" class="form-control shadow-sm" required>
+            </div>
+            <div class="mb-3">
+                <label for="candidate_type" class="form-label fw-semibold">Candidate Type:</label>
+                <select id="candidate_type" name="candidate_type" class="form-select shadow-sm" required>
+                    <option value="" disabled selected>-- Select Type --</option>
+                    <option value="senat">Senat</option>
+                    <option value="demus">Dewan Musyawarah Taruna</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="photo" class="form-label fw-semibold">Photo:</label>
+                <input type="file" id="photo" name="photo" class="form-control shadow-sm" accept=".png, .jpg, .jpeg" required>
+                <small class="text-muted">Allowed formats: JPG, JPEG, PNG</small>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 shadow-sm">Register</button>
+        </form>
+    </div>
 </div>
 
+<!-- Popup Notification -->
+<div id="successPopup" class="popup-container">
+    <div class="popup-content">
+        <i class="fas fa-check-circle text-success fa-3x"></i>
+        <p class="mt-3">Candidate Registered Successfully!</p>
+        <button class="btn btn-success" onclick="closePopup()">OK</button>
+    </div>
+</div>
+
+<!-- CSS Styling -->
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .card {
+        max-width: 500px;
+        margin: auto;
+        background: white;
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+    }
+    .btn-primary {
+        border-radius: 10px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+    /* Popup Notification */
+    .popup-container {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    .popup-content {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+</style>
+
+<!-- JavaScript -->
 <script>
-    function validateForm() {
-        const name = document.getElementById('name').value;
-        const classInput = document.getElementById('class').value;
+    function validateForm(event) {
+        event.preventDefault(); // Prevent form from submitting instantly
+
+        const name = document.getElementById('name').value.trim();
+        const classInput = document.getElementById('class').value.trim();
         const candidateType = document.getElementById('candidate_type').value;
-        const photo = document.getElementById('photo').value;
+        const photo = document.getElementById('photo').files[0];
 
         if (!name || !classInput || !candidateType || !photo) {
             alert('All fields are required.');
@@ -43,12 +103,20 @@
         }
 
         const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
-        if (!allowedExtensions.exec(photo)) {
+        if (!allowedExtensions.test(photo.name)) {
             alert('Invalid file type. Only JPG, JPEG, and PNG are allowed.');
             return false;
         }
 
-        return true;
+        // Show success popup
+        document.getElementById('successPopup').style.display = 'flex';
+        setTimeout(() => document.querySelector('form').submit(), 2000); // Submit form after showing popup
+
+        return false; // Prevent immediate form submission
+    }
+
+    function closePopup() {
+        document.getElementById('successPopup').style.display = 'none';
     }
 </script>
 {% endblock %}

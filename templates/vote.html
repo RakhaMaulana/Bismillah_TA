@@ -29,14 +29,14 @@
                 <label for="candidate">Choose Candidate:</label>
                 <select id="candidate" name="candidate" class="form-control" onchange="updateCandidatePhoto()" required>
                     {% for candidate in candidates %}
-                        <option value="{{ candidate.id }}" data-photo="{{ url_for('static', filename='uploads/' ~ candidate.photo.split('/')[-1]) }}" data-name="{{ candidate.name }}" data-class="{{ candidate.class }}">{{ candidate.name }}</option>
+                        <option value="{{ candidate.id }}" data-photo="{{ url_for('static', filename=candidate.photo) }}" data-name="{{ candidate.name }}" data-class="{{ candidate.class }}">{{ candidate.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <button type="submit" class="btn btn-primary w-100">Vote</button>
         </form>
         <div class="candidate-photo-container text-center mt-4">
-            <img id="candidate-photo" src="{{ url_for('static', filename='uploads/' ~ candidates[0].photo.split('/')[-1]) }}" class="img-fluid candidate-photo" alt="Candidate">
+            <img id="candidate-photo" src="{{ url_for('static', filename=candidates[0].photo) }}" class="img-fluid candidate-photo" alt="Candidate">
             <h5 id="candidate-name" class="mt-3">{{ candidates[0].name }}</h5>
             <p id="candidate-class">{{ candidates[0].class }}</p>
         </div>

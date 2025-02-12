@@ -2,42 +2,44 @@
 
 {% block content %}
 <!-- Hero Section -->
-<div class="jumbotron text-center bg-primary text-white py-5">
-    <div class="container">
-        <h1 class="display-4 font-weight-bold mb-3">Welcome to Crypvote</h1>
+<div class="jumbotron text-center bg-gradient-primary text-white py-5 position-relative">
+    <div class="container position-relative">
+        <h1 class="display-4 fw-bold mb-3">Welcome to Crypvote</h1>
         <p class="lead">A secure, reliable, and anonymous voting experience awaits you.</p>
-        <div class="hero-buttons mt-4 d-flex justify-content-center">
-            <a href="{{ url_for('register_voter') }}" class="btn btn-outline-light btn-lg px-4 mr-3">Register</a>
-            <a href="{{ url_for('vote') }}" class="btn btn-outline-light btn-lg px-4">Vote Now</a>
+        <div class="hero-buttons mt-4 d-flex justify-content-center gap-3">
+            <a href="{{ url_for('register_voter') }}" class="btn btn-light btn-lg px-4 shadow-sm">Register</a>
+            <a href="{{ url_for('vote') }}" class="btn btn-outline-light btn-lg px-4 shadow-sm">Vote Now</a>
         </div>
     </div>
+    <!-- Watermark Image -->
+    <img src="{{ url_for('static', filename='voting_process.png') }}" class="watermark-image">
 </div>
 
 <!-- Features Section -->
 <div class="container mt-5">
-    <div class="row text-center">
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100 border-0 feature-card">
+    <div class="row text-center g-4">
+        <div class="col-md-4">
+            <div class="card feature-card shadow border-0 p-4">
                 <div class="card-body">
-                    <i class="fas fa-lock feature-icon mb-3 text-primary fa-3x"></i>
+                    <i class="fas fa-lock text-primary fa-3x mb-3"></i>
                     <h3 class="card-title">Secure</h3>
                     <p class="card-text">Your votes are securely encrypted and stored.</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100 border-0 feature-card">
+        <div class="col-md-4">
+            <div class="card feature-card shadow border-0 p-4">
                 <div class="card-body">
-                    <i class="fas fa-user-secret feature-icon mb-3 text-primary fa-3x"></i>
+                    <i class="fas fa-user-secret text-primary fa-3x mb-3"></i>
                     <h3 class="card-title">Anonymous</h3>
                     <p class="card-text">Your identity is protected, and your votes are anonymous.</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100 border-0 feature-card">
+        <div class="col-md-4">
+            <div class="card feature-card shadow border-0 p-4">
                 <div class="card-body">
-                    <i class="fas fa-check-circle feature-icon mb-3 text-primary fa-3x"></i>
+                    <i class="fas fa-check-circle text-primary fa-3x mb-3"></i>
                     <h3 class="card-title">Reliable</h3>
                     <p class="card-text">Our system ensures that every vote is counted accurately.</p>
                 </div>
@@ -48,28 +50,48 @@
 
 <!-- How It Works Section -->
 <div class="container mt-5">
-    <div class="row align-items-center how-it-works">
+    <div class="row align-items-center">
         <div class="col-md-6">
-            <h2 class="mb-4">How It Works</h2>
+            <h2 class="mb-4 text-primary">How It Works</h2>
             <p class="mb-4">Our voting system is designed to be secure, anonymous, and reliable. Here's how it works:</p>
             <ul class="list-unstyled">
-                <li class="mb-3 d-flex align-items-start">
+                <li class="d-flex align-items-center gap-3 mb-3">
                     <i class="fas fa-user-check fa-2x text-primary"></i>
-                    <span class="ml-3">Register as a voter by providing your ID and a photo.</span>
+                    <span>Register as a voter by providing your ID and a photo.</span>
                 </li>
-                <li class="mb-3 d-flex align-items-start">
+                <li class="d-flex align-items-center gap-3 mb-3">
                     <i class="fas fa-envelope-open-text fa-2x text-primary"></i>
-                    <span class="ml-3">Receive a unique token to cast your vote.</span>
+                    <span>Receive a unique token to cast your vote.</span>
                 </li>
-                <li class="mb-3 d-flex align-items-start">
+                <li class="d-flex align-items-center gap-3 mb-3">
                     <i class="fas fa-vote-yea fa-2x text-primary"></i>
-                    <span class="ml-3">Cast your vote securely and anonymously.</span>
+                    <span>Cast your vote securely and anonymously.</span>
                 </li>
             </ul>
         </div>
-        <div class="col-md-6 text-end">
-            <img src="{{ url_for('static', filename='voting_process.png') }}" alt="Voting Process" class="img-fluid" style="max-height: 350px;">
-        </div>
     </div>
 </div>
+
+<style>
+    .feature-card {
+        transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    }
+    .feature-card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+    }
+
+    /* Watermark Image Styling */
+    .watermark-image {
+        position: absolute;
+        top: 175%;
+        width: 20%;
+        left: 75%;
+        opacity: 0.1; /* Transparansi rendah */
+        z-index: -1;
+    }
+</style>
 {% endblock %}

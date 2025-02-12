@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Voter Status{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4 fw-bold">Voter Status</h1>
+
+    <div class="mb-3 d-flex justify-content-between">
+        <input type="text" id="searchInput" class="form-control w-50" placeholder="Search NPM...">
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered" id="voterTable">
+            <thead class="table-dark">
+                <tr class="text-center">
+                    <th scope="col">NPM</th>
+                    <th scope="col">Approved</th>
+                    <th scope="col">Voted for Ketua Senat</th>
+                    <th scope="col">Voted for Ketua Dewan Musyawarah Taruna</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for voter in voters %}
+                <tr>
+                    <td class="text-center">{{ voter['id_number'] | e }}</td>
+                    <td class="text-center">
+                        <span class="badge {{ 'bg-success' if voter['approved'] else 'bg-danger' }}">
+                            {{ 'Yes' if voter['approved'] else 'No' }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge {{ 'bg-success' if voter['token_used_senat'] else 'bg-danger' }}">
+                            {{ 'Yes' if voter['token_used_senat'] else 'No' }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge {{ 'bg-success' if voter['token_used_dewan'] else 'bg-danger' }}">
+                            {{ 'Yes' if voter['token_used_dewan'] else 'No' }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('keyup', function() {
+            const filter = searchInput.value.toUpperCase();
+            const rows = document.querySelectorAll("#voterTable tbody tr");
+
+            rows.forEach(row => {
+                const npm = row.cells[0].textContent.toUpperCase();
+                row.style.display = npm.includes(filter) ? "" : "none";
+            });
+        });
+    });
+
+    function resetSearch() {
+        document.getElementById('searchInput').value = "";
+        document.querySelectorAll("#voterTable tbody tr").forEach(row => row.style.display = "");
+    }
+</script>
+
+<style>
+    .table-responsive {
+        margin-top: 20px;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+</style>
+{% endblock %}

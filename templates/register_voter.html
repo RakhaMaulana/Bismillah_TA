@@ -4,40 +4,53 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h1 class="text-center mb-4">Register Voter</h1>
+    <h1 class="text-center mb-4 fw-bold">Register Voter</h1>
+
     {% if token %}
-        <div class="alert alert-info text-center">
-            Your registration token is: <strong>{{ token }}</strong>
+        <div class="alert alert-info text-center fw-semibold">
+            <i class="fas fa-key"></i> Your registration token is: <strong>{{ token }}</strong>
         </div>
     {% endif %}
-    <form method="post" enctype="multipart/form-data" onsubmit="return capturePhoto()">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="form-group mb-3">
-            <label for="id_number">ID Number:</label>
-            <input type="text" id="id_number" name="id_number" class="form-control" required>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <form method="post" enctype="multipart/form-data" class="card shadow-lg p-4 rounded-3" onsubmit="return capturePhoto()">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- ID Number Input -->
+                <div class="mb-3">
+                    <label for="id_number" class="form-label fw-semibold">ID Number:</label>
+                    <input type="text" id="id_number" name="id_number" class="form-control" required>
+                </div>
+
+                <!-- Hidden Input for Photo Data -->
+                <input type="hidden" id="photo" name="photo" required>
+
+                <!-- Video and Capture Button -->
+                <div class="text-center">
+                    <div class="border rounded shadow-sm overflow-hidden mx-auto" style="width: 320px; height: 240px;">
+                        <video id="video" width="100%" height="100%" autoplay></video>
+                    </div>
+                    <button type="button" class="btn btn-secondary mt-3" onclick="takePhoto()">
+                        <i class="fas fa-camera"></i> Take Photo
+                    </button>
+                </div>
+
+                <!-- Canvas for Capturing Image (Hidden) -->
+                <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+                <!-- Image Preview (Hidden Initially) -->
+                <div class="text-center mt-3">
+                    <img id="photo-preview" class="img-fluid rounded shadow-sm" style="display:none; max-width: 320px;">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary w-100 mt-3">
+                    <i class="fas fa-user-plus"></i> Register
+                </button>
+            </form>
         </div>
-
-        <div class="form-group mb-3">
-            <label for="photo">Photo:</label>
-            <input type="hidden" id="photo" name="photo" required>
-        </div>
-
-        <!-- Video and Capture Button -->
-        <div class="video-container text-center mb-3">
-            <video id="video" width="320" height="240" class="border mx-auto d-block" autoplay></video>
-            <button type="button" class="btn btn-secondary mt-2" onclick="takePhoto()">Take Photo</button>
-        </div>
-
-        <!-- Canvas for Capturing Image -->
-        <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-
-        <!-- Image Preview (hidden initially) -->
-        <img id="photo-preview" style="display:none;" class="img-fluid mt-2 mx-auto d-block">
-
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary w-100 mt-3">Register</button>
-    </form>
+    </div>
 </div>
 
 <script>
@@ -66,6 +79,7 @@
         photoInput.value = dataURL;
         photoPreview.src = dataURL;
         photoPreview.style.display = 'block';
+        photoPreview.classList.add('fade-in');
     }
 
     // Function to validate form
@@ -91,4 +105,30 @@
         photoPreview.removeAttribute('src');
     });
 </script>
+
+<style>
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .btn-secondary:hover {
+        transform: scale(1.05);
+        transition: all 0.2s ease-in-out;
+    }
+
+    canvas, #photo-preview {
+        display: block;
+        margin: 0 auto;
+    }
+
+</style>
 {% endblock %}

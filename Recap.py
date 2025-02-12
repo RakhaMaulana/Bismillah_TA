@@ -78,6 +78,7 @@ def recap_votes():
 
     # Initialize vote counts for senat and demus
     vote_counts = {'senat': {}, 'demus': {}}
+    verified_ballots = []
 
     # Verify each ballot and count the votes
     for ballot in ballots:
@@ -86,6 +87,7 @@ def recap_votes():
             if verify_vote(concatenated_message, unblinded_signature, public_key, n):
                 candidate_id = concatenated_message[0]
                 candidate_name, candidate_type = candidate_dict[candidate_id]
+                verified_ballots.append((candidate_name, candidate_type))
                 if candidate_name in vote_counts[candidate_type]:
                     vote_counts[candidate_type][candidate_name] += 1
                 else:
@@ -99,7 +101,7 @@ def recap_votes():
         if candidate_name not in vote_counts[candidate_type]:
             vote_counts[candidate_type][candidate_name] = 0
 
-    return vote_counts, all_candidates
+    return verified_ballots, vote_counts, all_candidates
 
 
 # Run the functions

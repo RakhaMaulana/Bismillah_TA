@@ -10,14 +10,9 @@ import base64
 conn = sqlite3.connect('evoting.db')
 c = conn.cursor()
 
-# Drop the keys table if it exists
-c.execute("DROP TABLE IF EXISTS keys")
-
-# Drop the candidates table if it exists
-c.execute("DROP TABLE IF EXISTS candidates")
 
 # Create tables
-c.execute('''CREATE TABLE keys (
+c.execute('''CREATE TABLE IF NOT EXISTS keys (
                 id INTEGER PRIMARY KEY,
                 n TEXT,
                 e TEXT,
