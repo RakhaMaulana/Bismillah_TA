@@ -218,7 +218,7 @@ def vote_page():
             elif token_used_dewan == 0:
                 return render_template('vote.html', candidates=demus_candidates, no_candidates=len(demus_candidates) == 0, voting_stage='demus', token=token)
             else:
-                flash('Token already used for both votes')
+                # flash('Token already used for both votes')
                 return redirect(url_for('vote_page'))
     return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat', token=token)
 
@@ -280,7 +280,7 @@ def vote():
         flash('Vote cast successfully for Ketua Senat. Please vote for Ketua Dewan Musyawarah Taruna.')
     elif voting_stage == 'demus':
         c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
-        flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna.')
+        flash('Vote cast successfully for Dewan Musyawarah Taruna. Thank you for voting!')
 
     conn.commit()
     conn.close()
