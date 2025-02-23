@@ -12,17 +12,19 @@
     </div>
 
     <div class="recap-section p-4 shadow-sm rounded bg-white">
-        <h2 class="text-center mb-4" id="chart-title">Ketua Senat <span id="voteCount" class="text-muted">(Votes: 0)</span></h2>
+        <h2 class="text-center mb-4" id="chart-title">
+            Ketua Senat <span id="voteCount" class="text-muted">(Votes: 0)</span>
+        </h2>
         <canvas id="voteChart"></canvas>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
     let voteChart;
     let currentChart = 'senat';
-    let voteCount = 0;
     let voteData = {};
     let eventSource;
 
@@ -30,43 +32,57 @@
         if (eventSource) {
             eventSource.close();
         }
+
+        if (!window.EventSource) {
+            setInterval(() => {
+                fetch(`/live_count?type=${chartType}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateChart(data.candidate);
+                    })
+                    .catch(error => console.error("Error fetching votes:", error));
+            }, 5000);
+            return;
+        }
+
         eventSource = new EventSource(`/live_count?type=${chartType}`);
 
         eventSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
             if (data.type === currentChart) {
                 updateChart(data.candidate);
-                voteCount++;
-                document.getElementById('voteCount').textContent = `(Votes: ${voteCount})`;
             }
         };
+
         eventSource.onerror = function() {
             eventSource.close();
         };
     }
 
     function updateChart(label) {
-        if (!voteData[label]) {
-            voteData[label] = 1;
-        } else {
-            voteData[label] += 1;
-        }
+        voteData[label] = (voteData[label] || 0) + 1;
 
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
-        const percentages = Object.keys(voteData).map(key => {
-            return Math.round((voteData[key] / totalVotes) * 100);
-        });
+        const maxVotes = Math.max(...Object.values(voteData));
+
+        const labels = Object.keys(voteData);
+        const percentages = labels.map(key =>
+            totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0
+        );
 
         if (!voteChart) {
             const ctx = document.getElementById('voteChart').getContext('2d');
+
             voteChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(voteData),
+                    labels: labels,
                     datasets: [{
                         label: 'Votes (%)',
                         data: percentages,
-                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        backgroundColor: labels.map(key =>
+                            voteData[key] === maxVotes ? 'rgba(255, 99, 132, 0.6)' : 'rgba(54, 162, 235, 0.6)'
+                        ),
                         borderColor: 'rgba(54, 162, 235, 1)',
                         borderWidth: 1,
                         borderRadius: 5,
@@ -74,41 +90,33 @@
                 },
                 options: {
                     responsive: true,
-                    animation: {
-                        duration: 500
-                    },
                     scales: {
                         y: {
                             beginAtZero: true,
                             max: 100,
                             ticks: {
-                                precision: 0,
-                                callback: function(value) {
-                                    return value + "%";
-                                }
+                                callback: value => value + "%"
                             }
                         }
+                    },
+                    plugins: {
+                        customCanvasBackgroundColor: {
+                            color: '#f8f9fa',
+                        }
                     }
-                }
+                },
+                plugins: [addFireEffect]
             });
         } else {
-            voteChart.data.labels = Object.keys(voteData);
+            voteChart.data.labels = labels;
             voteChart.data.datasets[0].data = percentages;
+            voteChart.data.datasets[0].backgroundColor = labels.map(key =>
+                voteData[key] === maxVotes ? 'rgba(255, 99, 132, 0.6)' : 'rgba(54, 162, 235, 0.6)'
+            );
             voteChart.update();
         }
 
-        highlightWinner();
-    }
-
-    function highlightWinner() {
-        const maxVotes = Math.max(...Object.values(voteData));
-        const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
-        const threshold = totalVotes / 2;
-        if (maxVotes > threshold) {
-            document.getElementById('voteChart').classList.add('winner-effect');
-        } else {
-            document.getElementById('voteChart').classList.remove('winner-effect');
-        }
+        document.getElementById('voteCount').textContent = `(Votes: ${totalVotes})`;
     }
 
     function resetChart() {
@@ -123,7 +131,6 @@
         currentChart = chartType;
         document.getElementById('chart-title').innerHTML = (chartType === 'senat' ? 'Ketua Senat' : 'Ketua Dewan Musyawarah Taruna') +
             ' <span id="voteCount" class="text-muted">(Votes: 0)</span>';
-        voteCount = 0;
         resetChart();
         fetchVoteCounts(chartType);
     }
@@ -131,6 +138,28 @@
     document.addEventListener("DOMContentLoaded", function () {
         showChart('senat');
     });
+
+    const addFireEffect = {
+        id: 'addFireEffect',
+        afterDraw(chart) {
+            const ctx = chart.ctx;
+            const dataset = chart.data.datasets[0];
+            const maxVotes = Math.max(...dataset.data);
+
+            dataset.data.forEach((value, index) => {
+                if (value === maxVotes) {
+                    const bar = chart.getDatasetMeta(0).data[index];
+                    const x = bar.x;
+                    const y = bar.y - 20;
+
+                    ctx.fillStyle = 'red';
+                    ctx.font = 'bold 20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🔥', x, y);
+                }
+            });
+        }
+    };
 </script>
 
 <style>
@@ -152,15 +181,6 @@
     .btn:hover {
         transform: translateY(-2px);
         box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .winner-effect {
-        animation: fireEffect 1s infinite alternate;
-    }
-
-    @keyframes fireEffect {
-        from { filter: drop-shadow(0px 0px 5px red); }
-        to { filter: drop-shadow(0px 0px 10px orange); }
     }
 </style>
 {% endblock %}

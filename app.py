@@ -48,7 +48,7 @@ def allowed_file(filename):
 
 @app.after_request
 def apply_security_headers(response):
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    response.headers["Strict-Transport-Security"] = "max-age=300; includeSubDomains; preload"
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
     response.headers["X-Content-Type-Options"] = "nosniff"
