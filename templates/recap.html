@@ -11,11 +11,13 @@
         <button class="btn btn-outline-secondary" onclick="showChart('demus')">Ketua Dewan Musyawarah Taruna</button>
     </div>
 
-    <div class="recap-section p-4 shadow-sm rounded bg-white">
+    <div class="recap-section p-4 shadow-sm rounded bg-white position-relative">
         <h2 class="text-center mb-4" id="chart-title">
             Ketua Senat <span id="voteCount" class="text-muted">(Votes: 0)</span>
         </h2>
-        <canvas id="voteChart"></canvas>
+        <div class="chart-container position-relative">
+            <canvas id="voteChart"></canvas>
+        </div>
     </div>
 </div>
 
@@ -26,13 +28,40 @@
     let voteChart;
     let currentChart = 'senat';
     let voteData = {};
+    let candidatePhotos = {};
     let eventSource;
 
-    function fetchVoteCounts(chartType) {
+    // Cache untuk gambar kandidat (agar tidak load ulang dari server)
+    const imageCache = {};
+
+    // Fungsi untuk mendapatkan objek Image dari cache, atau membuat baru jika belum ada
+    function getCandidateImage(src) {
+        if (!src) {
+            src = "/static/default.png";
+        }
+        if (imageCache[src]) {
+            return imageCache[src];
+        }
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = src;
+        imageCache[src] = img;
+        return img;
+    }
+
+    async function fetchCandidatePhotos() {
+        const response = await fetch('/get_candidate_photos');
+        candidatePhotos = await response.json();
+    }
+
+    async function fetchVoteCounts(chartType) {
+        await fetchCandidatePhotos();
+
         if (eventSource) {
             eventSource.close();
         }
 
+        // Jika browser tidak mendukung SSE, gunakan polling
         if (!window.EventSource) {
             setInterval(() => {
                 fetch(`/live_count?type=${chartType}`)
@@ -45,78 +74,98 @@
             return;
         }
 
+        // Menggunakan Server-Sent Events
         eventSource = new EventSource(`/live_count?type=${chartType}`);
-
         eventSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
             if (data.type === currentChart) {
                 updateChart(data.candidate);
             }
         };
-
         eventSource.onerror = function() {
+            console.error("SSE error, koneksi ditutup.");
             eventSource.close();
         };
     }
 
-    function updateChart(label) {
+    // Fungsi updateChart menambahkan suara berdasarkan label (nama kandidat)
+    async function updateChart(label) {
         voteData[label] = (voteData[label] || 0) + 1;
-
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
-        const maxVotes = Math.max(...Object.values(voteData));
-
         const labels = Object.keys(voteData);
-        const percentages = labels.map(key =>
-            totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0
-        );
+        const percentages = labels.map(key => totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0);
 
-        if (!voteChart) {
-            const ctx = document.getElementById('voteChart').getContext('2d');
+        renderChart(labels, percentages);
+    }
 
-            voteChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Votes (%)',
-                        data: percentages,
-                        backgroundColor: labels.map(key =>
-                            voteData[key] === maxVotes ? 'rgba(255, 99, 132, 0.6)' : 'rgba(54, 162, 235, 0.6)'
-                        ),
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1,
-                        borderRadius: 5,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                callback: value => value + "%"
-                            }
-                        }
-                    },
-                    plugins: {
-                        customCanvasBackgroundColor: {
-                            color: '#f8f9fa',
+    function renderChart(labels, percentages) {
+        if (voteChart) {
+            voteChart.destroy();
+        }
+        const ctx = document.getElementById('voteChart').getContext('2d');
+
+        voteChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Votes (%)',
+                    data: percentages,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: value => value + "%"
                         }
                     }
                 },
-                plugins: [addFireEffect]
-            });
-        } else {
-            voteChart.data.labels = labels;
-            voteChart.data.datasets[0].data = percentages;
-            voteChart.data.datasets[0].backgroundColor = labels.map(key =>
-                voteData[key] === maxVotes ? 'rgba(255, 99, 132, 0.6)' : 'rgba(54, 162, 235, 0.6)'
-            );
-            voteChart.update();
-        }
+            },
+            plugins: [{
+                beforeDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    const datasetMeta = chart.getDatasetMeta(0);
 
-        document.getElementById('voteCount').textContent = `(Votes: ${totalVotes})`;
+                    chart.data.labels.forEach((label, index) => {
+                        const bar = datasetMeta.data[index];
+                        const imgSrc = candidatePhotos[label] || "/static/default.png";
+                        const img = getCandidateImage(imgSrc);
+
+                        // Pastikan gambar ter-load sebelum digambar
+                        if (!img.complete) {
+                            img.onload = () => {
+                                chart.update();
+                            };
+                        } else {
+                            // Lebar gambar = 50% lebar bar
+                            const barWidth = bar.width;
+                            const aspectRatio = img.width / img.height;
+                            const scaledWidth = barWidth * 0.25; // 50% dari lebar bar
+                            const scaledHeight = scaledWidth / aspectRatio;
+
+                            // Letakkan gambar di bagian bawah bar
+                            const x = bar.x - (scaledWidth / 2);
+                            const y = bar.base - scaledHeight;
+
+                            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                        }
+                    });
+                }
+            }]
+        });
+
+        // Tampilkan total votes di UI
+        document.getElementById('voteCount').textContent =
+            `(Votes: ${Object.values(voteData).reduce((a, b) => a + b, 0)})`;
     }
 
     function resetChart() {
@@ -129,7 +178,8 @@
 
     function showChart(chartType) {
         currentChart = chartType;
-        document.getElementById('chart-title').innerHTML = (chartType === 'senat' ? 'Ketua Senat' : 'Ketua Dewan Musyawarah Taruna') +
+        document.getElementById('chart-title').innerHTML =
+            (chartType === 'senat' ? 'Ketua Senat' : 'Ketua Dewan Musyawarah Taruna') +
             ' <span id="voteCount" class="text-muted">(Votes: 0)</span>';
         resetChart();
         fetchVoteCounts(chartType);
@@ -138,49 +188,28 @@
     document.addEventListener("DOMContentLoaded", function () {
         showChart('senat');
     });
-
-    const addFireEffect = {
-        id: 'addFireEffect',
-        afterDraw(chart) {
-            const ctx = chart.ctx;
-            const dataset = chart.data.datasets[0];
-            const maxVotes = Math.max(...dataset.data);
-
-            dataset.data.forEach((value, index) => {
-                if (value === maxVotes) {
-                    const bar = chart.getDatasetMeta(0).data[index];
-                    const x = bar.x;
-                    const y = bar.y - 20;
-
-                    ctx.fillStyle = 'red';
-                    ctx.font = 'bold 20px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('🔥', x, y);
-                }
-            });
-        }
-    };
 </script>
 
 <style>
     body {
         background-color: #f8f9fa;
     }
-
     .recap-section {
         max-width: 800px;
         margin: auto;
         background-color: #fff;
         border-radius: 10px;
     }
-
     .btn {
         transition: all 0.3s ease-in-out;
     }
-
     .btn:hover {
         transform: translateY(-2px);
         box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
     }
 </style>
 {% endblock %}

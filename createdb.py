@@ -130,6 +130,14 @@ def create_admin():
 # Create admin user
 create_admin()
 
+def get_all_candidates():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT name, photo FROM candidates")
+    candidates = c.fetchall()
+    conn.close()
+    return candidates
+
 
 def get_existing_keys():
     with get_db_connection() as conn:

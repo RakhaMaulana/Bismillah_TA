@@ -1,11 +1,11 @@
 import socket
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
 import hashlib
 import BlindSig as bs
 import secrets
 import base64
-from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys
+from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -327,6 +327,13 @@ def get_local_ip():
     except Exception as e:
         print(f"Error detecting local IP: {e}")
         return "127.0.0.1"
+
+
+@app.route('/get_candidate_photos')
+def get_candidate_photos():
+    candidates = get_all_candidates()
+    photos = {c['name']: url_for('static', filename=c['photo']) for c in candidates}
+    return jsonify(photos)
 
 
 @app.route('/live_count', methods=['GET'])
