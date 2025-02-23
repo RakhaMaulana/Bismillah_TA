@@ -332,7 +332,15 @@ def get_local_ip():
 @app.route('/get_candidate_photos')
 def get_candidate_photos():
     candidates = get_all_candidates()
-    photos = {c['name']: url_for('static', filename=c['photo']) for c in candidates}
+    # Konversi setiap sqlite3.Row menjadi dictionary
+    candidates = [dict(c) for c in candidates]
+    photos = {
+        c['name']: {
+            'photo': url_for('static', filename=c['photo']),
+            'type': c.get('candidate_type', '')
+        }
+        for c in candidates
+    }
     return jsonify(photos)
 
 
@@ -364,4 +372,4 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print(f"Running Flask app on IP: {local_ip}")
 
-    app.run(host=local_ip, port=5001, ssl_context=(cert_path, key_path))
+    app.run(host=local_ip, port=5003)

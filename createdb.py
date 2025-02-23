@@ -7,7 +7,7 @@ import base64
 
 
 # Create a new SQLite database (or connect to an existing one)
-conn = sqlite3.connect('evoting.db')
+conn = sqlite3.connect('evoting.db', timeout=30)
 c = conn.cursor()
 
 
@@ -55,7 +55,7 @@ conn.close()
 
 
 def get_db_connection():
-    conn = sqlite3.connect('evoting.db')
+    conn = sqlite3.connect('evoting.db', timeout=30)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -132,9 +132,10 @@ create_admin()
 
 def get_all_candidates():
     conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT name, photo FROM candidates")
-    candidates = c.fetchall()
+    # Gunakan alias "candidate_type" untuk kolom "type"
+    candidates = conn.execute(
+        'SELECT id, name, photo, class, type AS candidate_type FROM candidates'
+    ).fetchall()
     conn.close()
     return candidates
 

@@ -49,13 +49,24 @@
         return img;
     }
 
-    async function fetchCandidatePhotos() {
+    async function fetchCandidatePhotos(chartType) {
         const response = await fetch('/get_candidate_photos');
-        candidatePhotos = await response.json();
+        const allCandidatePhotos = await response.json();
 
-        // Inisialisasi voteData agar semua kandidat memiliki suara awal 0
+        // Filter kandidat sesuai tipe (misalnya "senat" atau "demus")
+        candidatePhotos = {};
+        Object.keys(allCandidatePhotos).forEach(name => {
+            const candidate = allCandidatePhotos[name];
+            if (candidate.type.toLowerCase() === chartType.toLowerCase()) {
+                candidatePhotos[name] = candidate;
+            }
+        });
+        console.log("Filtered candidatePhotos:", candidatePhotos);
+        // Inisialisasi voteData hanya untuk kandidat yang terfilter
         initializeVoteData(Object.keys(candidatePhotos));
     }
+
+
 
     function initializeVoteData(candidates) {
         voteData = {};
@@ -66,7 +77,7 @@
 
 
     async function fetchVoteCounts(chartType) {
-        await fetchCandidatePhotos();
+        await fetchCandidatePhotos(chartType);
 
         if (eventSource) {
             eventSource.close();
@@ -98,6 +109,7 @@
             eventSource.close();
         };
     }
+
 
     // Fungsi updateChart menambahkan suara berdasarkan label (nama kandidat)
     async function updateChart(label) {
@@ -152,7 +164,7 @@
 
                     chart.data.labels.forEach((label, index) => {
                         const bar = datasetMeta.data[index];
-                        const imgSrc = candidatePhotos[label] || "/static/default.png";
+                        const imgSrc = (candidatePhotos[label] && candidatePhotos[label].photo) || "/static/default.png";
                         const img = getCandidateImage(imgSrc);
 
                         // Pastikan gambar ter-load sebelum digambar
@@ -210,7 +222,7 @@
         background-color: #f8f9fa;
     }
     .recap-section {
-        max-width: 800px;
+        max-width: 1200px;
         margin: auto;
         background-color: #fff;
         border-radius: 10px;
