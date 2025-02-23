@@ -372,4 +372,4 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print(f"Running Flask app on IP: {local_ip}")
 
-    app.run(host=local_ip, port=5003)
+    app.run(host=local_ip, port=5001, ssl_context=(cert_path, key_path))
