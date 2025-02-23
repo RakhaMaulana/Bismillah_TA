@@ -52,7 +52,18 @@
     async function fetchCandidatePhotos() {
         const response = await fetch('/get_candidate_photos');
         candidatePhotos = await response.json();
+
+        // Inisialisasi voteData agar semua kandidat memiliki suara awal 0
+        initializeVoteData(Object.keys(candidatePhotos));
     }
+
+    function initializeVoteData(candidates) {
+        voteData = {};
+        candidates.forEach(candidate => {
+            voteData[candidate] = 0;
+        });
+    }
+
 
     async function fetchVoteCounts(chartType) {
         await fetchCandidatePhotos();
@@ -91,12 +102,16 @@
     // Fungsi updateChart menambahkan suara berdasarkan label (nama kandidat)
     async function updateChart(label) {
         voteData[label] = (voteData[label] || 0) + 1;
+
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
+
+        // Urutkan kandidat berdasarkan urutan awal, bukan urutan pertama kali mendapat suara
         const labels = Object.keys(voteData);
         const percentages = labels.map(key => totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0);
 
         renderChart(labels, percentages);
     }
+
 
     function renderChart(labels, percentages) {
         if (voteChart) {
