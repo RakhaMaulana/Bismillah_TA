@@ -15,11 +15,10 @@
         <h2 class="text-center mb-4" id="chart-title">
             Ketua Senat <span id="voteCount" class="text-muted">(Votes: 0)</span>
         </h2>
+
         <div class="chart-container position-relative">
-            <!-- Elemen overlay GIF. Posisi dan ukurannya akan di-update via JS -->
-            <img id="gifOverlay" src="/static/fire.gif" alt="Fire Overlay" style="position: absolute; opacity: 0.5; pointer-events: none; display: none; z-index: 1;">
-            <!-- Canvas Chart.js -->
-            <canvas id="voteChart" style="position: relative; z-index: 2;"></canvas>
+            <!-- Canvas Chart.js (bar chart) -->
+            <canvas id="voteChart" style="position: relative; z-index: 1;"></canvas>
         </div>
     </div>
 </div>
@@ -34,7 +33,6 @@
     let voteData = {};
     let candidatePhotos = {};
     let eventSource;
-
     // Cache untuk gambar kandidat
     const imageCache = {};
 
@@ -65,7 +63,6 @@
                 candidatePhotos[name] = candidate;
             }
         });
-
         initializeVoteData(Object.keys(candidatePhotos));
     }
 
@@ -140,76 +137,110 @@
                 },
             },
             plugins: [{
-                beforeDraw: (chart) => {
-                    const ctx = chart.ctx;
-                    const datasetMeta = chart.getDatasetMeta(0);
-                    const maxVotes = Math.max(...percentages);
-                    // Kandidat dengan persentase tertinggi
-                    const topCandidates = labels.filter((_, i) => percentages[i] === maxVotes);
-
-                    // Jika ada kandidat unggul, update posisi overlay untuk kandidat pertama
-                    if (topCandidates.length > 0) {
-                        const topLabel = topCandidates[0];
-                        const index = labels.indexOf(topLabel);
-                        const bar = datasetMeta.data[index];
-
-                        // Hitung ukuran gambar kandidat yang akan digambar
-                        const img = getCandidateImage((candidatePhotos[topLabel] && candidatePhotos[topLabel].photo) || "/static/Unknown.png");
-                        const barWidth = bar.width;
-                        const aspectRatio = img.width / img.height;
-                        const candidateWidth = barWidth * 0.2;
-                        const candidateHeight = candidateWidth / aspectRatio;
-                        // Posisi gambar kandidat
-                        const x = bar.x - (candidateWidth / 2);
-                        const y = bar.base - candidateHeight;
-
-                        // Hitung overlay (GIF) yang sedikit lebih besar sebagai border
-                        const gifSizeWidth = candidateWidth * 1.5;
-                        const gifSizeHeight = candidateHeight * 1.5;
-                        const gifX = bar.x - (gifSizeWidth / 2);
-                        const gifY = bar.base - candidateHeight - ((gifSizeHeight - candidateHeight) / 2);
-
-                        const overlay = document.getElementById('gifOverlay');
-                        overlay.style.left = gifX + "px";
-                        overlay.style.top = gifY + "px";
-                        overlay.style.width = gifSizeWidth + "px";
-                        overlay.style.height = gifSizeHeight + "px";
-                        overlay.style.display = "block";
-                    } else {
-                        document.getElementById('gifOverlay').style.display = "none";
-                    }
-
-                    // Gambar foto kandidat ke canvas
-                    chart.data.labels.forEach((label, index) => {
-                        const bar = datasetMeta.data[index];
-                        const imgSrc = (candidatePhotos[label] && candidatePhotos[label].photo) || "/static/Unknown.png";
-                        const img = getCandidateImage(imgSrc);
-                        const barWidth = bar.width;
-                        const aspectRatio = img.width / img.height;
-                        const candidateWidth = barWidth * 0.2;
-                        const candidateHeight = candidateWidth / aspectRatio;
-                        const x = bar.x - (candidateWidth / 2);
-                        const y = bar.base - candidateHeight;
-
-                        if (!img.complete) {
-                            img.onload = () => chart.update();
-                        } else {
-                            if (topCandidates.includes(label)) {
-                                // Jika kandidat unggul, gambar foto sedikit lebih kecil agar border overlay tampak
-                                const padding = candidateWidth * 0.1;
-                                ctx.drawImage(img, x + padding, y + padding, candidateWidth - 2 * padding, candidateHeight - 2 * padding);
-                            } else {
-                                ctx.drawImage(img, x, y, candidateWidth, candidateHeight);
-                            }
-                        }
-                    });
+                // Gambar foto kandidat dan overlay setelah chart digambar
+                afterDatasetsDraw: (chart) => {
+                    drawAllCandidates(chart, labels, percentages);
+                    showOverlayForWinners(chart, labels, percentages);
                 }
             }]
         });
 
-        // Update total suara pada UI
+        // Update total votes di UI
         document.getElementById('voteCount').textContent =
             `(Votes: ${Object.values(voteData).reduce((a, b) => a + b, 0)})`;
+    }
+
+    /**
+     * Gambar foto semua kandidat di atas bar chart
+     */
+    function drawAllCandidates(chart, labels, percentages) {
+        const ctx = chart.ctx;
+        const datasetMeta = chart.getDatasetMeta(0);
+
+        chart.data.labels.forEach((label, index) => {
+            const bar = datasetMeta.data[index];
+            const imgSrc = (candidatePhotos[label] && candidatePhotos[label].photo) || "/static/Unknown.png";
+            const img = getCandidateImage(imgSrc);
+
+            const barWidth = bar.width;
+            const aspectRatio = (img.height === 0) ? 1 : (img.width / img.height);
+            const candidateWidth = barWidth * 0.5;
+            const candidateHeight = candidateWidth / aspectRatio;
+            const x = bar.x - (candidateWidth / 2);
+            const y = bar.base - candidateHeight;
+
+            if (!img.complete) {
+                img.onload = () => chart.update();
+            } else {
+                ctx.drawImage(img, x, y, candidateWidth, candidateHeight);
+            }
+        });
+    }
+
+    /**
+     * Tampilkan overlay GIF dan foto besar untuk kandidat dengan suara tertinggi.
+     * Jika terdapat lebih dari satu kandidat dengan suara sama (tie), maka
+     * overlay akan dibuat untuk masing-masing kandidat.
+     */
+    function showOverlayForWinners(chart, labels, percentages) {
+        // Hapus overlay winner lama (jika ada)
+        const container = document.querySelector('.chart-container');
+        container.querySelectorAll('.winner-overlay').forEach(el => el.remove());
+
+        const datasetMeta = chart.getDatasetMeta(0);
+        const maxVotes = Math.max(...percentages);
+        const topCandidates = labels.filter((_, i) => percentages[i] === maxVotes);
+
+        topCandidates.forEach(candidate => {
+            const index = labels.indexOf(candidate);
+            const bar = datasetMeta.data[index];
+            const imgSrc = (candidatePhotos[candidate] && candidatePhotos[candidate].photo) || "/static/Unknown.png";
+            const img = getCandidateImage(imgSrc);
+
+            const barWidth = bar.width;
+            const aspectRatio = (img.height === 0) ? 1 : (img.width / img.height);
+            const candidateWidth = barWidth * 0.7;
+            const candidateHeight = candidateWidth / aspectRatio;
+            const x = bar.x - (candidateWidth / 2);
+            const y = bar.base - candidateHeight;
+
+            const gifSizeWidth = candidateWidth * 1.3;
+            const gifSizeHeight = candidateHeight * 1.3;
+            const gifX = bar.x - (gifSizeWidth / 2);
+            const gifY = bar.base - candidateHeight - ((gifSizeHeight - candidateHeight) / 2);
+
+            // Buat elemen overlay GIF
+            const gifOverlay = document.createElement('img');
+            gifOverlay.src = "/static/fire.gif";
+            gifOverlay.alt = "Fire Overlay";
+            gifOverlay.classList.add('winner-overlay');
+            gifOverlay.style.position = "absolute";
+            gifOverlay.style.opacity = "0.5";
+            gifOverlay.style.pointerEvents = "none";
+            gifOverlay.style.left = gifX + "px";
+            gifOverlay.style.top = gifY + "px";
+            gifOverlay.style.width = gifSizeWidth + "px";
+            gifOverlay.style.height = gifSizeHeight + "px";
+            // Tambahkan transisi untuk animasi yang halus
+            gifOverlay.style.transition = "all 0.5s ease-in-out";
+            container.appendChild(gifOverlay);
+
+            // Buat elemen overlay foto kandidat
+            // const photoOverlay = document.createElement('img');
+            // photoOverlay.src = imgSrc;
+            // photoOverlay.alt = "Candidate Photo";
+            // photoOverlay.classList.add('winner-overlay');
+            // photoOverlay.style.position = "absolute";
+            // photoOverlay.style.pointerEvents = "none";
+            // photoOverlay.style.left = x + "px";
+            // photoOverlay.style.top = y + "px";
+            // photoOverlay.style.width = candidateWidth + "px";
+            // photoOverlay.style.height = candidateHeight + "px";
+            // photoOverlay.style.borderRadius = "5px";
+            // photoOverlay.style.boxShadow = "0px 4px 8px rgba(0,0,0,0.2)";
+            // photoOverlay.style.transition = "all 0.5s ease-in-out";
+            // container.appendChild(photoOverlay);
+        });
     }
 
     function resetChart() {
@@ -240,5 +271,7 @@
     .btn { transition: all 0.3s ease-in-out; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); }
     .chart-container { position: relative; height: 400px; }
+    /* Layering: Canvas paling bawah, overlay winner di atasnya */
+    #voteChart { z-index: 1; }
 </style>
 {% endblock %}
