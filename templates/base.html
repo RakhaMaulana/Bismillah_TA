@@ -33,17 +33,17 @@
                             <i class="fas fa-home"></i> Home
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'vote' %}active{% endif %}" href="{{ url_for('vote') }}">
-                            <i class="fas fa-vote-yea"></i> Vote
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'register_voter' %}active{% endif %}" href="{{ url_for('register_voter') }}">
-                            <i class="fas fa-user-plus"></i> Register Voter
-                        </a>
-                    </li>
                     {% if session.username %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'vote' %}active{% endif %}" href="{{ url_for('vote') }}">
+                                <i class="fas fa-vote-yea"></i> Vote
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'register_voter' %}active{% endif %}" href="{{ url_for('register_voter') }}">
+                                <i class="fas fa-user-plus"></i> Register Voter
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'register_candidate' %}active{% endif %}" href="{{ url_for('register_candidate') }}">
                                 <i class="fas fa-user-plus"></i> Register Candidate
@@ -64,7 +64,6 @@
                                 <i class="fas fa-chart-bar"></i> Recap
                             </a>
                         </li>
-
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">

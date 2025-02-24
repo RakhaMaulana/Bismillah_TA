@@ -20,7 +20,7 @@
                 <!-- ID Number Input -->
                 <div class="mb-3">
                     <label for="id_number" class="form-label fw-semibold">ID Number:</label>
-                    <input type="text" id="id_number" name="id_number" class="form-control" required>
+                    <input type="text" id="id_number" name="id_number" class="form-control" required pattern="^[0-9]+$" title="ID Number should only contain numbers.">
                 </div>
 
                 <!-- Hidden Input for Photo Data -->
@@ -97,6 +97,7 @@
             alert("Please take a photo before submitting.");
             return false;
         }
+
         return true;
     }
 

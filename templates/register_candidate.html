@@ -102,6 +102,12 @@
             return false;
         }
 
+        const invalidChars = /[;'"<>]/;
+        if (invalidChars.test(name) || invalidChars.test(classInput) || invalidChars.test(candidateType)) {
+            alert('Invalid characters detected in input.');
+            return false;
+        }
+
         const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
         if (!allowedExtensions.test(photo.name)) {
             alert('Invalid file type. Only JPG, JPEG, and PNG are allowed.');

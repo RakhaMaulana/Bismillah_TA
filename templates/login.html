@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-5">
     <h1 class="text-center mb-4">Login</h1>
-    <form id="login-form" method="POST" action="{{ url_for('login') }}">
+    <form id="login-form" method="POST" action="{{ url_for('login') }}" onsubmit="return validateForm()">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group mb-3">
             <label for="username">Username:</label>
@@ -27,4 +27,21 @@
         {% endif %}
     {% endwith %}
 </div>
+
+<script>
+    function validateForm() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        // Regular expression to check for invalid characters
+        const invalidChars = /[;'"<>]/;
+
+        if (invalidChars.test(username) || invalidChars.test(password)) {
+            alert('Invalid characters detected in input.');
+            return false;
+        }
+
+        return true;
+    }
+</script>
 {% endblock %}

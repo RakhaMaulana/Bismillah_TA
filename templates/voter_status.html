@@ -14,10 +14,10 @@
         <table class="table table-hover table-bordered" id="voterTable">
             <thead class="table-dark">
                 <tr class="text-center">
-                    <th scope="col">NPM</th>
-                    <th scope="col">Approved</th>
-                    <th scope="col">Voted for Ketua Senat</th>
-                    <th scope="col">Voted for Ketua Dewan Musyawarah Taruna</th>
+                    <th scope="col" onclick="sortTable(0)">NPM</th>
+                    <th scope="col" onclick="sortTable(1)">Approved</th>
+                    <th scope="col" onclick="sortTable(2)">Voted for Ketua Senat</th>
+                    <th scope="col" onclick="sortTable(3)">Voted for Ketua Dewan Musyawarah Taruna</th>
                 </tr>
             </thead>
             <tbody>
@@ -58,7 +58,34 @@
                 row.style.display = npm.includes(filter) ? "" : "none";
             });
         });
+
+        // Sort table by NPM by default
+        sortTableByNPM();
     });
+
+    function sortTableByNPM() {
+        sortTable(0);
+    }
+
+    function sortTable(columnIndex) {
+        const table = document.getElementById('voterTable');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const isNumericColumn = columnIndex === 0;
+
+        rows.sort((a, b) => {
+            const cellA = a.cells[columnIndex].textContent.trim();
+            const cellB = b.cells[columnIndex].textContent.trim();
+
+            if (isNumericColumn) {
+                return cellA.localeCompare(cellB, undefined, { numeric: true });
+            } else {
+                return cellA.localeCompare(cellB);
+            }
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
 
     function resetSearch() {
         document.getElementById('searchInput').value = "";
@@ -73,6 +100,10 @@
 
     .table-hover tbody tr:hover {
         background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    th {
+        cursor: pointer;
     }
 </style>
 {% endblock %}

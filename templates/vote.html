@@ -62,6 +62,12 @@
         const token = document.getElementById('token').value;
         const candidate = document.getElementById('candidate').value;
 
+        const invalidChars = /[;'"<>]/;
+        if (invalidChars.test(token) || invalidChars.test(candidate)) {
+            alert('Invalid characters detected in input.');
+            return false;
+        }
+
         if (!token) {
             alert("Please enter your token.");
             return false;

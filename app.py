@@ -8,7 +8,6 @@ import base64
 from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 import uuid
 from dotenv import load_dotenv
@@ -34,8 +33,7 @@ csrf = CSRFProtect(app)
 
 # Initialize Flask-Limiter for rate limiting
 limiter = Limiter(
-    get_remote_address,
-    app=app,
+    app,
     default_limits=["40000000000 per hour"],
     storage_uri="memory://"
 )
@@ -49,8 +47,8 @@ def allowed_file(filename):
 @app.after_request
 def apply_security_headers(response):
     response.headers["Strict-Transport-Security"] = "max-age=300; includeSubDomains; preload"
-    response.headers["Cache-Control"] = "no-store"
-    response.headers["Pragma"] = "no-cache"
+    # response.headers["Cache-Control"] = "no-store"
+    # response.headers["Pragma"] = "no-cache"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     return response
@@ -190,6 +188,8 @@ def approve_voter():
 
 @app.route('/vote', methods=['GET'])
 def vote_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT id, name, photo, class, type FROM candidates")
@@ -226,6 +226,8 @@ def vote_page():
 @app.route('/vote', methods=['POST'])
 @limiter.limit("20000000 per minute")
 def vote():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
     candidate_id = escape(request.form['candidate'])
     token = escape(request.form['token'])
     voting_stage = escape(request.form['voting_stage'])
@@ -372,4 +374,4 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print(f"Running Flask app on IP: {local_ip}")
 
-    app.run(host=local_ip, port=5001, ssl_context=(cert_path, key_path))
+    app.run(host=local_ip, port=5003)

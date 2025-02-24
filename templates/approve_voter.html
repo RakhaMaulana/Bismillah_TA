@@ -75,9 +75,23 @@
     // Initialize the photo display with the first voter's photo
     window.onload = function() {
         if (document.getElementById('voter_id')) {
+            sortVotersByNPM();
             updateVoterPhoto();
         }
     };
+
+    function sortVotersByNPM() {
+        const voterSelect = document.getElementById('voter_id');
+        const options = Array.from(voterSelect.options);
+
+        options.sort((a, b) => {
+            const npmA = a.textContent.trim();
+            const npmB = b.textContent.trim();
+            return npmA.localeCompare(npmB, undefined, { numeric: true });
+        });
+
+        options.forEach(option => voterSelect.appendChild(option));
+    }
 </script>
 
 <style>
