@@ -5,3 +5,5 @@ __pycache__/createdb.cpython-312.pyc
 evoting.db-journal
 dev.certificate.crt
 dev.private.key
+evoting.db-shm
+evoting.db-wal

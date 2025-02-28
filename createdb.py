@@ -57,6 +57,7 @@ conn.close()
 def get_db_connection():
     conn = sqlite3.connect('evoting.db', timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")  # Aktifkan WAL mode
     return conn
 
 

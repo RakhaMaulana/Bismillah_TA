@@ -171,41 +171,41 @@ def approve_voter_page():
 def approve_voter():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
-    conn = get_db_connection()
-    c = conn.cursor()
     voter_id = escape(request.form['voter_id'])
     action = escape(request.form['action'])
-    if action == 'approve':
-        c.execute("UPDATE voters SET approved = 1 WHERE id = ?", (voter_id,))
-        flash('Voter approved successfully')
-    elif action == 'reject':
-        c.execute("DELETE FROM voters WHERE id = ?", (voter_id,))
-        flash('Voter rejected successfully')
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        # Mulai transaksi
+        conn.execute("BEGIN IMMEDIATE;")
+        if action == 'approve':
+            c.execute("UPDATE voters SET approved = 1 WHERE id = ?", (voter_id,))
+            flash('Voter approved successfully')
+        elif action == 'reject':
+            c.execute("DELETE FROM voters WHERE id = ?", (voter_id,))
+            flash('Voter rejected successfully')
+        conn.commit()
     return redirect(url_for('approve_voter_page'))
 
 
 @app.route('/vote', methods=['GET'])
 def vote_page():
-    if 'user_id' not in session:
-        return redirect(url_for('login_page'))
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT id, name, photo, class, type FROM candidates")
     candidates = c.fetchall()
     conn.close()
 
-    # Filter candidates based on voting stage
+    # Pisahkan kandidat berdasarkan jenis pemilihan
     senat_candidates = [candidate for candidate in candidates if candidate['type'] == 'senat']
     demus_candidates = [candidate for candidate in candidates if candidate['type'] == 'demus']
 
-    # Determine voting stage based on token usage
     token = request.args.get('token')
     if token:
+        # Proses token: tambahkan salt, hash, dan encode
         salted_token = token + "PoltekSSN"
         hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
         encoded_token = base64.b64encode(hashed_token.encode()).decode()
+
         conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
@@ -214,79 +214,118 @@ def vote_page():
         if voter:
             token_used_senat, token_used_dewan = voter
             if token_used_senat == 0:
-                return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat', token=token)
+                # Belum vote senat: tampilkan halaman vote untuk senat
+                return render_template(
+                    'vote.html',
+                    candidates=senat_candidates,
+                    no_candidates=(len(senat_candidates) == 0),
+                    voting_stage='senat',
+                    token=token
+                )
             elif token_used_dewan == 0:
-                return render_template('vote.html', candidates=demus_candidates, no_candidates=len(demus_candidates) == 0, voting_stage='demus', token=token)
+                # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
+                return render_template(
+                    'vote.html',
+                    candidates=demus_candidates,
+                    no_candidates=(len(demus_candidates) == 0),
+                    voting_stage='demus',
+                    token=token
+                )
             else:
-                # flash('Token already used for both votes')
+                # Token sudah digunakan untuk kedua vote
+                flash('Token sudah digunakan untuk kedua pemilihan.')
                 return redirect(url_for('vote_page'))
-    return render_template('vote.html', candidates=senat_candidates, no_candidates=len(senat_candidates) == 0, voting_stage='senat', token=token)
+    # Jika token tidak ada, default ke halaman vote senat
+    return render_template(
+        'vote.html',
+        candidates=senat_candidates,
+        no_candidates=(len(senat_candidates) == 0),
+        voting_stage='senat',
+        token=token
+    )
 
 
 @app.route('/vote', methods=['POST'])
 @limiter.limit("20000000 per minute")
 def vote():
-    if 'user_id' not in session:
-        return redirect(url_for('login_page'))
     candidate_id = escape(request.form['candidate'])
     token = escape(request.form['token'])
     voting_stage = escape(request.form['voting_stage'])
+
     salted_token = token + "PoltekSSN"
     hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
     encoded_token = base64.b64encode(hashed_token.encode()).decode()
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
-    voter = c.fetchone()
-    if not voter:
-        flash('Invalid token')
-        return redirect(url_for('vote_page'))
-    id_number, approved, token_used_senat, token_used_dewan = voter
-    if approved == 0:
-        flash('Voter not approved')
-        return redirect(url_for('vote_page'))
-    if token_used_senat == 1 and token_used_dewan == 1:
-        flash('Token already used for both votes')
-        return redirect(url_for('vote_page'))
-    c.execute("SELECT * FROM ballots WHERE concatenated_message LIKE ?", (id_number + '%',))
-    if c.fetchone():
-        flash('Vote already cast')
-        return redirect(url_for('vote_page'))
 
-    existing_keys = get_existing_keys()
-    if existing_keys:
-        n, e, _ = existing_keys
-        signer = bs.Signer()
-        signer.public_key = {'n': n, 'e': e}
-        signer.private_key = {'d': _}
-    else:
-        signer = bs.Signer()
-        public_key = signer.get_public_key()
-        n = public_key['n']
-        e = public_key['e']
-        _ = signer.private_key['d']
-        save_keys(n, e, _)  # Save keys to the database
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        # Mulai transaksi untuk memastikan operasi validasi dan update atomik
+        conn.execute("BEGIN IMMEDIATE;")
+        c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
+        voter = c.fetchone()
+        if not voter:
+            flash('Invalid token')
+            return redirect(url_for('vote_page', token=token))
+        id_number, approved, token_used_senat, token_used_dewan = voter
+        if approved == 0:
+            flash('Voter not approved')
+            return redirect(url_for('vote_page', token=token))
+        if voting_stage == 'senat' and token_used_senat == 1:
+            flash('Vote for Ketua Senat has already been cast. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
+            return redirect(url_for('vote_page', token=token))
+        if voting_stage == 'demus' and token_used_dewan == 1:
+            flash('Vote for Ketua Dewan Musyawarah Taruna has already been cast.')
+            return redirect(url_for('vote_page', token=token))
+        if token_used_senat == 1 and token_used_dewan == 1:
+            flash('Token already used for both votes.')
+            return redirect(url_for('vote_page', token=token))
 
-    x = secrets.randbelow(n - 1) + 1
-    concat_message = str(candidate_id) + str(x)
-    message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
-    message_hash = int(message_hash, 16)
-    voter = bs.Voter(n, "y")
-    blind_message = voter.blind_message(message_hash, n, e)
-    signed_blind_message = signer.sign_message(blind_message, voter.get_eligibility())
-    signed_message = voter.unwrap_signature(signed_blind_message, n)
-    save_ballot(x, concat_message, message_hash, blind_message, signed_blind_message, signed_message)
+        # Proses blind signature dan simpan ballot
+        # Pertama, ambil atau buat kunci RSA
+        with get_db_connection() as conn_keys:
+            c_keys = conn_keys.cursor()
+            c_keys.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
+            key = c_keys.fetchone()
+        if key:
+            n, e, d = int(key[0]), int(key[1]), int(key[2])
+            signer = bs.Signer()
+            signer.public_key = {'n': n, 'e': e}
+            signer.private_key = {'d': d}
+        else:
+            signer = bs.Signer()
+            public_key = signer.get_public_key()
+            n = public_key['n']
+            e = public_key['e']
+            d = signer.private_key['d']
+            with get_db_connection() as conn_keys:
+                c_keys = conn_keys.cursor()
+                c_keys.execute("INSERT INTO keys (n, e, d, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+                               (str(n), str(e), str(d)))
+                conn_keys.commit()
 
-    if voting_stage == 'senat':
-        c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
-        flash('Vote cast successfully for Ketua Senat. Please vote for Ketua Dewan Musyawarah Taruna.')
-    elif voting_stage == 'demus':
-        c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
-        flash('Vote cast successfully for Dewan Musyawarah Taruna. Thank you for voting!')
+        # Proses pembuatan ballot (blind signature)
+        x = secrets.randbelow(n - 1) + 1
+        concat_message = str(candidate_id) + str(x)
+        message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
+        message_hash_int = int(message_hash, 16)
+        voter_obj = bs.Voter(n, "y")
+        blind_message = voter_obj.blind_message(message_hash_int, n, e)
+        signed_blind_message = signer.sign_message(blind_message, voter_obj.get_eligibility())
+        signed_message = voter_obj.unwrap_signature(signed_blind_message, n)
 
-    conn.commit()
-    conn.close()
+        # Simpan ballot ke database
+        c.execute('''INSERT INTO ballots (x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature)
+                     VALUES (?, ?, ?, ?, ?, ?)''',
+                  (str(x), concat_message, str(message_hash_int), str(blind_message),
+                   str(signed_blind_message), str(signed_message)))
 
+        # Update status token berdasarkan stage voting
+        if voting_stage == 'senat':
+            c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
+            flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
+        elif voting_stage == 'demus':
+            c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
+            flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
+        conn.commit()
     return redirect(url_for('vote_page', token=token))
 
 
@@ -359,7 +398,7 @@ def live_count():
         for candidate_name, candidate_type in verified_ballots:
             if candidate_type == vote_type:  # Hanya kirim data sesuai pilihan user
                 yield f"data: {json.dumps({'candidate': candidate_name, 'type': candidate_type})}\n\n"
-                time.sleep(1)  # Delay 1 detik
+                time.sleep(0.2)  # Delay 1 detik
 
     return Response(generate(), mimetype='text/event-stream')
 
