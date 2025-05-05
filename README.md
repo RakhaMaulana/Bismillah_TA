@@ -1,7 +1,7 @@
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
   -nodes -keyout dev.private.key -out dev.certificate.crt \
-  -subj "//CN=Pemilihan Umum Taruna" \
-  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:192.168.x.x"
+  -subj "/CN=Pemilihan Umum Taruna" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 
 Install on Windows and Browser (import cert)
 

@@ -1,5 +1,6 @@
 import socket
 import os
+import re
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
 import hashlib
 import BlindSig as bs
@@ -27,6 +28,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 8 MB max file size
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Mencegah CSRF attacks
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -46,11 +48,37 @@ def allowed_file(filename):
 
 @app.after_request
 def apply_security_headers(response):
-    response.headers["Strict-Transport-Security"] = "max-age=300; includeSubDomains; preload"
-    # response.headers["Cache-Control"] = "no-store"
-    # response.headers["Pragma"] = "no-cache"
+    # Content Security Policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self' https://cdn.jsdelivr.net; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self';"
+    )
+
+    # HSTS - already in your code but enhanced
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+
+    # Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
+
+    # Prevent Clickjacking
     response.headers["X-Frame-Options"] = "DENY"
+
+    # Control referrer information
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Prevent caching of sensitive pages
+    if request.path in ['/vote', '/register_voter', '/login', '/approve_voter']:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
     return response
 
 
@@ -65,18 +93,27 @@ def login_page():
 
 
 @app.route('/login', methods=['POST'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def login():
     username = escape(request.form['username'])
     password = escape(request.form['password'])
+
+    # Validasi input
+    if not username or not password:
+        flash('Username dan password diperlukan')
+        return redirect(url_for('login_page'))
+
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashlib.sha256(password.encode()).hexdigest()))
+    c.execute("SELECT * FROM users WHERE username = ? AND password = ?",
+              (username, hashlib.sha256(password.encode()).hexdigest()))
     user = c.fetchone()
     conn.close()
+
     if user:
         session['user_id'] = user[0]
         session['username'] = user[1]
+        session.permanent = True  # Set session to expire after permanent_session_lifetime
         return redirect(url_for('register_candidate_page'))
 
     flash('Invalid credentials')
@@ -97,14 +134,43 @@ def register_candidate_page():
 
 
 @app.route('/register_candidate', methods=['POST'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def register_candidate():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
+
+    # Validasi input
     name = escape(request.form['name'])
     candidate_class = escape(request.form['class'])
     candidate_type = escape(request.form['candidate_type'])
+
+    if not name or not candidate_class or not candidate_type:
+        flash('Semua field harus diisi')
+        return redirect(url_for('register_candidate_page'))
+
+    # Validasi format input dengan regex
+    if not re.match(r'^[A-Za-z\s]{3,50}$', name):
+        flash('Nama kandidat tidak valid')
+        return redirect(url_for('register_candidate_page'))
+
+    if not re.match(r'^[A-Za-z0-9\s]{1,30}$', candidate_class):
+        flash('Kelas tidak valid')
+        return redirect(url_for('register_candidate_page'))
+
+    if candidate_type not in ['senat', 'demus']:
+        flash('Tipe kandidat tidak valid')
+        return redirect(url_for('register_candidate_page'))
+
+    # Validasi file photo
+    if 'photo' not in request.files:
+        flash('Tidak ada file yang diunggah')
+        return redirect(url_for('register_candidate_page'))
+
     photo = request.files['photo']
+    if photo.filename == '':
+        flash('Tidak ada file yang dipilih')
+        return redirect(url_for('register_candidate_page'))
+
     if photo and allowed_file(photo.filename):
         filename = secure_filename(str(uuid.uuid4()) + os.path.splitext(photo.filename)[1])
         photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -122,10 +188,23 @@ def register_voter_page():
 
 
 @app.route('/register_voter', methods=['POST'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def register_voter():
+    # Validasi input
     id_number = escape(request.form['id_number'])
-    photo_data = request.form['photo']
+
+    # Regex validation for NPM
+    if not re.match(r'^[0-9]{8,12}$', id_number):
+        flash('NPM harus berisi 8-12 digit angka')
+        return redirect(url_for('register_voter_page'))
+
+    photo_data = request.form.get('photo')
+
+    # Validasi photo_data
+    if not photo_data or ',' not in photo_data:
+        flash('Foto diperlukan')
+        return redirect(url_for('register_voter_page'))
+
     filename = secure_filename(f"{id_number}.jpg")
     photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
@@ -141,14 +220,21 @@ def register_voter():
         return redirect(url_for('register_voter_page'))
 
     photo_data = photo_data.split(',')[1]
-    with open(photo_filename, "wb") as fh:
-        fh.write(base64.b64decode(photo_data))
+    try:
+        decoded_data = base64.b64decode(photo_data)
+        # Check if it's a valid image
+        if len(decoded_data) < 100:  # Arbitrary minimum size for a valid image
+            flash('Invalid image data')
+            return redirect(url_for('register_voter_page'))
+
+        with open(photo_filename, "wb") as fh:
+            fh.write(decoded_data)
+    except Exception as e:
+        flash(f'Error processing image: {str(e)}')
+        return redirect(url_for('register_voter_page'))
 
     digital_signature = hashlib.sha256(photo_data.encode()).hexdigest()
-    token = save_voter(id_number, digital_signature, photo_filename)
-    salted_token = token + "PoltekSSN"
-    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
-    encoded_token = base64.b64encode(hashed_token.encode()).decode()
+    token = save_voter(id_number, digital_signature, filename)
 
     flash('Voter registered successfully. Awaiting admin approval.')
     return render_template('register_voter.html', token=token)
@@ -167,12 +253,23 @@ def approve_voter_page():
 
 
 @app.route('/approve_voter', methods=['POST'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def approve_voter():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
+
     voter_id = escape(request.form['voter_id'])
     action = escape(request.form['action'])
+
+    # Validate input
+    if not voter_id.isdigit():
+        flash('Invalid voter ID format')
+        return redirect(url_for('approve_voter_page'))
+
+    if action not in ['approve', 'reject']:
+        flash('Invalid action')
+        return redirect(url_for('approve_voter_page'))
+
     with get_db_connection() as conn:
         c = conn.cursor()
         # Mulai transaksi
@@ -187,70 +284,128 @@ def approve_voter():
     return redirect(url_for('approve_voter_page'))
 
 
+# Step 1: Add a new route for token submission form
+@app.route('/submit_token', methods=['GET'])
+def submit_token_page():
+    return render_template('submit_token.html')
+
+
+# Step 2: Process token submission and store in session
+@app.route('/process_token', methods=['POST'])
+@limiter.limit("10 per minute")
+def process_token():
+    token = escape(request.form.get('token', ''))
+
+    if not token:
+        flash('Token is required')
+        return redirect(url_for('submit_token_page'))
+
+    # Validate and store token in session instead of URL
+    salted_token = token + "PoltekSSN"
+    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+    encoded_token = base64.b64encode(hashed_token.encode()).decode()
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?",
+              (encoded_token,))
+    voter = c.fetchone()
+    conn.close()
+
+    if not voter:
+        flash('Invalid token')
+        return redirect(url_for('submit_token_page'))
+
+    if voter['approved'] == 0:
+        flash('Your registration has not been approved yet')
+        return redirect(url_for('submit_token_page'))
+
+    # Store token and voter info in session
+    session['voting_token'] = token
+    session['voting_id_number'] = voter['id_number']
+
+    return redirect(url_for('vote_page'))
+
+
+# Step 3: Modified vote_page to use session instead of URL parameters
 @app.route('/vote', methods=['GET'])
 def vote_page():
+    # Get token from session instead of URL
+    token = session.get('voting_token')
+
+    if not token:
+        flash('Please submit your token first')
+        return redirect(url_for('submit_token_page'))
+
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT id, name, photo, class, type FROM candidates")
     candidates = c.fetchall()
-    conn.close()
 
     # Pisahkan kandidat berdasarkan jenis pemilihan
     senat_candidates = [candidate for candidate in candidates if candidate['type'] == 'senat']
     demus_candidates = [candidate for candidate in candidates if candidate['type'] == 'demus']
 
-    token = request.args.get('token')
-    if token:
-        # Proses token: tambahkan salt, hash, dan encode
-        salted_token = token + "PoltekSSN"
-        hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
-        encoded_token = base64.b64encode(hashed_token.encode()).decode()
+    # Process token from session
+    salted_token = token + "PoltekSSN"
+    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+    encoded_token = base64.b64encode(hashed_token.encode()).decode()
 
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
-        voter = c.fetchone()
-        conn.close()
-        if voter:
-            token_used_senat, token_used_dewan = voter
-            if token_used_senat == 0:
-                # Belum vote senat: tampilkan halaman vote untuk senat
-                return render_template(
-                    'vote.html',
-                    candidates=senat_candidates,
-                    no_candidates=(len(senat_candidates) == 0),
-                    voting_stage='senat',
-                    token=token
-                )
-            elif token_used_dewan == 0:
-                # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
-                return render_template(
-                    'vote.html',
-                    candidates=demus_candidates,
-                    no_candidates=(len(demus_candidates) == 0),
-                    voting_stage='demus',
-                    token=token
-                )
-            else:
-                # Token sudah digunakan untuk kedua vote
-                flash('Token sudah digunakan untuk kedua pemilihan.')
-                return redirect(url_for('vote_page'))
-    # Jika token tidak ada, default ke halaman vote senat
-    return render_template(
-        'vote.html',
-        candidates=senat_candidates,
-        no_candidates=(len(senat_candidates) == 0),
-        voting_stage='senat',
-        token=token
-    )
+    c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
+    voter = c.fetchone()
+    conn.close()
+
+    if voter:
+        token_used_senat, token_used_dewan = voter
+        if token_used_senat == 0:
+            # Belum vote senat: tampilkan halaman vote untuk senat
+            return render_template(
+                'vote.html',
+                candidates=senat_candidates,
+                no_candidates=(len(senat_candidates) == 0),
+                voting_stage='senat'
+            )
+        elif token_used_dewan == 0:
+            # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
+            return render_template(
+                'vote.html',
+                candidates=demus_candidates,
+                no_candidates=(len(demus_candidates) == 0),
+                voting_stage='demus'
+            )
+        else:
+            # Token sudah digunakan untuk kedua vote
+            flash('Token sudah digunakan untuk kedua pemilihan.')
+            session.pop('voting_token', None)
+            session.pop('voting_id_number', None)
+            return redirect(url_for('index'))
+    else:
+        flash('Invalid token.')
+        session.pop('voting_token', None)
+        session.pop('voting_id_number', None)
+        return redirect(url_for('submit_token_page'))
 
 
 @app.route('/vote', methods=['POST'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def vote():
-    candidate_id = escape(request.form['candidate'])
-    token = escape(request.form['token'])
-    voting_stage = escape(request.form['voting_stage'])
+    # Get token from session instead of form
+    token = session.get('voting_token')
+    if not token:
+        flash('Invalid session. Please submit your token again.')
+        return redirect(url_for('submit_token_page'))
+
+    # Validate form data
+    candidate_id = escape(request.form.get('candidate', ''))
+    voting_stage = escape(request.form.get('voting_stage', ''))
+
+    if not candidate_id.isdigit():
+        flash('Invalid candidate selection')
+        return redirect(url_for('vote_page'))
+
+    if voting_stage not in ['senat', 'demus']:
+        flash('Invalid voting stage')
+        return redirect(url_for('vote_page'))
 
     salted_token = token + "PoltekSSN"
     hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
@@ -264,23 +419,32 @@ def vote():
         voter = c.fetchone()
         if not voter:
             flash('Invalid token')
-            return redirect(url_for('vote_page', token=token))
+            session.pop('voting_token', None)
+            session.pop('voting_id_number', None)
+            return redirect(url_for('submit_token_page'))
+
         id_number, approved, token_used_senat, token_used_dewan = voter
         if approved == 0:
             flash('Voter not approved')
-            return redirect(url_for('vote_page', token=token))
+            session.pop('voting_token', None)
+            session.pop('voting_id_number', None)
+            return redirect(url_for('submit_token_page'))
+
         if voting_stage == 'senat' and token_used_senat == 1:
             flash('Vote for Ketua Senat has already been cast. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
-            return redirect(url_for('vote_page', token=token))
+            return redirect(url_for('vote_page'))
+
         if voting_stage == 'demus' and token_used_dewan == 1:
             flash('Vote for Ketua Dewan Musyawarah Taruna has already been cast.')
-            return redirect(url_for('vote_page', token=token))
+            return redirect(url_for('vote_page'))
+
         if token_used_senat == 1 and token_used_dewan == 1:
             flash('Token already used for both votes.')
-            return redirect(url_for('vote_page', token=token))
+            session.pop('voting_token', None)
+            session.pop('voting_id_number', None)
+            return redirect(url_for('index'))
 
-        # Proses blind signature dan simpan ballot
-        # Pertama, ambil atau buat kunci RSA
+        # Proses blind signature dan simpan ballot - sisa kode tetap sama
         with get_db_connection() as conn_keys:
             c_keys = conn_keys.cursor()
             c_keys.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
@@ -325,12 +489,15 @@ def vote():
         elif voting_stage == 'demus':
             c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
             flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
+            # Clear voting session after completed both votes
+            session.pop('voting_token', None)
+            session.pop('voting_id_number', None)
         conn.commit()
-    return redirect(url_for('vote_page', token=token))
+    return redirect(url_for('vote_page'))
 
 
 @app.route('/recap', methods=['GET'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def recap():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
@@ -340,11 +507,15 @@ def recap():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    # Validate filename to prevent path traversal
+    if not re.match(r'^[a-zA-Z0-9_\.-]+$', filename):
+        return "Invalid filename", 400
+
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 @app.route('/voter_status', methods=['GET'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def voter_status():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
@@ -386,19 +557,21 @@ def get_candidate_photos():
 
 
 @app.route('/live_count', methods=['GET'])
-@limiter.limit("20000000 per minute")
+@limiter.limit("10 per minute")
 def live_count():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
 
     vote_type = request.args.get('type')  # Dapatkan jenis vote dari parameter URL
+    if vote_type not in ['senat', 'demus']:
+        return "Invalid vote type", 400
 
     def generate():
         verified_ballots, _, _ = recap_votes()
         for candidate_name, candidate_type in verified_ballots:
             if candidate_type == vote_type:  # Hanya kirim data sesuai pilihan user
                 yield f"data: {json.dumps({'candidate': candidate_name, 'type': candidate_type})}\n\n"
-                time.sleep(0.2)  # Delay 1 detik
+                time.sleep(0.2)  # Delay 0.2 detik
 
     return Response(generate(), mimetype='text/event-stream')
 

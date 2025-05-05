@@ -15,21 +15,18 @@
     {% if no_candidates %}
         <div class="text-center">
             <img src="{{ url_for('static', filename='Unknown.png') }}" alt="No Candidates" class="img-fluid mb-3">
-            <p class="lead">The admin is not inputted candidate. Contact your admin</p>
+            <p class="lead">The admin has not input any candidate. Contact your admin</p>
         </div>
     {% else %}
-        <form method="post" class="vote-form" onsubmit="return validateForm()">
+        <form method="post" action="{{ url_for('vote') }}" onsubmit="return validateForm()">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="voting_stage" value="{{ voting_stage }}">
-            <div class="form-group mb-3">
-                <label for="token">Token:</label>
-                <input type="text" id="token" name="token" class="form-control" required>
-            </div>
+
             <div class="form-group mb-3">
                 <label for="candidate">Choose Candidate:</label>
                 <select id="candidate" name="candidate" class="form-control" onchange="updateCandidatePhoto()" required>
                     {% for candidate in candidates %}
-                        <option value="{{ candidate.id }}" data-photo="{{ url_for('static', filename=candidate.photo) }}" data-name="{{ candidate.name }}" data-class="{{ candidate.class }}">{{ candidate.name }}</option>
+                        <option value="{{ candidate.id }}" data-photo="{{ url_for('static', filename=candidate.photo) }}" data-name="{{ candidate.name | e }}" data-class="{{ candidate.class | e }}">{{ candidate.name | e }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -59,19 +56,14 @@
     }
 
     function validateForm() {
-        const token = document.getElementById('token').value;
         const candidate = document.getElementById('candidate').value;
 
         const invalidChars = /[;'"<>]/;
-        if (invalidChars.test(token) || invalidChars.test(candidate)) {
+        if (invalidChars.test(candidate)) {
             alert('Invalid characters detected in input.');
             return false;
         }
 
-        if (!token) {
-            alert("Please enter your token.");
-            return false;
-        }
         if (!candidate) {
             alert("Please choose a candidate.");
             return false;

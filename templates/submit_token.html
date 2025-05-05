@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Voting Token{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h2 class="text-center mb-4">Enter Your Voting Token</h2>
+
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-info">{{ message | e }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="post" action="{{ url_for('process_token') }}" onsubmit="return validateToken()">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="token" class="form-label">Voting Token</label>
+                            <input type="text" class="form-control" id="token" name="token" required
+                                   pattern="[A-Za-z0-9]+" title="Only alphanumeric characters allowed"
+                                   placeholder="Enter your voting token">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Submit Token</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateToken() {
+    const token = document.getElementById('token').value.trim();
+
+    // Validasi token tidak kosong
+    if (!token) {
+        alert('Please enter your voting token');
+        return false;
+    }
+
+    // Validasi karakter token
+    const validChars = /^[A-Za-z0-9]+$/;
+    if (!validChars.test(token)) {
+        alert('Token contains invalid characters');
+        return false;
+    }
+
+    return true;
+}
+</script>
+{% endblock %}

@@ -14,13 +14,13 @@
 
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <form method="post" enctype="multipart/form-data" class="card shadow-lg p-4 rounded-3" onsubmit="return capturePhoto()">
+            <form method="post" enctype="multipart/form-data" class="card shadow-lg p-4 rounded-3" onsubmit="return validateForm()">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- ID Number Input -->
                 <div class="mb-3">
-                    <label for="id_number" class="form-label fw-semibold">ID Number:</label>
-                    <input type="text" id="id_number" name="id_number" class="form-control" required pattern="^[0-9]+$" title="ID Number should only contain numbers.">
+                    <label for="id_number" class="form-label fw-semibold">NPM</label>
+                    <input type="text" id="id_number" name="id_number" class="form-control" required pattern="^[0-9]{8,12}$" title="NPM harus berupa 8-12 digit angka">
                 </div>
 
                 <!-- Hidden Input for Photo Data -->
@@ -83,20 +83,32 @@
     }
 
     // Function to validate form
-    function capturePhoto() {
+    function validateForm() {
+        // Validasi NPM
         const idNumber = document.getElementById('id_number').value;
+        const idNumberRegex = /^[0-9]{8,12}$/;
 
-        // Validation for ID Number
-        if (!idNumber) {
-            alert("Please enter your ID number.");
+        if (!idNumberRegex.test(idNumber)) {
+            alert('NPM harus berupa 8-12 digit angka');
             return false;
         }
 
-        // Validation for Photo Input
+        // Validasi foto
+        const photoInput = document.getElementById('photo');
         if (!photoInput.value) {
-            alert("Please take a photo before submitting.");
+            alert('Silakan ambil foto Anda terlebih dahulu');
             return false;
         }
+
+        // Validasi ukuran foto (data URI biasanya panjang)
+        if (photoInput.value.length < 100) {
+            alert('Foto tidak valid atau terlalu kecil');
+            return false;
+        }
+
+        // Sanitasi input NPM - hapus karakter non-numerik
+        document.getElementById('id_number').value =
+            document.getElementById('id_number').value.replace(/[^0-9]/g, '');
 
         return true;
     }
