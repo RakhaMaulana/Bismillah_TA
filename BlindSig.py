@@ -1,7 +1,7 @@
 import cryptomath
 import random
 import hashlib
-
+import math
 
 # n has to be greater than m otherwise lossy message
 class Signer:
@@ -94,8 +94,9 @@ class Signer:
         print("\u001b[35;1m(a) Signing authority receives m'\u001b[0m", end='\n\n')
         print("\u001b[35;1m(b) Signing authority verifies whether voter is eligible to vote\u001b[0m", end='\n\n')
         if eligible == "y":
-            print("\u001b[35;1m(c) If voter is eligible, signing authority signs ballot: sign = ((blinded message)^d)mod n = ((m* (r^e))^d) mod n = (m^d * r^(ed)) mod n = (m^d * r^1) mod n = (m^d * r) mod n(where d is the private key of the signing authority)\u001b[0m", end='\n\n')
-            s = pow(message, self.private_key['d'], self.public_key['n'])  # important # ERR1
+            # PERBAIKAN: Penjelasan yang lebih akurat tentang proses blind signature
+            print("\u001b[35;1m(c) If voter is eligible, signing authority signs blinded ballot: s' = (m')^d mod n\u001b[0m", end='\n\n')
+            s = pow(message, self.private_key['d'], self.public_key['n'])
             print("\u001b[33;1mSign by Signing Authority: \u001b[0m", s, end='\n\n')
             return s
         return None
@@ -113,14 +114,15 @@ class Voter:
         print("\u001b[35;1m(d) Generates r such that r is a relative prime n and 2<= r <=(n-1)\u001b[0m", end='\n\n')
         found_r = False
         while not found_r:
+            # PERBAIKAN: Memastikan r relatif prima dengan n
             self.r = random.randint(2, n - 1)
-            if cryptomath.gcd(self.r, n) == 1:
+            if math.gcd(self.r, n) == 1:
                 print("\u001b[33;1mr: \u001b[0m", self.r, end='\n\n')
                 found_r = True
         print("\u001b[33;1mChecking whether gcd(r, n)==1: \u001b[0m", end='\n\n')
-        print("\u001b[33;1mgcd \u001b[0m", "(", self.r, ",", n, ")", '\n' , "=", "\u001b[33;1m", cryptomath.gcd(self.r, n), end='\n\n')
+        print("\u001b[33;1mgcd \u001b[0m", "(", self.r, ",", n, ")", '\n' , "=", "\u001b[33;1m", math.gcd(self.r, n), end='\n\n')
         v = False
-        if cryptomath.gcd(self.r, n) == 1:
+        if math.gcd(self.r, n) == 1:
             v = True
         print("Verification Status: ", v, "\u001b[0m", end='\n\n')
 
@@ -139,7 +141,9 @@ class Voter:
         print("\u001b[35;1m(a) Receives s'\u001b[0m", end='\n\n')
 
         print("\u001b[35;1m(g) Computes r_inv, where r_inv is the inverse of r modulo n. r will be used by voter to unwrap the blinded message.\u001b[0m", end='\n\n')
-        r_inv = cryptomath.find_mod_inverse(self.r, n)  # ERR3
+
+        # PERBAIKAN: Menggunakan fungsi dari cryptomath jika tersedia, atau implementasi sendiri
+        r_inv = cryptomath.find_mod_inverse(self.r, n)
         print("r_inv: ", r_inv)
 
         print()
@@ -149,6 +153,8 @@ class Voter:
         if self.r * r_inv % n == 1:
             v = True
         print("\u001b[33;1mVerification Status: \u001b[0m", v, end='\n\n')
+
+        # PERBAIKAN: Penjelasan yang lebih akurat untuk proses unblinding
         print("\u001b[35;1m(b) Computes s = (s')*(r_inv) mod n = (m^d * r)*(r_inv) mod n = (m^d * 1) mod n = (m^d) mod n \u001b[0m", end='\n\n')
         s = (signed_blind_message * r_inv) % n
         print("\u001b[33;1mSigned message, s: \u001b[0m", s, end='\n\n')
@@ -156,8 +162,9 @@ class Voter:
         return s
 
     def blind_message(self, m, n, e):
-        print("\u001b[35;1m(e) Computes blinded message (disguises his message): m' = (m* (r^e)) mod n (where n and e are public knowledge)\u001b[0m", end='\n\n')
-        blind_message = (m * pow(self.r, e, n)) % n  # returns r to the power of e, modulus n.
+        # PERBAIKAN: Implementasi blinding yang akurat dengan penjelasan
+        print("\u001b[35;1m(e) Computes blinded message: m' = (m * (r^e)) mod n (standard blind signature protocol)\u001b[0m", end='\n\n')
+        blind_message = (m * pow(self.r, e, n)) % n
         print("\u001b[33;1mBlind Message: \u001b[0m", blind_message)
         return blind_message
 
@@ -165,11 +172,26 @@ class Voter:
         return self.eligible
 
 
-def verify_signature(message, rand_num, signature, public_e, public_n):
-    ballot = pow(signature, public_e, public_n)  # decrypting, it gets back the message_hash
-    verification_status = (int(hashlib.sha256((str(message) + str(rand_num)).encode('utf-8')).hexdigest(), 16) == ballot)
-    print("\u001b[35;1mThe encrypted/signed hash message is decrypted with the signed authority's public key (s^e) mod n = (m^d)^e mod n = (m^1) mod n = m mod n = m : \u001b[0m", "\n", ballot, end="\n\n")
-    print("\u001b[35;1mCalculate the hash of the concatenated message as hash(concatenated message): \n \u001b[0m", int(hashlib.sha256((str(message) + str(rand_num)).encode('utf-8')).hexdigest(), 16), end='\n\n')
-    print("\u001b[31mIf above 2 values are equal then it is established that the message has indeed been approved by the signing authority. \u001b[0m", end='\n\n')
-    decoded_message = message
-    return verification_status, decoded_message
+def verify_signature(candidate_id, signature, public_e, public_n):
+    """
+    Verifikasi tanda tangan sesuai protokol blind signature standar
+    σ^e mod n = H(m)
+
+    Args:
+        candidate_id: ID kandidat (pesan yang ditandatangani)
+        signature: Tanda tangan yang akan diverifikasi
+        public_e: Eksponen publik e
+        public_n: Modulus n
+
+    Returns:
+        bool: True jika verifikasi berhasil, False jika gagal
+    """
+    # PERBAIKAN: Implementasi verifikasi yang akurat
+    # Dekripsi tanda tangan menggunakan kunci publik
+    decrypted = pow(int(signature), public_e, public_n)
+
+    # Hitung hash dari candidate_id
+    message_hash = int(hashlib.sha256(str(candidate_id).encode()).hexdigest(), 16)
+
+    # Bandingkan hasil dekripsi dengan hash
+    return decrypted == message_hash

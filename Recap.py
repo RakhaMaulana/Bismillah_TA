@@ -13,16 +13,19 @@ def fetch_all_keys():
     return [(int(key[0]), int(key[1])) for key in keys]
 
 
-def verify_vote(concatenated_message, unblinded_signature, public_key, n):
-    # Decrypt the signed message using the public key
-    decrypted_message = pow(int(unblinded_signature), public_key, n)
+def verify_signature(candidate_id, signature, public_key, n):
+    """
+    Verifikasi tanda tangan sesuai protokol blind signature standar
+    σ^e mod n = H(m)
+    """
+    # Decrypt the signature using the public key
+    decrypted = pow(int(signature), public_key, n)
 
-    # Calculate the hash of the concatenated message
-    calculated_hash = int(hashlib.sha256(
-        concatenated_message.encode('utf-8')).hexdigest(), 16)
+    # Calculate the hash of the candidate_id
+    calculated_hash = int(hashlib.sha256(str(candidate_id).encode()).hexdigest(), 16)
 
-    # Compare the decrypted message with the calculated hash
-    return decrypted_message == calculated_hash
+    # Compare the decrypted signature with the calculated hash
+    return decrypted == calculated_hash
 
 
 def print_database_contents():
@@ -65,13 +68,14 @@ def recap_votes():
     keys = fetch_all_keys()
 
     # Retrieve all ballots from the database
-    c.execute("SELECT concatenated_message, unblinded_signature FROM ballots")
+    # PERUBAHAN: Menggunakan candidate_id dan signature langsung
+    c.execute("SELECT candidate_id, signature, type FROM ballots")
     ballots = c.fetchall()
 
     # Retrieve candidate names and types
     c.execute("SELECT id, name, type FROM candidates")
     candidates = c.fetchall()
-    candidate_dict = {str(candidate[0]): (candidate[1], candidate[2]) for candidate in candidates}
+    candidate_dict = {candidate[0]: (candidate[1], candidate[2]) for candidate in candidates}
 
     # Close the database connection
     conn.close()
@@ -82,16 +86,19 @@ def recap_votes():
 
     # Verify each ballot and count the votes
     for ballot in ballots:
-        concatenated_message, unblinded_signature = ballot
+        candidate_id, signature, ballot_type = ballot
+
         for n, public_key in keys:
-            if verify_vote(concatenated_message, unblinded_signature, public_key, n):
-                candidate_id = concatenated_message[0]
-                candidate_name, candidate_type = candidate_dict[candidate_id]
-                verified_ballots.append((candidate_name, candidate_type))
-                if candidate_name in vote_counts[candidate_type]:
-                    vote_counts[candidate_type][candidate_name] += 1
-                else:
-                    vote_counts[candidate_type][candidate_name] = 1
+            # PERUBAHAN: Verifikasi tanda tangan sesuai protokol standar
+            if verify_signature(candidate_id, signature, public_key, n):
+                if candidate_id in candidate_dict:
+                    candidate_name, candidate_type = candidate_dict[candidate_id]
+                    verified_ballots.append((candidate_name, candidate_type))
+
+                    if candidate_name in vote_counts[candidate_type]:
+                        vote_counts[candidate_type][candidate_name] += 1
+                    else:
+                        vote_counts[candidate_type][candidate_name] = 1
                 break  # Stop checking other keys if the vote is verified
 
     # Ensure all candidates are included in the vote counts, even if they have 0 votes

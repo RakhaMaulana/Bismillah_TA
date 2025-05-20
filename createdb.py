@@ -41,14 +41,13 @@ c.execute('''CREATE TABLE IF NOT EXISTS voters (
                 token_used_senat INTEGER DEFAULT 0,
                 token_used_dewan INTEGER DEFAULT 0)''')
 
+# PERBAIKAN: Struktur tabel ballots yang disederhanakan sesuai protokol blind signature standar
 c.execute('''CREATE TABLE IF NOT EXISTS ballots (
                 id INTEGER PRIMARY KEY,
-                x TEXT,
-                concatenated_message TEXT,
-                message_hash TEXT,
-                blinded_message TEXT,
-                signed_blind_message TEXT,
-                unblinded_signature TEXT)''')
+                candidate_id INTEGER NOT NULL,
+                signature TEXT NOT NULL,
+                type TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
 
 conn.commit()
 conn.close()
@@ -85,6 +84,7 @@ def save_voter(id_number, digital_signature, photo_filename):
         conn.commit()
     return token
 
+
 def save_candidate(name, photo_filename, candidate_class, candidate_type):
     params = (name, photo_filename, candidate_class, candidate_type)
     with get_db_connection() as conn:
@@ -94,29 +94,30 @@ def save_candidate(name, photo_filename, candidate_class, candidate_type):
     print(f"Saved candidate: {name}")
 
 
-def save_ballot(x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature):
-    params = (str(x), concatenated_message, str(message_hash), str(blinded_message), str(signed_blind_message), str(unblinded_signature))
+# PERBAIKAN: Fungsi save_ballot menyimpan informasi minimal sesuai protokol blind signature
+def save_ballot(candidate_id, signature, voting_type):
+    params = (candidate_id, str(signature), voting_type)
     with get_db_connection() as conn:
         c = conn.cursor()
-        c.execute('''INSERT INTO ballots (x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature)
-                     VALUES (?, ?, ?, ?, ?, ?)''', params)
+        c.execute('''INSERT INTO ballots (candidate_id, signature, type)
+                     VALUES (?, ?, ?)''', params)
         conn.commit()
 
 
-def verify_ballot(id_number, public_key, n):
-    with get_db_connection() as conn:
-        c = conn.cursor()
-        c.execute("SELECT digital_signature FROM voters WHERE id_number=?", (id_number,))
-        voter = c.fetchone()
-    if voter:
-        digital_signature = voter[0]
-        decrypted_message = pow(int(digital_signature), public_key, n)
-        if decrypted_message == int(id_number):
-            print("Vote is valid")
-        else:
-            print("Vote is invalid")
-    else:
-        print("Voter not found")
+# PERBAIKAN: Implementasi verify_ballot yang sesuai dengan protokol blind signature
+def verify_ballot(candidate_id, signature, public_key, n):
+    """
+    Verifikasi tanda tangan sesuai protokol blind signature standar
+    σ^e mod n = H(m)
+    """
+    # Dekripsi tanda tangan menggunakan kunci publik
+    decrypted = pow(int(signature), public_key, n)
+
+    # Hitung hash dari candidate_id
+    message_hash = int(hashlib.sha256(str(candidate_id).encode()).hexdigest(), 16)
+
+    # Bandingkan hasil dekripsi dengan hash
+    return decrypted == message_hash
 
 
 def create_admin():
@@ -130,6 +131,7 @@ def create_admin():
 
 # Create admin user
 create_admin()
+
 
 def get_all_candidates():
     conn = get_db_connection()
@@ -157,7 +159,7 @@ def generate_and_save_keys():
     q = cryptomath.find_prime()
     n = p * q
     phi = (p - 1) * (q - 1)
-    e = 65537
+    e = 65537  # Eksponent publik standar
     d = cryptomath.find_mod_inverse(e, phi)
     save_keys(n, e, d)
     print("Keys generated and saved")

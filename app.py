@@ -17,6 +17,8 @@ from markupsafe import escape
 import time
 from flask import Response
 import json
+import ssl
+import math
 
 
 load_dotenv()
@@ -418,6 +420,7 @@ def vote():
         c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
         voter = c.fetchone()
         if not voter:
+            conn.rollback()
             flash('Invalid token')
             session.pop('voting_token', None)
             session.pop('voting_id_number', None)
@@ -425,26 +428,30 @@ def vote():
 
         id_number, approved, token_used_senat, token_used_dewan = voter
         if approved == 0:
+            conn.rollback()
             flash('Voter not approved')
             session.pop('voting_token', None)
             session.pop('voting_id_number', None)
             return redirect(url_for('submit_token_page'))
 
         if voting_stage == 'senat' and token_used_senat == 1:
+            conn.rollback()
             flash('Vote for Ketua Senat has already been cast. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
             return redirect(url_for('vote_page'))
 
         if voting_stage == 'demus' and token_used_dewan == 1:
+            conn.rollback()
             flash('Vote for Ketua Dewan Musyawarah Taruna has already been cast.')
             return redirect(url_for('vote_page'))
 
         if token_used_senat == 1 and token_used_dewan == 1:
+            conn.rollback()
             flash('Token already used for both votes.')
             session.pop('voting_token', None)
             session.pop('voting_id_number', None)
             return redirect(url_for('index'))
 
-        # Proses blind signature dan simpan ballot - sisa kode tetap sama
+        # Proses blind signature dan simpan ballot
         with get_db_connection() as conn_keys:
             c_keys = conn_keys.cursor()
             c_keys.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
@@ -466,33 +473,53 @@ def vote():
                                (str(n), str(e), str(d)))
                 conn_keys.commit()
 
-        # Proses pembuatan ballot (blind signature)
-        x = secrets.randbelow(n - 1) + 1
-        concat_message = str(candidate_id) + str(x)
-        message_hash = hashlib.sha256(concat_message.encode('utf-8')).hexdigest()
-        message_hash_int = int(message_hash, 16)
-        voter_obj = bs.Voter(n, "y")
-        blind_message = voter_obj.blind_message(message_hash_int, n, e)
-        signed_blind_message = signer.sign_message(blind_message, voter_obj.get_eligibility())
-        signed_message = voter_obj.unwrap_signature(signed_blind_message, n)
+        try:
+            # PERBAIKAN: Implementasi blind signature yang benar
+            # 1. Pesan adalah candidate_id saja
+            message = str(candidate_id)
+            message_hash = hashlib.sha256(message.encode()).hexdigest()
+            message_hash_int = int(message_hash, 16)
 
-        # Simpan ballot ke database
-        c.execute('''INSERT INTO ballots (x, concatenated_message, message_hash, blinded_message, signed_blind_message, unblinded_signature)
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                  (str(x), concat_message, str(message_hash_int), str(blind_message),
-                   str(signed_blind_message), str(signed_message)))
+            # 2. Buat objek Voter dan blinding factor yang tepat
+            voter_obj = bs.Voter(n, "y")
+            blind_message = voter_obj.blind_message(message_hash_int, n, e)
 
-        # Update status token berdasarkan stage voting
-        if voting_stage == 'senat':
-            c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
-            flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
-        elif voting_stage == 'demus':
-            c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
-            flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
-            # Clear voting session after completed both votes
-            session.pop('voting_token', None)
-            session.pop('voting_id_number', None)
-        conn.commit()
+            # 3. Sign the blinded message
+            signed_blind_message = signer.sign_message(blind_message, voter_obj.get_eligibility())
+
+            # 4. Unwrap the signature
+            signature = voter_obj.unwrap_signature(signed_blind_message, n)
+
+            # 5. Verify the signature (optional, for double-checking)
+            is_valid = bs.verify_signature(candidate_id, signature, e, n)
+            if not is_valid:
+                conn.rollback()
+                flash('Error in vote verification.')
+                return redirect(url_for('vote_page'))
+
+            # PERBAIKAN: Simpan hanya data minimal yang diperlukan
+            # 6. Store minimal ballot information
+            c.execute("INSERT INTO ballots (candidate_id, signature, type) VALUES (?, ?, ?)",
+                    (candidate_id, str(signature), voting_stage))
+
+            # Update status token berdasarkan stage voting
+            if voting_stage == 'senat':
+                c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
+                flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
+            elif voting_stage == 'demus':
+                c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
+                flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
+                # Clear voting session after completed both votes
+                session.pop('voting_token', None)
+                session.pop('voting_id_number', None)
+
+            conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            flash(f'Error processing vote: {str(e)}')
+            return redirect(url_for('vote_page'))
+
     return redirect(url_for('vote_page'))
 
 
@@ -586,4 +613,16 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print(f"Running Flask app on IP: {local_ip}")
 
-    app.run(host=local_ip, port=5001, ssl_context=(cert_path, key_path))
+    # Buat SSL context dengan cipher suite yang kuat
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(cert_path, key_path)
+
+    # Konfigurasi untuk hanya mengizinkan cipher GCM yang kuat
+    context.set_ciphers('ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256')
+
+    # Aktifkan TLS 1.2 dan 1.3, nonaktifkan versi yang lebih lama
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.maximum_version = ssl.TLSVersion.TLSv1_3
+
+    # Jalankan aplikasi dengan context SSL yang diperbarui
+    app.run(host=local_ip, port=5001, ssl_context=context)
