@@ -50,29 +50,23 @@ def allowed_file(filename):
 
 @app.after_request
 def apply_security_headers(response):
-    # Content Security Policy
+    # PERBAIKAN: Content Security Policy yang mencakup semua sumber daya yang dibutuhkan
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
-        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+        "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com 'unsafe-inline'; "
+        "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; "
         "img-src 'self' data:; "
-        "font-src 'self' https://cdn.jsdelivr.net; "
+        "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
         "connect-src 'self'; "
         "object-src 'none'; "
         "frame-ancestors 'none'; "
         "form-action 'self';"
     )
 
-    # HSTS - already in your code but enhanced
+    # Header keamanan lainnya tetap sama
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-
-    # Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
-
-    # Prevent Clickjacking
     response.headers["X-Frame-Options"] = "DENY"
-
-    # Control referrer information
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
     # Prevent caching of sensitive pages
@@ -334,10 +328,6 @@ def process_token():
 def vote_page():
     # Get token from session instead of URL
     token = session.get('voting_token')
-
-    if not token:
-        flash('Please submit your token first')
-        return redirect(url_for('submit_token_page'))
 
     conn = get_db_connection()
     c = conn.cursor()

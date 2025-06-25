@@ -1,40 +1,83 @@
-<!-- Base HTML Template for Crypvote Application -->
-<!-- This template includes security headers, Bootstrap, Font Awesome, and a responsive navbar -->
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{% block title %}Crypvote{% endblock %}</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Crypvote{% endblock %}</title>
 
-        <!-- Security Meta Tags -->
-        <meta http-equiv="Feature-Policy" content="camera 'none'; microphone 'none'; geolocation 'none'">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com 'unsafe-inline'; style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self'; object-src 'none';">
-        <meta http-equiv="X-Content-Type-Options" content="nosniff">
-        <meta http-equiv="X-Frame-Options" content="DENY">
-        <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-        <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <!-- Security Meta Tags - PERBAIKAN: Perbaiki CSP untuk mengizinkan cdnjs dan jquery -->
+    <meta http-equiv="Feature-Policy" content="camera 'none'; microphone 'none'; geolocation 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com 'unsafe-inline'; style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self'; object-src 'none';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <!-- PERBAIKAN: Hapus X-Frame-Options dari meta tag, sudah diset via HTTP header -->
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 
-        <link rel="icon" href="{{ url_for('static', filename='icon.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ url_for('static', filename='icon.ico') }}" type="image/x-icon">
 
-        <!-- Bootstrap & Font Awesome with SRI -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-              rel="stylesheet"
-              integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
-              crossorigin="anonymous">
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-              integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
-              crossorigin="anonymous">
-        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    </head>
+    <!-- Bootstrap & Font Awesome with SRI -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+          crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+          crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <!-- Security Headers -->
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <style>
+        .navbar-nav .nav-link.active {
+            font-weight: bold;
+            color: #FFD700 !important;
+        }
+
+        .alert-container {
+            position: relative;
+            z-index: 1000;
+        }
+
+        .navbar-toggler {
+            border: none;
+            outline: none;
+        }
+
+        .navbar-brand {
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .navbar-brand:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-close {
+            font-size: 1rem;
+        }
+
+        /* PERBAIKAN: Tambahkan style untuk alert-error */
+        .alert-error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        /* PERBAIKAN: Animasi untuk flash messages */
+        .alert {
+            animation: fadeInDown 0.5s;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
@@ -99,12 +142,22 @@
     </nav>
 
     <div class="container mt-4">
+        <!-- PERBAIKAN: Flash messages dengan ikon yang sesuai kategori -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="alert-container">
                     {% for category, message in messages %}
                         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            <i class="fas fa-info-circle"></i> {{ message | escape }}
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle me-2"></i>
+                            {% elif category == 'error' or category == 'danger' %}
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle me-2"></i>
+                            {% endif %}
+                            {{ message | escape }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     {% endfor %}
@@ -117,7 +170,7 @@
 
     <!-- Bootstrap & jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@latest/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom Scripts -->
     <script>
@@ -129,36 +182,16 @@
                     link.classList.add("active");
                 }
             });
+
+            // Auto-dismiss flash messages after 5 seconds
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
         });
     </script>
-
-    <style>
-        .navbar-nav .nav-link.active {
-            font-weight: bold;
-            color: #FFD700 !important;
-        }
-
-        .alert-container {
-            position: relative;
-            z-index: 1000;
-        }
-
-        .navbar-toggler {
-            border: none;
-            outline: none;
-        }
-
-        .navbar-brand {
-            transition: transform 0.2s ease-in-out;
-        }
-
-        .navbar-brand:hover {
-            transform: scale(1.05);
-        }
-
-        .btn-close {
-            font-size: 1rem;
-        }
-    </style>
 </body>
 </html>
