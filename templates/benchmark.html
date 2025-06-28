@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}E-Voting Performance Benchmark{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">🚀 E-Voting Performance Benchmark</h2>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">System Performance Analysis</h5>
+            <p class="card-text">
+                This benchmark will test the e-voting pipeline:
+                <strong>Vote Generation → Tabulation → Verification</strong>
+            </p>
+
+            <div class="alert alert-info mb-4">
+                <h6 class="alert-heading">📊 Benchmark Process</h6>
+                <ul class="mb-0">
+                    <li><strong>Generate Votes:</strong> Create actual ballots with blind signatures</li>
+                    <li><strong>Tabulation:</strong> Count all generated votes</li>
+                    <li><strong>Verification:</strong> Verify signature authenticity</li>
+                    <li><strong>Compare with zkVoting:</strong> Benchmark against latest research (2300ms casting, 3.9ms tally)</li>
+                </ul>
+            </div>
+
+            <!-- Research Reference Card -->
+            <div class="alert alert-light border mb-4">
+                <h6 class="alert-heading">📚 Baseline Comparison: zkVoting Research</h6>
+                <p class="mb-2"><strong>Paper:</strong> "zkVoting: A coercion-resistant e-voting system"</p>
+                <p class="mb-2"><strong>Performance Metrics:</strong></p>
+                <ul class="mb-1">
+                    <li>Ballot casting time: <strong>2300 milliseconds</strong></li>
+                    <li>Tally time: <strong>3.9 milliseconds per ballot</strong></li>
+                    <li>Algorithm complexity: <strong>O(n)</strong></li>
+                    <li>Features: Coercion-resistant, E2E verifiable, Zero-knowledge proofs</li>
+                </ul>
+            </div>
+
+            <!-- Simplified Form -->
+            <form id="benchmarkForm" class="mb-4" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="votingIterations" class="form-label">Number of Votes to Generate:</label>
+                        <input type="number" class="form-control" id="votingIterations" name="voting_iterations"
+                               value="50" min="10" max="1000">
+                        <small class="form-text text-muted">Total ballots to generate and count (10-1000)</small>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary btn-lg w-100" id="runBtn">
+                            <i class="fas fa-rocket"></i> Run Benchmark vs zkVoting
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Progress Indicator -->
+            <div id="loadingIndicator" class="text-center d-none">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 id="loadingText" class="mb-2">Initializing benchmark...</h5>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                         role="progressbar" style="width: 0%" id="progressBar">
+                        <span id="progressText">0%</span>
+                    </div>
+                </div>
+
+                <!-- Progress Steps -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">📝 Generation</h6>
+                                <p class="card-text" id="generationStatus">Waiting...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">📊 Tabulation</h6>
+                                <p class="card-text" id="tabulationStatus">Waiting...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">🔓 Verification</h6>
+                                <p class="card-text" id="verificationStatus">Waiting...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Information -->
+            <div id="debugInfo" class="alert alert-info d-none">
+                <h6>🔍 Debug Information</h6>
+                <pre id="debugContent"></pre>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="d-none">
+                <h4 class="mb-3">🎉 Benchmark Results</h4>
+
+                <!-- Overall Performance Summary -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-success">
+                            <h5 class="alert-heading">📊 Overall Performance Summary</h5>
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <strong>Total Votes:</strong><br>
+                                    <span id="totalVotes" class="h4 text-primary">0</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Total Time:</strong><br>
+                                    <span id="totalTime" class="h4 text-info">0ms</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>vs zkVoting:</strong><br>
+                                    <span id="overallSpeedup" class="h4 text-success">0x</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Performance:</strong><br>
+                                    <span id="performanceRating" class="h4">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vote Distribution Card -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">🗳️ Vote Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="voteDistribution" class="row text-center">
+                                    <!-- Vote counts akan diisi oleh JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results -->
+                <div class="row mb-4">
+                    <!-- Generation Results -->
+                    <div class="col-md-4">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">📝 Vote Generation</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr><th>Generated Votes</th><td id="genVotes">0</td></tr>
+                                        <tr><th>Generation Time</th><td id="genTime">0ms</td></tr>
+                                        <tr><th>Time per Vote</th><td id="genAvgTime">0ms</td></tr>
+                                        <tr><th>Votes per Second</th><td id="genThroughput">0</td></tr>
+                                        <tr><th>Success Rate</th><td id="genSuccessRate">0%</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabulation Results -->
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">📊 Tabulation</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr><th>Ballots Counted</th><td id="tabBallots">0</td></tr>
+                                        <tr><th>Tabulation Time</th><td id="tabTime">0ms</td></tr>
+                                        <tr><th>Time per Ballot</th><td id="tabPerBallot">0ms</td></tr>
+                                        <tr><th>Ballots per Second</th><td id="tabThroughput">0</td></tr>
+                                        <tr><th>vs zkVoting</th><td id="tabSpeedup">0x</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verification Results -->
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">🔓 Verification</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr><th>Votes Verified</th><td id="verVotes">0</td></tr>
+                                        <tr><th>Verification Time</th><td id="verTime">0ms</td></tr>
+                                        <tr><th>Time per Vote</th><td id="verAvgTime">0ms</td></tr>
+                                        <tr><th>Verifications/sec</th><td id="verThroughput">0</td></tr>
+                                        <tr><th>Success Rate</th><td id="verSuccessRate">0%</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Comparison -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">🏆 Performance Comparison vs zkVoting Research</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Process</th>
+                                                <th>Our System</th>
+                                                <th>zkVoting (Research)</th>
+                                                <th>Performance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Ballot Casting</strong></td>
+                                                <td id="compGenTime">-</td>
+                                                <td>2300ms per ballot</td>
+                                                <td id="compGenSpeedup">-</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Tabulation</strong></td>
+                                                <td id="compTabTime">-</td>
+                                                <td>3.9ms per ballot</td>
+                                                <td id="compTabSpeedup">-</td>
+                                            </tr>
+                                            <tr class="table-success">
+                                                <td><strong>Overall E2E</strong></td>
+                                                <td id="compOverallTime">-</td>
+                                                <td>~2300ms per vote</td>
+                                                <td id="compOverallSpeedup">-</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Feature Comparison -->
+                                <div class="mt-4">
+                                    <h6>📋 Feature Comparison:</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-success">✅ Our System:</h6>
+                                            <ul class="list-unstyled">
+                                                <li>✓ Blind signature scheme</li>
+                                                <li>✓ Vote anonymity</li>
+                                                <li>✓ Signature verification</li>
+                                                <li>✓ Real-time counting</li>
+                                                <li>✓ Database integrity</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-primary">🔬 zkVoting Research:</h6>
+                                            <ul class="list-unstyled">
+                                                <li>✓ Coercion resistance</li>
+                                                <li>✓ End-to-end verifiability</li>
+                                                <li>✓ Zero-knowledge proofs</li>
+                                                <li>✓ Fake keys approach</li>
+                                                <li>✓ O(n) tally complexity</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="errorMessage" class="alert alert-danger d-none"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+console.log('🔍 Benchmark script loaded');
+
+// Helper functions
+function safeUpdateElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = value;
+        console.log(`✅ Updated ${elementId}: ${value}`);
+    } else {
+        console.log(`❌ Element not found: ${elementId}`);
+    }
+}
+
+function safeToggleClass(elementId, className, add = true) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        if (add) {
+            element.classList.add(className);
+        } else {
+            element.classList.remove(className);
+        }
+    }
+}
+
+function getCSRFToken() {
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    return tokenInput ? tokenInput.value : null;
+}
+
+function getPerformanceRating(speedup) {
+    if (speedup > 10) return '🚀 EXCEPTIONAL';
+    if (speedup > 2) return '⭐ EXCELLENT';
+    if (speedup > 1) return '✅ BETTER';
+    if (speedup > 0.5) return '👍 COMPETITIVE';
+    return '⚠️ NEEDS WORK';
+}
+
+function formatSpeedupText(speedup) {
+    if (speedup > 1) {
+        return `${speedup.toFixed(1)}x faster`;
+    } else if (speedup < 1 && speedup > 0) {
+        return `${(1/speedup).toFixed(1)}x slower`;
+    } else {
+        return 'N/A';
+    }
+}
+
+// NEW: Format time in milliseconds with appropriate precision
+function formatTimeInMs(timeInSeconds) {
+    const timeInMs = timeInSeconds * 1000;
+    if (timeInMs < 1) {
+        return `${timeInMs.toFixed(3)}ms`;
+    } else if (timeInMs < 10) {
+        return `${timeInMs.toFixed(2)}ms`;
+    } else if (timeInMs < 100) {
+        return `${timeInMs.toFixed(1)}ms`;
+    } else {
+        return `${timeInMs.toFixed(0)}ms`;
+    }
+}
+
+function displayVoteDistribution(voteCounts) {
+    const voteDistribution = document.getElementById('voteDistribution');
+    if (!voteDistribution || !voteCounts) return;
+
+    let html = '';
+    let totalVotes = 0;
+
+    // Hitung total votes
+    for (const [candidate, count] of Object.entries(voteCounts)) {
+        totalVotes += count;
+    }
+
+    // Generate cards untuk setiap kandidat
+    for (const [candidate, count] of Object.entries(voteCounts)) {
+        const percentage = totalVotes > 0 ? ((count / totalVotes) * 100).toFixed(1) : 0;
+        html += `
+            <div class="col-md-3 mb-2">
+                <div class="card border-secondary">
+                    <div class="card-body text-center py-2">
+                        <h6 class="card-title mb-1">${candidate}</h6>
+                        <span class="badge bg-primary">${count} votes</span>
+                        <br>
+                        <small class="text-muted">${percentage}%</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    voteDistribution.innerHTML = html;
+    console.log(`✅ Vote distribution displayed: ${totalVotes} total votes`);
+}
+
+document.getElementById('benchmarkForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    console.log('🚀 Benchmark form submitted');
+
+    // Show loading
+    safeToggleClass('loadingIndicator', 'd-none', false);
+    safeToggleClass('results', 'd-none', true);
+    safeToggleClass('errorMessage', 'd-none', true);
+    safeToggleClass('debugInfo', 'd-none', true);
+
+    const runBtn = document.getElementById('runBtn');
+    if (runBtn) runBtn.disabled = true;
+
+    const votingIterations = document.getElementById('votingIterations').value;
+    const csrfToken = getCSRFToken();
+
+    console.log('📊 Benchmark parameters:', {
+        votingIterations,
+        csrfToken: csrfToken ? 'Present' : 'Missing'
+    });
+
+    // Progress simulation
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const loadingText = document.getElementById('loadingText');
+
+    const progressInterval = setInterval(() => {
+        progress += 1.5;
+
+        if (progressBar) progressBar.style.width = Math.min(progress, 95) + '%';
+        if (progressText) progressText.textContent = Math.min(progress, 95).toFixed(0) + '%';
+
+        if (loadingText) {
+            if (progress < 40) {
+                loadingText.textContent = '📝 Generating votes with blind signatures...';
+                safeUpdateElement('generationStatus', '⚡ Running...');
+            } else if (progress < 80) {
+                loadingText.textContent = '📊 Counting and tabulating votes...';
+                safeUpdateElement('generationStatus', '✅ Done');
+                safeUpdateElement('tabulationStatus', '⚡ Running...');
+            } else {
+                loadingText.textContent = '🔓 Verifying signatures...';
+                safeUpdateElement('tabulationStatus', '✅ Done');
+                safeUpdateElement('verificationStatus', '⚡ Running...');
+            }
+        }
+    }, 150);
+
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('voting_iterations', votingIterations);
+    formData.append('iterations', '1'); // Single run
+    formData.append('random_vote_count', '0'); // No random votes
+
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
+
+    // Send request
+    fetch('/run_complete_benchmark', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        clearInterval(progressInterval);
+
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressText) progressText.textContent = '100%';
+        safeUpdateElement('verificationStatus', '✅ Done');
+
+        console.log('📡 Response received:', response.status);
+
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}...`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Benchmark data received:', data);
+
+        // Debug vote distribution
+        if (data.tabulation_results && data.tabulation_results.vote_counts) {
+            console.log('🗳️ Vote Distribution:', data.tabulation_results.vote_counts);
+            displayVoteDistribution(data.tabulation_results.vote_counts);
+        }
+
+        // Hide loading, show results
+        safeToggleClass('loadingIndicator', 'd-none', true);
+        safeToggleClass('results', 'd-none', false);
+
+        console.log('📊 Populating results...');
+
+        // Overall Performance
+        if (data.overall_performance) {
+            const totalTime = data.overall_performance.total_end_to_end_time || 0;
+            const speedup = data.overall_performance.overall_speedup || 0;
+
+            safeUpdateElement('totalVotes', votingIterations);
+            safeUpdateElement('totalTime', formatTimeInMs(totalTime));
+            safeUpdateElement('overallSpeedup', `${speedup.toFixed(1)}x`);
+            safeUpdateElement('performanceRating', getPerformanceRating(speedup));
+        }
+
+        // Generation results
+        if (data.generation_results) {
+            const actualVotes = data.generation_results.total_votes || 0;
+            const genTime = data.generation_results.total_time || 0;
+            const avgTime = data.generation_results.avg_time || 0;
+            const throughput = data.generation_results.votes_per_second || 0;
+
+            safeUpdateElement('genVotes', actualVotes);
+            safeUpdateElement('genTime', formatTimeInMs(genTime));
+            safeUpdateElement('genAvgTime', formatTimeInMs(avgTime));
+            safeUpdateElement('genThroughput', `${throughput.toFixed(2)}`);
+            safeUpdateElement('genSuccessRate', `${(data.generation_results.success_rate || 100).toFixed(1)}%`);
+        }
+
+        // Tabulation results
+        if (data.tabulation_results) {
+            const ballots = data.tabulation_results.total_ballots || 0;
+            const time = data.tabulation_results.avg_time || 0;
+            const timePerBallot = data.tabulation_results.avg_time_per_ballot || 0;
+            const throughput = data.tabulation_results.ballots_per_second || 0;
+            const speedup = data.tabulation_results.speedup_vs_zkvoting || 0;
+
+            safeUpdateElement('tabBallots', ballots);
+            safeUpdateElement('tabTime', formatTimeInMs(time));
+            safeUpdateElement('tabPerBallot', formatTimeInMs(timePerBallot));
+            safeUpdateElement('tabThroughput', `${throughput.toFixed(2)}`);
+            safeUpdateElement('tabSpeedup', formatSpeedupText(speedup));
+        }
+
+        // Verification results
+        if (data.decryption_results) {
+            const verTime = data.decryption_results.total_time || 0;
+            const verVotes = data.decryption_results.total_votes_verified || 0;
+            const avgVerTime = data.decryption_results.avg_time || 0;
+            const verThroughput = verVotes / verTime || 0;
+
+            safeUpdateElement('verVotes', verVotes);
+            safeUpdateElement('verTime', formatTimeInMs(verTime));
+            safeUpdateElement('verAvgTime', formatTimeInMs(avgVerTime));
+            safeUpdateElement('verThroughput', `${verThroughput.toFixed(2)}`);
+            safeUpdateElement('verSuccessRate', `${(data.decryption_results.verification_success_rate || 100).toFixed(1)}%`);
+        }
+
+        // Comparison table with zkVoting - ALL IN MILLISECONDS
+        if (data.generation_results && data.tabulation_results) {
+            const genTime = data.generation_results.avg_time || 0;
+            const tabTime = data.tabulation_results.avg_time_per_ballot || 0;
+            const overallTime = genTime + tabTime;
+
+            // zkVoting baseline: 2300ms casting, 3.9ms tally
+            const genSpeedup = genTime > 0 ? 2.3 / genTime : 0;
+            const tabSpeedup = tabTime > 0 ? 0.0039 / tabTime : 0;
+            const overallSpeedup = overallTime > 0 ? 2.3 / overallTime : 0;
+
+            // Format all times in milliseconds for consistency
+            safeUpdateElement('compGenTime', `${formatTimeInMs(genTime)} per vote`);
+            safeUpdateElement('compGenSpeedup', formatSpeedupText(genSpeedup));
+
+            safeUpdateElement('compTabTime', `${formatTimeInMs(tabTime)} per ballot`);
+            safeUpdateElement('compTabSpeedup', formatSpeedupText(tabSpeedup));
+
+            safeUpdateElement('compOverallTime', `${formatTimeInMs(overallTime)} per vote`);
+            safeUpdateElement('compOverallSpeedup', formatSpeedupText(overallSpeedup));
+        }
+
+        if (runBtn) runBtn.disabled = false;
+        console.log('✅ Benchmark results populated successfully');
+
+        // Scroll to results
+        setTimeout(() => {
+            const resultsElement = document.getElementById('results');
+            if (resultsElement) {
+                resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 500);
+    })
+    .catch(error => {
+        console.error('❌ Benchmark error:', error);
+        clearInterval(progressInterval);
+
+        safeToggleClass('loadingIndicator', 'd-none', true);
+        safeToggleClass('errorMessage', 'd-none', false);
+
+        const errorMessage = document.getElementById('errorMessage');
+        if (errorMessage) {
+            errorMessage.innerHTML = `
+                <h5>❌ Benchmark Error</h5>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <hr>
+                <p><small>Check browser console (F12) for detailed error information.</small></p>
+            `;
+        }
+
+        if (runBtn) runBtn.disabled = false;
+    });
+});
+
+console.log('✅ Benchmark script initialized');
+</script>
+{% endblock %}

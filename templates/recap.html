@@ -35,82 +35,238 @@
     let voteData = {};
     let candidatePhotos = {};
     let eventSource;
+    let isChartInitialized = false;
     // Cache untuk gambar kandidat
     const imageCache = {};
+    const defaultImage = "/static/Unknown.png";
 
-    function getCandidateImage(src) {
-        if (!src) src = "/static/Unknown.png";
-        if (imageCache[src]) return imageCache[src];
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.onerror = function() {
-            console.error("Error loading image: " + src);
-            if (src !== "/static/Unknown.png") {
-                img.src = "/static/Unknown.png";
-            }
-        };
-        img.src = src;
-        imageCache[src] = img;
-        return img;
+    // ✅ PERBAIKAN: Improved image loading dengan proper fallback
+    async function getCandidateImage(src) {
+        console.log('🖼️ Loading candidate image:', src);
+
+        if (!src) {
+            console.log('❌ No image source provided, using default');
+            src = defaultImage;
+        }
+
+        // Check cache first
+        if (imageCache[src]) {
+            console.log('✅ Image found in cache:', src);
+            return imageCache[src];
+        }
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+
+            img.onload = function() {
+                console.log('✅ Image loaded successfully:', src);
+                imageCache[src] = img;
+                resolve(img);
+            };
+
+            img.onerror = function() {
+                console.error('❌ Error loading image:', src);
+
+                // If not already trying default image, try it
+                if (src !== defaultImage) {
+                    console.log('🔄 Trying default image...');
+                    getCandidateImage(defaultImage).then(resolve);
+                } else {
+                    console.error('❌ Even default image failed, creating placeholder');
+                    // Create a simple placeholder canvas
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 100;
+                    canvas.height = 100;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#cccccc';
+                    ctx.fillRect(0, 0, 100, 100);
+                    ctx.fillStyle = '#666666';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No Image', 50, 50);
+
+                    // Convert canvas to image
+                    const placeholderImg = new Image();
+                    placeholderImg.src = canvas.toDataURL();
+                    imageCache[src] = placeholderImg;
+                    resolve(placeholderImg);
+                }
+            };
+
+            // Set src after setting up event handlers
+            img.src = src;
+        });
     }
 
     async function fetchCandidatePhotos(chartType) {
-        const response = await fetch('/get_candidate_photos');
-        const allCandidatePhotos = await response.json();
+        try {
+            console.log('📸 Fetching candidate photos for:', chartType);
+            const response = await fetch('/get_candidate_photos');
 
-        candidatePhotos = {};
-        Object.keys(allCandidatePhotos).forEach(name => {
-            const candidate = allCandidatePhotos[name];
-            if (candidate.type.toLowerCase() === chartType.toLowerCase()) {
-                candidatePhotos[name] = candidate;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-        });
-        initializeVoteData(Object.keys(candidatePhotos));
+
+            const allCandidatePhotos = await response.json();
+            console.log('📸 All candidate photos:', allCandidatePhotos);
+
+            candidatePhotos = {};
+
+            for (const [name, candidate] of Object.entries(allCandidatePhotos)) {
+                if (candidate.type.toLowerCase() === chartType.toLowerCase()) {
+                    // ✅ PERBAIKAN: Better image path validation
+                    let photoPath = candidate.photo;
+
+                    if (photoPath && !photoPath.startsWith('/static/')) {
+                        photoPath = `/static/uploads/${photoPath}`;
+                    }
+
+                    // ✅ PERBAIKAN: Pre-validate image exists
+                    try {
+                        const testResponse = await fetch(photoPath, { method: 'HEAD' });
+                        if (!testResponse.ok) {
+                            console.log(`⚠️ Image not found: ${photoPath}, using default`);
+                            photoPath = defaultImage;
+                        }
+                    } catch (error) {
+                        console.log(`⚠️ Error checking image: ${photoPath}, using default`);
+                        photoPath = defaultImage;
+                    }
+
+                    candidatePhotos[name] = {
+                        ...candidate,
+                        photo: photoPath
+                    };
+                    console.log(`✅ Added candidate: ${name}, photo: ${photoPath}`);
+                }
+            }
+
+            console.log('📸 Filtered candidate photos:', candidatePhotos);
+            initializeVoteData(Object.keys(candidatePhotos));
+        } catch (error) {
+            console.error('❌ Error fetching candidate photos:', error);
+            candidatePhotos = {};
+            initializeVoteData([]);
+        }
     }
 
     function initializeVoteData(candidates) {
         voteData = {};
         candidates.forEach(candidate => voteData[candidate] = 0);
+        console.log('🗳️ Initialized vote data:', voteData);
     }
 
     async function fetchVoteCounts(chartType) {
         await fetchCandidatePhotos(chartType);
 
-        if (eventSource) eventSource.close();
+        if (eventSource) {
+            eventSource.close();
+            console.log('🔌 Closed previous SSE connection');
+        }
 
         if (!window.EventSource) {
-            setInterval(() => {
-                fetch(`/live_count?type=${chartType}`)
-                    .then(response => response.json())
-                    .then(data => updateChart(data.candidate))
-                    .catch(error => console.error("Error fetching votes:", error));
-            }, 5000);
+            console.log('⚠️ SSE not supported, using polling...');
+            startPolling(chartType);
             return;
         }
 
-        eventSource = new EventSource(`/live_count?type=${chartType}`);
-        eventSource.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.type === currentChart) updateChart(data.candidate);
-        };
-        eventSource.onerror = function() {
-            console.error("SSE error, koneksi ditutup.");
-            eventSource.close();
-        };
+        try {
+            console.log(`🔌 Opening SSE connection for: ${chartType}`);
+            eventSource = new EventSource(`/live_count?type=${chartType}`);
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('📨 SSE message received:', data);
+                    if (data.type === currentChart) {
+                        updateChart(data.candidate);
+                    }
+                } catch (error) {
+                    console.error('❌ Error parsing SSE data:', error);
+                }
+            };
+
+            eventSource.onerror = function(error) {
+                console.error("❌ SSE error:", error);
+                eventSource.close();
+
+                // Fallback to polling after SSE error
+                console.log('🔄 Falling back to polling...');
+                setTimeout(() => startPolling(chartType), 1000);
+            };
+
+            eventSource.onopen = function() {
+                console.log('✅ SSE connection opened successfully');
+            };
+        } catch (error) {
+            console.error('❌ Error setting up SSE:', error);
+            startPolling(chartType);
+        }
+    }
+
+    function startPolling(chartType) {
+        setInterval(() => {
+            fetch(`/live_count?type=${chartType}`)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => updateChart(data.candidate))
+                .catch(error => console.error("❌ Error fetching votes:", error));
+        }, 5000);
     }
 
     async function updateChart(label) {
         voteData[label] = (voteData[label] || 0) + 1;
+        console.log('🗳️ Vote updated:', label, 'Total votes:', voteData);
 
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
         const labels = Object.keys(voteData);
         const percentages = labels.map(key => totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0);
 
-        renderChart(labels, percentages);
+        // ✅ NEW: Update chart smoothly without destroying
+        if (isChartInitialized && voteChart) {
+            await updateChartData(labels, percentages);
+        } else {
+            await renderChart(labels, percentages);
+        }
     }
 
-    function renderChart(labels, percentages) {
-        if (voteChart) voteChart.destroy();
+    // ✅ NEW: Smooth chart data update function
+    async function updateChartData(labels, percentages) {
+        console.log('🔄 Updating chart data smoothly...');
+
+        // Update chart data
+        voteChart.data.labels = labels;
+        voteChart.data.datasets[0].data = percentages;
+
+        // Enable smooth animation
+        voteChart.options.animation = {
+            duration: 1000,
+            easing: 'easeInOutQuart'
+        };
+
+        // Update the chart with animation
+        voteChart.update('active');
+
+        // Update total votes in UI
+        document.getElementById('voteCount').textContent =
+            `(Votes: ${Object.values(voteData).reduce((a, b) => a + b, 0)})`;
+
+        // Update candidate images and overlays after animation
+        setTimeout(async () => {
+            await drawAllCandidates(voteChart, labels, percentages);
+            showOverlayForWinners(voteChart, labels, percentages);
+        }, 200); // Small delay to let chart animation start
+    }
+
+    async function renderChart(labels, percentages) {
+        console.log('🎨 Rendering new chart...');
+
+        if (voteChart) {
+            voteChart.destroy();
+        }
 
         const ctx = document.getElementById('voteChart').getContext('2d');
 
@@ -130,6 +286,10 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -141,11 +301,21 @@
             plugins: [{
                 // Gambar foto kandidat dan overlay setelah chart digambar
                 afterDatasetsDraw: (chart) => {
-                    drawAllCandidates(chart, labels, percentages);
-                    showOverlayForWinners(chart, labels, percentages);
+                    // Only draw images after initial render to avoid conflicts
+                    if (isChartInitialized) {
+                        drawAllCandidates(chart, labels, percentages);
+                        showOverlayForWinners(chart, labels, percentages);
+                    }
                 }
             }]
         });
+
+        // Mark chart as initialized after first render
+        setTimeout(async () => {
+            isChartInitialized = true;
+            await drawAllCandidates(voteChart, labels, percentages);
+            showOverlayForWinners(voteChart, labels, percentages);
+        }, 1600); // After initial animation completes
 
         // Update total votes di UI
         document.getElementById('voteCount').textContent =
@@ -153,36 +323,76 @@
     }
 
     /**
-     * Gambar foto semua kandidat di atas bar chart
+     * ✅ PERBAIKAN: Gambar foto semua kandidat dengan better error handling
      */
-    function drawAllCandidates(chart, labels, percentages) {
+    async function drawAllCandidates(chart, labels, percentages) {
         const ctx = chart.ctx;
         const datasetMeta = chart.getDatasetMeta(0);
 
-        chart.data.labels.forEach((label, index) => {
+        for (let index = 0; index < chart.data.labels.length; index++) {
+            const label = chart.data.labels[index];
             const bar = datasetMeta.data[index];
-            const imgSrc = (candidatePhotos[label] && candidatePhotos[label].photo) || "/static/Unknown.png";
-            const img = getCandidateImage(imgSrc);
 
+            let imgSrc = defaultImage;
+            if (candidatePhotos[label] && candidatePhotos[label].photo) {
+                imgSrc = candidatePhotos[label].photo;
+            }
+
+            console.log(`🖼️ Drawing candidate image for ${label}:`, imgSrc);
+
+            try {
+                // ✅ PERBAIKAN: Await untuk memastikan image loaded
+                const img = await getCandidateImage(imgSrc);
+
+                // Double check image is valid
+                if (!img || img.width === 0 || img.height === 0) {
+                    console.log('⚠️ Invalid image, using default');
+                    const defaultImg = await getCandidateImage(defaultImage);
+                    if (defaultImg && defaultImg.width > 0) {
+                        drawImageOnBar(ctx, defaultImg, bar);
+                    }
+                    continue;
+                }
+
+                drawImageOnBar(ctx, img, bar);
+
+            } catch (drawError) {
+                console.error('❌ Error drawing image:', imgSrc, drawError);
+
+                // Try default image as last resort
+                try {
+                    const defaultImg = await getCandidateImage(defaultImage);
+                    if (defaultImg && defaultImg.width > 0) {
+                        drawImageOnBar(ctx, defaultImg, bar);
+                    }
+                } catch (defaultError) {
+                    console.error('❌ Even default image failed:', defaultError);
+                }
+            }
+        }
+    }
+
+    /**
+     * ✅ PERBAIKAN: Helper function untuk menggambar image di bar
+     */
+    function drawImageOnBar(ctx, img, bar) {
+        try {
             const barWidth = bar.width;
-            const aspectRatio = (img.height === 0) ? 1 : (img.width / img.height);
+            const aspectRatio = img.height === 0 ? 1 : (img.width / img.height);
             const candidateWidth = barWidth * 0.5;
             const candidateHeight = candidateWidth / aspectRatio;
             const x = bar.x - (candidateWidth / 2);
             const y = bar.base - candidateHeight;
 
-            if (!img.complete) {
-                img.onload = () => chart.update();
-            } else {
-                ctx.drawImage(img, x, y, candidateWidth, candidateHeight);
-            }
-        });
+            console.log(`🎨 Drawing image at (${x}, ${y}) size: ${candidateWidth}x${candidateHeight}`);
+            ctx.drawImage(img, x, y, candidateWidth, candidateHeight);
+        } catch (error) {
+            console.error('❌ Error in drawImageOnBar:', error);
+        }
     }
 
     /**
-     * Tampilkan overlay GIF dan foto besar untuk kandidat dengan suara tertinggi.
-     * Jika terdapat lebih dari satu kandidat dengan suara sama (tie), maka
-     * overlay akan dibuat untuk masing-masing kandidat.
+     * Tampilkan overlay GIF untuk kandidat dengan suara tertinggi.
      */
     function showOverlayForWinners(chart, labels, percentages) {
         // Hapus overlay winner lama (jika ada)
@@ -191,57 +401,57 @@
 
         const datasetMeta = chart.getDatasetMeta(0);
         const maxVotes = Math.max(...percentages);
+
+        // Only show overlay if there are actual votes
+        if (maxVotes === 0) return;
+
         const topCandidates = labels.filter((_, i) => percentages[i] === maxVotes);
 
-        topCandidates.forEach(candidate => {
+        topCandidates.forEach(async candidate => {
             const index = labels.indexOf(candidate);
             const bar = datasetMeta.data[index];
-            const imgSrc = (candidatePhotos[candidate] && candidatePhotos[candidate].photo) || "/static/Unknown.png";
-            const img = getCandidateImage(imgSrc);
 
-            const barWidth = bar.width;
-            const aspectRatio = (img.height === 0) ? 1 : (img.width / img.height);
-            const candidateWidth = barWidth * 0.7;
-            const candidateHeight = candidateWidth / aspectRatio;
-            const x = bar.x - (candidateWidth / 2);
-            const y = bar.base - candidateHeight;
+            let imgSrc = defaultImage;
+            if (candidatePhotos[candidate] && candidatePhotos[candidate].photo) {
+                imgSrc = candidatePhotos[candidate].photo;
+            }
 
-            const gifSizeWidth = candidateWidth * 1.3;
-            const gifSizeHeight = candidateHeight * 1.3;
-            const gifX = bar.x - (gifSizeWidth / 2);
-            const gifY = bar.base - candidateHeight - ((gifSizeHeight - candidateHeight) / 2);
+            try {
+                const img = await getCandidateImage(imgSrc);
 
-            // Buat elemen overlay GIF
-            const gifOverlay = document.createElement('img');
-            gifOverlay.src = "/static/fire.gif";
-            gifOverlay.alt = "Fire Overlay";
-            gifOverlay.classList.add('winner-overlay');
-            gifOverlay.style.position = "absolute";
-            gifOverlay.style.opacity = "0.5";
-            gifOverlay.style.pointerEvents = "none";
-            gifOverlay.style.left = gifX + "px";
-            gifOverlay.style.top = gifY + "px";
-            gifOverlay.style.width = gifSizeWidth + "px";
-            gifOverlay.style.height = gifSizeHeight + "px";
-            // Tambahkan transisi untuk animasi yang halus
-            gifOverlay.style.transition = "all 0.5s ease-in-out";
-            container.appendChild(gifOverlay);
+                const barWidth = bar.width;
+                const aspectRatio = (img.height === 0) ? 1 : (img.width / img.height);
+                const candidateWidth = barWidth * 0.7;
+                const candidateHeight = candidateWidth / aspectRatio;
 
-            // Buat elemen overlay foto kandidat
-            // const photoOverlay = document.createElement('img');
-            // photoOverlay.src = imgSrc;
-            // photoOverlay.alt = "Candidate Photo";
-            // photoOverlay.classList.add('winner-overlay');
-            // photoOverlay.style.position = "absolute";
-            // photoOverlay.style.pointerEvents = "none";
-            // photoOverlay.style.left = x + "px";
-            // photoOverlay.style.top = y + "px";
-            // photoOverlay.style.width = candidateWidth + "px";
-            // photoOverlay.style.height = candidateHeight + "px";
-            // photoOverlay.style.borderRadius = "5px";
-            // photoOverlay.style.boxShadow = "0px 4px 8px rgba(0,0,0,0.2)";
-            // photoOverlay.style.transition = "all 0.5s ease-in-out";
-            // container.appendChild(photoOverlay);
+                const gifSizeWidth = candidateWidth * 1.3;
+                const gifSizeHeight = candidateHeight * 1.3;
+                const gifX = bar.x - (gifSizeWidth / 2);
+                const gifY = bar.base - candidateHeight - ((gifSizeHeight - candidateHeight) / 2);
+
+                // Buat elemen overlay GIF
+                const gifOverlay = document.createElement('img');
+                gifOverlay.src = "/static/fire.gif";
+                gifOverlay.alt = "Fire Overlay";
+                gifOverlay.classList.add('winner-overlay');
+                gifOverlay.style.position = "absolute";
+                gifOverlay.style.opacity = "0.5";
+                gifOverlay.style.pointerEvents = "none";
+                gifOverlay.style.left = gifX + "px";
+                gifOverlay.style.top = gifY + "px";
+                gifOverlay.style.width = gifSizeWidth + "px";
+                gifOverlay.style.height = gifSizeHeight + "px";
+                gifOverlay.style.transition = "all 0.5s ease-in-out";
+
+                gifOverlay.onerror = function() {
+                    console.log('⚠️ Fire GIF not found, removing overlay');
+                    this.remove();
+                };
+
+                container.appendChild(gifOverlay);
+            } catch (error) {
+                console.error('❌ Error creating winner overlay:', error);
+            }
         });
     }
 
@@ -251,6 +461,16 @@
             voteChart = null;
         }
         voteData = {};
+        isChartInitialized = false; // ✅ NEW: Reset initialization flag
+
+        // Clear image cache for new chart type
+        Object.keys(imageCache).forEach(key => {
+            if (key.includes('/uploads/')) {
+                delete imageCache[key];
+            }
+        });
+
+        console.log('🧹 Chart reset and image cache cleared');
     }
 
     function showChart(chartType) {
@@ -260,10 +480,22 @@
             ' <span id="voteCount" class="text-muted">(Votes: 0)</span>';
         resetChart();
         fetchVoteCounts(chartType);
+
+        console.log('🔄 Switched to chart type:', chartType);
     }
 
+    // ✅ PERBAIKAN: Preload default image when page loads
     document.addEventListener("DOMContentLoaded", function () {
-        showChart('senat');
+        console.log('🚀 DOM loaded, preloading default image...');
+
+        // Preload default image
+        getCandidateImage(defaultImage).then(() => {
+            console.log('✅ Default image preloaded');
+            showChart('senat');
+        }).catch(() => {
+            console.log('⚠️ Default image failed to preload, continuing anyway');
+            showChart('senat');
+        });
     });
 </script>
 
@@ -273,7 +505,11 @@
     .btn { transition: all 0.3s ease-in-out; }
     .btn:hover { transform: translateY(-2px); box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); }
     .chart-container { position: relative; height: 400px; }
-    /* Layering: Canvas paling bawah, overlay winner di atasnya */
     #voteChart { z-index: 1; }
+
+    /* ✅ NEW: Smooth transitions for chart updates */
+    .chart-container .winner-overlay {
+        transition: all 0.5s ease-in-out;
+    }
 </style>
 {% endblock %}

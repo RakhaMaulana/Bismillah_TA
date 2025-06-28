@@ -33,7 +33,7 @@
             <button type="submit" class="btn btn-primary w-100">Vote</button>
         </form>
         <div class="candidate-photo-container text-center mt-4">
-            <img id="candidate-photo" src="{{ url_for('static', filename=candidates[0].photo) }}" class="img-fluid candidate-photo" alt="Candidate">
+            <img id="candidate-photo" src="{{ url_for('static', filename=candidates[0].photo) }}" class="img-fluid candidate-photo" alt="Candidate" onerror="this.src='{{ url_for('static', filename='Unknown.png') }}'">
             <h5 id="candidate-name" class="mt-3">{{ candidates[0].name }}</h5>
             <p id="candidate-class">{{ candidates[0].class }}</p>
         </div>
@@ -41,6 +41,9 @@
 </div>
 
 <script>
+    // ✅ PERBAIKAN: Default image URL for fallback
+    const defaultImageUrl = "{{ url_for('static', filename='Unknown.png') }}";
+
     function updateCandidatePhoto() {
         const candidateSelect = document.getElementById('candidate');
         const selectedOption = candidateSelect.options[candidateSelect.selectedIndex];
@@ -50,7 +53,52 @@
         const candidatePhoto = document.getElementById('candidate-photo');
         const candidateNameElement = document.getElementById('candidate-name');
         const candidateClassElement = document.getElementById('candidate-class');
+
+        // ✅ PERBAIKAN: Set fallback image using onerror
+        candidatePhoto.onerror = function() {
+            console.log('⚠️ Image failed to load:', photoUrl, 'Using default image');
+            this.src = defaultImageUrl;
+            this.onerror = null; // Prevent infinite loop
+        };
+
         candidatePhoto.src = photoUrl;
+        candidateNameElement.textContent = candidateName;
+        candidateClassElement.textContent = candidateClass;
+    }
+
+    // ✅ PERBAIKAN: Enhanced image preloading and validation
+    function preloadAndValidateImage(imageUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(imageUrl);
+            img.onerror = () => {
+                console.log('⚠️ Image not found:', imageUrl, 'Using default');
+                resolve(defaultImageUrl);
+            };
+            img.src = imageUrl;
+        });
+    }
+
+    // ✅ PERBAIKAN: Async image loading with fallback
+    async function updateCandidatePhotoAsync() {
+        const candidateSelect = document.getElementById('candidate');
+        const selectedOption = candidateSelect.options[candidateSelect.selectedIndex];
+        const photoUrl = selectedOption.getAttribute('data-photo');
+        const candidateName = selectedOption.getAttribute('data-name');
+        const candidateClass = selectedOption.getAttribute('data-class');
+        const candidatePhoto = document.getElementById('candidate-photo');
+        const candidateNameElement = document.getElementById('candidate-name');
+        const candidateClassElement = document.getElementById('candidate-class');
+
+        try {
+            // Preload and validate image
+            const validImageUrl = await preloadAndValidateImage(photoUrl);
+            candidatePhoto.src = validImageUrl;
+        } catch (error) {
+            console.error('❌ Error loading image:', error);
+            candidatePhoto.src = defaultImageUrl;
+        }
+
         candidateNameElement.textContent = candidateName;
         candidateClassElement.textContent = candidateClass;
     }
@@ -71,10 +119,36 @@
         return true;
     }
 
-    // Initialize the photo display with the first candidate's photo
-    window.onload = function() {
-        updateCandidatePhoto();
+    // ✅ PERBAIKAN: Enhanced initialization with image validation
+    window.onload = async function() {
+        console.log('🚀 Initializing vote page...');
+
+        // Set default fallback for initial image
+        const initialPhoto = document.getElementById('candidate-photo');
+        if (initialPhoto) {
+            initialPhoto.onerror = function() {
+                console.log('⚠️ Initial image failed to load, using default');
+                this.src = defaultImageUrl;
+                this.onerror = null;
+            };
+        }
+
+        // Update candidate photo display
+        await updateCandidatePhotoAsync();
+
+        console.log('✅ Vote page initialized successfully');
     };
+
+    // ✅ PERBAIKAN: Add global error handler for all images
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set fallback for any image that fails to load
+        document.addEventListener('error', function(e) {
+            if (e.target.tagName === 'IMG' && e.target.classList.contains('candidate-photo')) {
+                console.log('⚠️ Candidate image failed to load:', e.target.src);
+                e.target.src = defaultImageUrl;
+            }
+        }, true);
+    });
 </script>
 
 <style>
@@ -82,6 +156,26 @@
         width: 300px;
         height: 300px;
         object-fit: cover;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    /* ✅ NEW: Loading state styling */
+    .candidate-photo:not([src]) {
+        background: #f0f0f0 url('{{ url_for('static', filename='Unknown.png') }}') center/cover no-repeat;
+    }
+
+    .candidate-photo:hover {
+        transform: scale(1.02);
+        border-color: #007bff;
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+
+    /* ✅ NEW: Error state styling */
+    .candidate-photo[src*="Unknown.png"] {
+        border-color: #ffc107;
+        background-color: #fff3cd;
     }
 </style>
 {% endblock %}
