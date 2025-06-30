@@ -937,7 +937,7 @@ def run_complete_benchmark():
                 'avg_time_per_ballot': tabulation_data.get('avg_time_per_ballot', 0),
                 'ballots_per_second': tabulation_data.get('ballots_per_second', 0),
                 'speedup_vs_zkvoting': tabulation_speedup,
-                'vote_counts': tabulation_data.get('vote_counts', {})
+                'vote_counts': {}  # ✅ Initialize empty vote_counts
             },
             'decryption_results': {
                 'total_votes_verified': decryption_results.get('total_votes_verified', 0),
@@ -977,6 +977,107 @@ def run_complete_benchmark():
         print(f"   Total time: {total_time:.4f}s")
         print(f"   Overall speedup vs zkVoting: {results['overall_performance']['overall_speedup']:.2f}x")
         print(f"   Performance tier: {results['overall_performance']['performance_tier']}")
+
+        # ✅ FIX: Properly format vote counts for frontend
+        try:
+            # Get actual vote counts from tabulation
+            conn = get_db_connection()
+            c = conn.cursor()
+
+            # Get vote counts per candidate
+            c.execute("""
+                SELECT c.name, c.type, COUNT(b.id) as vote_count
+                FROM candidates c
+                LEFT JOIN ballots b ON c.id = b.candidate_id
+                GROUP BY c.id, c.name, c.type
+                ORDER BY c.type, c.name
+            """)
+
+            vote_data = c.fetchall()
+            conn.close()
+
+            # Format vote counts for frontend
+            formatted_vote_counts = {}
+            for candidate_name, candidate_type, vote_count in vote_data:
+                if vote_count > 0:  # Only include candidates with votes
+                    formatted_vote_counts[candidate_name] = vote_count
+
+            print(f"🔍 Formatted vote counts: {formatted_vote_counts}")
+
+            # Update tabulation_data with formatted counts
+            tabulation_data['vote_counts'] = formatted_vote_counts
+
+        except Exception as e:
+            print(f"❌ Error formatting vote counts: {e}")
+            formatted_vote_counts = {}
+
+        # ✅ FIX: Ensure vote_counts is properly passed to results
+        results = {
+            'generation_results': {
+                'total_votes': generation_results.get('successful_votes', 0),
+                'total_time': generation_time,
+                'avg_time': generation_results.get('avg_time_per_vote', 0),
+                'min_time': generation_results.get('individual_stats', {}).get('min', 0),
+                'max_time': generation_results.get('individual_stats', {}).get('max', 0),
+                'votes_per_second': generation_results.get('votes_per_second', 0),
+                'success_rate': generation_results.get('success_rate', 0),
+                'speedup_vs_zkvoting': generation_speedup,
+                'vote_distribution': generation_results.get('vote_distribution', {})
+            },
+            'random_voting_results': {
+                'total_votes': random_voting_results.get('total_votes', 0),
+                'total_time': random_voting_time,
+                'avg_time': random_voting_results.get('avg_time_per_vote', 0),
+                'min_time': random_voting_results.get('min_time', 0),
+                'max_time': random_voting_results.get('max_time', 0),
+                'votes_per_second': random_voting_results.get('votes_per_second', 0),
+                'vote_distribution': random_voting_results.get('vote_distribution', {})
+            },
+            'tabulation_results': {
+                'total_ballots': tabulation_data.get('total_ballots', 0),
+                'iterations': tabulation_data.get('iterations', 0),
+                'avg_time': tabulation_data.get('avg_time', 0),
+                'median_time': tabulation_data.get('median_time', 0),
+                'min_time': tabulation_data.get('min_time', 0),
+                'max_time': tabulation_data.get('max_time', 0),
+                'avg_time_per_ballot': tabulation_data.get('avg_time_per_ballot', 0),
+                'ballots_per_second': tabulation_data.get('ballots_per_second', 0),
+                'speedup_vs_zkvoting': tabulation_speedup,
+                'vote_counts': formatted_vote_counts  # ✅ Use formatted vote counts
+            },
+            'decryption_results': {
+                'total_votes_verified': decryption_results.get('total_votes_verified', 0),
+                'total_time': total_decryption_time,
+                'avg_time': decryption_results.get('avg_time_per_vote', 0),
+                'verification_success_rate': decryption_results.get('verification_success_rate', 0),
+                'votes_per_second': decryption_results.get('votes_per_second', 0),
+                'speedup_vs_zkvoting': decryption_speedup
+            },
+            'overall_performance': {
+                'total_end_to_end_time': total_time,
+                'overall_speedup': min(generation_speedup, tabulation_speedup, decryption_speedup) if all([generation_speedup, tabulation_speedup, decryption_speedup]) else 0,
+                'recommendation': get_performance_recommendation_complete(
+                    generation_results, tabulation_data, decryption_results
+                ),
+                'max_vote_limit': 1024,
+                'performance_tier': get_performance_tier(generation_results, tabulation_data, decryption_results)
+            },
+            'charts': charts,
+            'baseline_comparison': {
+                'system': 'zkVoting',
+                'paper_reference': 'zkVoting: A coercion-resistant e-voting system',
+                'ballot_casting_time': zkvoting_ballot_casting_time,
+                'tally_time_per_ballot': zkvoting_tally_time,
+                'algorithm_complexity': 'O(n)',
+                'features': ['Coercion-resistant', 'E2E verifiable', 'Anonymity-preserving', 'Zero-knowledge proofs']
+            },
+            'system_limits': {
+                'max_votes_per_test': 1024,
+                'max_iterations': 20,
+                'recommended_batch_size': 50,
+                'optimal_vote_range': '100-500 votes for balanced testing'
+            }
+        }
 
         return jsonify(results)
 
