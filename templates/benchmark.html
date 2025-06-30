@@ -36,18 +36,21 @@
                 </ul>
             </div>
 
-            <!-- Simplified Form -->
+            <!-- ✅ FIXED FORM WITHOUT BUTTONS -->
             <form id="benchmarkForm" class="mb-4" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <label for="votingIterations" class="form-label">Number of Votes to Generate:</label>
                         <input type="number" class="form-control" id="votingIterations" name="voting_iterations"
-                               value="50" min="10" max="1000">
-                        <small class="form-text text-muted">Total ballots to generate and count (10-1000)</small>
+                               value="50" min="10" max="1024">
+                        <small class="form-text text-muted">
+                            Total ballots to generate and count (10-1024).
+                            <strong>Recommended:</strong> 50-200 for quick tests, 500-1024 for full benchmark.
+                        </small>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end">
+                    <div class="col-md-4 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary btn-lg w-100" id="runBtn">
                             <i class="fas fa-rocket"></i> Run Benchmark vs zkVoting
                         </button>
@@ -55,12 +58,14 @@
                 </div>
             </form>
 
-            <!-- Progress Indicator -->
+            <!-- ✅ IMPROVED PROGRESS INDICATOR -->
             <div id="loadingIndicator" class="text-center d-none">
                 <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 <h5 id="loadingText" class="mb-2">Initializing benchmark...</h5>
+
+                <!-- ✅ IMPROVED: More accurate progress bar -->
                 <div class="progress mb-3" style="height: 25px;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
                          role="progressbar" style="width: 0%" id="progressBar">
@@ -68,29 +73,46 @@
                     </div>
                 </div>
 
+                <!-- ✅ IMPROVED: Time estimation -->
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <span id="timeEstimate">Estimated time: Calculating...</span> |
+                        <span id="elapsedTime">Elapsed: 0s</span>
+                    </small>
+                </div>
+
                 <!-- Progress Steps -->
                 <div class="row">
                     <div class="col-md-4">
-                        <div class="card border-primary">
+                        <div class="card border-primary" id="generationCard">
                             <div class="card-body text-center">
                                 <h6 class="card-title">📝 Generation</h6>
                                 <p class="card-text" id="generationStatus">Waiting...</p>
+                                <div class="progress progress-sm">
+                                    <div class="progress-bar bg-primary" id="generationProgress" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card border-warning">
+                        <div class="card border-warning" id="tabulationCard">
                             <div class="card-body text-center">
                                 <h6 class="card-title">📊 Tabulation</h6>
                                 <p class="card-text" id="tabulationStatus">Waiting...</p>
+                                <div class="progress progress-sm">
+                                    <div class="progress-bar bg-warning" id="tabulationProgress" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card border-success">
+                        <div class="card border-success" id="verificationCard">
                             <div class="card-body text-center">
                                 <h6 class="card-title">🔓 Verification</h6>
                                 <p class="card-text" id="verificationStatus">Waiting...</p>
+                                <div class="progress progress-sm">
+                                    <div class="progress-bar bg-success" id="verificationProgress" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -103,8 +125,9 @@
                 <pre id="debugContent"></pre>
             </div>
 
-            <!-- Results -->
+            <!-- Results (unchanged) -->
             <div id="results" class="d-none">
+                <!-- Your existing results HTML content -->
                 <h4 class="mb-3">🎉 Benchmark Results</h4>
 
                 <!-- Overall Performance Summary -->
@@ -255,7 +278,7 @@
                                 </div>
 
                                 <!-- Feature Comparison -->
-                                <div class="mt-4">
+                                <!-- <div class="mt-4">
                                     <h6>📋 Feature Comparison:</h6>
                                     <div class="row">
                                         <div class="col-md-6">
@@ -279,7 +302,7 @@
                                             </ul>
                                         </div>
                                     </div>
-                                </div>
+                                </div> -->
                             </div>
                         </div>
                     </div>
@@ -293,6 +316,10 @@
 
 <script>
 console.log('🔍 Benchmark script loaded');
+
+// ✅ IMPROVED: More accurate progress tracking
+let benchmarkStartTime = 0;
+let progressInterval = null;
 
 // Helper functions
 function safeUpdateElement(elementId, value) {
@@ -339,7 +366,6 @@ function formatSpeedupText(speedup) {
     }
 }
 
-// NEW: Format time in milliseconds with appropriate precision
 function formatTimeInMs(timeInSeconds) {
     const timeInMs = timeInSeconds * 1000;
     if (timeInMs < 1) {
@@ -351,6 +377,127 @@ function formatTimeInMs(timeInSeconds) {
     } else {
         return `${timeInMs.toFixed(0)}ms`;
     }
+}
+
+// ✅ IMPROVED: Better progress tracking that doesn't get stuck
+function startProgressTracking(voteCount) {
+    benchmarkStartTime = Date.now();
+    let progress = 0;
+    let currentStage = 'generation';
+    let stageStartTime = Date.now();
+
+    // ✅ IMPROVED: More realistic time estimation based on vote count
+    const estimatedGenerationTime = Math.max(5, voteCount * 0.05); // ~0.05s per vote
+    const estimatedTabulationTime = Math.max(2, voteCount * 0.01); // ~0.01s per vote
+    const estimatedVerificationTime = Math.max(3, voteCount * 0.02); // ~0.02s per vote
+    const estimatedTotalTime = estimatedGenerationTime + estimatedTabulationTime + estimatedVerificationTime;
+
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const loadingText = document.getElementById('loadingText');
+    const timeEstimate = document.getElementById('timeEstimate');
+    const elapsedTime = document.getElementById('elapsedTime');
+
+    if (timeEstimate) {
+        timeEstimate.textContent = `Estimated time: ${estimatedTotalTime.toFixed(0)}s`;
+    }
+
+    progressInterval = setInterval(() => {
+        const elapsed = (Date.now() - benchmarkStartTime) / 1000;
+        const stageElapsed = (Date.now() - stageStartTime) / 1000;
+
+        // Update elapsed time
+        if (elapsedTime) {
+            elapsedTime.textContent = `Elapsed: ${elapsed.toFixed(0)}s`;
+        }
+
+        // ✅ IMPROVED: Progress based on realistic timing and actual elapsed time
+        if (currentStage === 'generation' && progress < 50) {
+            // Progress based on estimated generation time vs actual elapsed time
+            const expectedProgress = Math.min(50, (stageElapsed / estimatedGenerationTime) * 50);
+            progress = Math.max(progress, expectedProgress);
+
+            // Add small incremental progress to show activity
+            progress += 0.5;
+
+            if (progress >= 50 || stageElapsed >= estimatedGenerationTime * 1.2) {
+                currentStage = 'tabulation';
+                stageStartTime = Date.now();
+                safeUpdateElement('generationStatus', '✅ Complete');
+                document.getElementById('generationProgress')?.style.setProperty('width', '100%');
+                safeUpdateElement('tabulationStatus', '⚡ Running...');
+            } else {
+                const genProgress = (progress / 50) * 100;
+                document.getElementById('generationProgress')?.style.setProperty('width', `${genProgress}%`);
+            }
+
+            if (loadingText) {
+                loadingText.textContent = `📝 Generating ${voteCount} votes with blind signatures...`;
+            }
+
+        } else if (currentStage === 'tabulation' && progress < 80) {
+            // Progress based on estimated tabulation time vs actual elapsed time
+            const expectedProgress = Math.min(30, (stageElapsed / estimatedTabulationTime) * 30);
+            progress = Math.max(progress, 50 + expectedProgress);
+
+            // Add small incremental progress
+            progress += 1;
+
+            if (progress >= 80 || stageElapsed >= estimatedTabulationTime * 1.2) {
+                currentStage = 'verification';
+                stageStartTime = Date.now();
+                safeUpdateElement('tabulationStatus', '✅ Complete');
+                document.getElementById('tabulationProgress')?.style.setProperty('width', '100%');
+                safeUpdateElement('verificationStatus', '⚡ Running...');
+            } else {
+                const tabProgress = ((progress - 50) / 30) * 100;
+                document.getElementById('tabulationProgress')?.style.setProperty('width', `${tabProgress}%`);
+            }
+
+            if (loadingText) {
+                loadingText.textContent = '📊 Counting and tabulating votes...';
+            }
+
+        } else if (currentStage === 'verification' && progress < 98) {
+            // Progress based on estimated verification time vs actual elapsed time
+            const expectedProgress = Math.min(18, (stageElapsed / estimatedVerificationTime) * 18);
+            progress = Math.max(progress, 80 + expectedProgress);
+
+            // Add small incremental progress
+            progress += 0.8;
+
+            const verProgress = ((progress - 80) / 18) * 100;
+            document.getElementById('verificationProgress')?.style.setProperty('width', `${verProgress}%`);
+
+            if (loadingText) {
+                loadingText.textContent = '🔓 Verifying signatures and finalizing...';
+            }
+        } else if (currentStage === 'verification' && progress >= 98) {
+            // ✅ IMPROVED: Don't get stuck at 95%, allow completion
+            if (loadingText) {
+                loadingText.textContent = '⏳ Finalizing results and generating charts...';
+            }
+
+            // Slow increment toward 100% but don't stop completely
+            progress += 0.1;
+            progress = Math.min(progress, 99.5); // Stop just before 100%
+        }
+
+        // Update main progress bar
+        if (progressBar) progressBar.style.width = Math.min(progress, 99.5) + '%';
+        if (progressText) progressText.textContent = Math.min(progress, 99.5).toFixed(0) + '%';
+
+        // ✅ IMPROVED: If taking too long, show "still processing" message
+        if (elapsed > estimatedTotalTime * 1.5) {
+            if (loadingText) {
+                loadingText.textContent = '⏳ Processing large dataset - please wait...';
+            }
+            if (timeEstimate) {
+                timeEstimate.textContent = `Processing time: ${elapsed.toFixed(0)}s (extended for ${voteCount} votes)`;
+            }
+        }
+
+    }, 300); // Update every 300ms for smoother animation
 }
 
 function displayVoteDistribution(voteCounts) {
@@ -386,9 +533,18 @@ function displayVoteDistribution(voteCounts) {
     console.log(`✅ Vote distribution displayed: ${totalVotes} total votes`);
 }
 
+// ✅ IMPROVED: Form submission with better validation
 document.getElementById('benchmarkForm').addEventListener('submit', function(e) {
     e.preventDefault();
     console.log('🚀 Benchmark form submitted');
+
+    const votingIterations = parseInt(document.getElementById('votingIterations').value);
+
+    // ✅ VALIDATION: Check vote count limits
+    if (isNaN(votingIterations) || votingIterations < 10 || votingIterations > 1024) {
+        alert('⚠️ Please enter a valid vote count between 10 and 1024.');
+        return;
+    }
 
     // Show loading
     safeToggleClass('loadingIndicator', 'd-none', false);
@@ -399,7 +555,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
     const runBtn = document.getElementById('runBtn');
     if (runBtn) runBtn.disabled = true;
 
-    const votingIterations = document.getElementById('votingIterations').value;
     const csrfToken = getCSRFToken();
 
     console.log('📊 Benchmark parameters:', {
@@ -407,33 +562,8 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
         csrfToken: csrfToken ? 'Present' : 'Missing'
     });
 
-    // Progress simulation
-    let progress = 0;
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const loadingText = document.getElementById('loadingText');
-
-    const progressInterval = setInterval(() => {
-        progress += 1.5;
-
-        if (progressBar) progressBar.style.width = Math.min(progress, 95) + '%';
-        if (progressText) progressText.textContent = Math.min(progress, 95).toFixed(0) + '%';
-
-        if (loadingText) {
-            if (progress < 40) {
-                loadingText.textContent = '📝 Generating votes with blind signatures...';
-                safeUpdateElement('generationStatus', '⚡ Running...');
-            } else if (progress < 80) {
-                loadingText.textContent = '📊 Counting and tabulating votes...';
-                safeUpdateElement('generationStatus', '✅ Done');
-                safeUpdateElement('tabulationStatus', '⚡ Running...');
-            } else {
-                loadingText.textContent = '🔓 Verifying signatures...';
-                safeUpdateElement('tabulationStatus', '✅ Done');
-                safeUpdateElement('verificationStatus', '⚡ Running...');
-            }
-        }
-    }, 150);
+    // ✅ START IMPROVED PROGRESS TRACKING
+    startProgressTracking(votingIterations);
 
     // Prepare form data
     const formData = new FormData();
@@ -451,11 +581,30 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
         body: formData
     })
     .then(response => {
-        clearInterval(progressInterval);
+        // ✅ IMPROVED: Immediately complete progress when response received
+        if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+        }
 
-        if (progressBar) progressBar.style.width = '100%';
-        if (progressText) progressText.textContent = '100%';
-        safeUpdateElement('verificationStatus', '✅ Done');
+        // Complete all progress bars immediately
+        const finalProgress = ['progressBar', 'generationProgress', 'tabulationProgress', 'verificationProgress'];
+        finalProgress.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.style.width = '100%';
+        });
+
+        if (document.getElementById('progressText')) {
+            document.getElementById('progressText').textContent = '100%';
+        }
+
+        safeUpdateElement('generationStatus', '✅ Complete');
+        safeUpdateElement('tabulationStatus', '✅ Complete');
+        safeUpdateElement('verificationStatus', '✅ Complete');
+
+        // Update loading text
+        const totalElapsed = (Date.now() - benchmarkStartTime) / 1000;
+        safeUpdateElement('loadingText', `✅ Processing complete in ${totalElapsed.toFixed(1)}s - Loading results...`);
 
         console.log('📡 Response received:', response.status);
 
@@ -481,6 +630,11 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
 
         console.log('📊 Populating results...');
 
+        // Show completion time
+        const totalElapsed = (Date.now() - benchmarkStartTime) / 1000;
+        safeUpdateElement('loadingText', `✅ Benchmark completed in ${totalElapsed.toFixed(1)}s`);
+
+        // Populate all results (your existing code)
         // Overall Performance
         if (data.overall_performance) {
             const totalTime = data.overall_performance.total_end_to_end_time || 0;
@@ -535,7 +689,7 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
             safeUpdateElement('verSuccessRate', `${(data.decryption_results.verification_success_rate || 100).toFixed(1)}%`);
         }
 
-        // Comparison table with zkVoting - ALL IN MILLISECONDS
+        // Comparison table with zkVoting
         if (data.generation_results && data.tabulation_results) {
             const genTime = data.generation_results.avg_time || 0;
             const tabTime = data.tabulation_results.avg_time_per_ballot || 0;
@@ -546,7 +700,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
             const tabSpeedup = tabTime > 0 ? 0.0039 / tabTime : 0;
             const overallSpeedup = overallTime > 0 ? 2.3 / overallTime : 0;
 
-            // Format all times in milliseconds for consistency
             safeUpdateElement('compGenTime', `${formatTimeInMs(genTime)} per vote`);
             safeUpdateElement('compGenSpeedup', formatSpeedupText(genSpeedup));
 
@@ -570,7 +723,11 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
     })
     .catch(error => {
         console.error('❌ Benchmark error:', error);
-        clearInterval(progressInterval);
+
+        if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+        }
 
         safeToggleClass('loadingIndicator', 'd-none', true);
         safeToggleClass('errorMessage', 'd-none', false);
@@ -591,4 +748,27 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
 
 console.log('✅ Benchmark script initialized');
 </script>
+
+<style>
+/* ✅ ADDITIONAL STYLES */
+.progress-sm {
+    height: 8px;
+}
+
+.card-body .progress {
+    margin-top: 0.5rem;
+}
+
+/* Smooth transitions for progress bars */
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Better mobile responsiveness */
+@media (max-width: 768px) {
+    .col-md-8, .col-md-4 {
+        margin-bottom: 1rem;
+    }
+}
+</style>
 {% endblock %}
