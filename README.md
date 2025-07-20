@@ -1,15 +1,13 @@
+# Generate SSL
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
   -nodes -keyout dev.private.key -out dev.certificate.crt \
   -subj "/CN=Pemilihan Umum Taruna" \
   -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 
-Install on Windows and Browser (import cert)
-
 # Build Docker images
->> docker-compose build
->>
->> # Jalankan Docker containers
->> docker-compose up
+docker-compose build
+# Run Docker containers
+docker-compose up
 
 # Secure E-Voting Mechanism using Blind Signature and Digital Signature
 
