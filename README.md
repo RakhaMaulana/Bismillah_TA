@@ -14,3 +14,11 @@ In recent years, there has been rapid growth in the field of computer networks. 
 A digital signature is generally used to authenticate the identity of a sender and also make sure that the original contents of the message have not been altered. This is generally done by encrypting the hash of the message with the sender's private key. Henceforth the receiver may first decrypt the hash with the sender's public key and then compare it with the hash of the original message.
 
 Blind signature is used in privacy-related protocols, where the message author and signer are different parties. In the case of a voting application, we may need an official to verify if the voter is eligible but we shall not want him to see his message. Hence this is an apt situation for the usage of blind signatures. A Blind Signature is nothing but a digital signature in which the content of the message is disguised (blinded) before it is signed. The blind signature can be publicly verified against the original, unblinded message in the same manner as a regular digital signature.
+
+Pentest Result
+[./Invicti - OWASP Top Ten 2021 Report.html](https://s.id/InvictiScanReport)
+![alt text](image.png)
+[Burpsuite - OWASP Top Ten 2021 Report.html](https://s.id/DeepScanBurpSuite)
+![alt text](image-1.png)
+./Deepsource - https://s.id/DeepSourceScanResult
+![alt text](image-2.png)
