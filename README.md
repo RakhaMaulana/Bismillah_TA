@@ -77,7 +77,7 @@ A secure electronic voting system implementing **RSA-based Blind Signature** sch
 #### Step 1: Clone Repository
 ```bash
 git clone https://github.com/RakhaMaulana/Bismillah_TA
-cd secure-evoting-system
+cd Bismillah_TA
 ```
 
 #### Step 2: Install Dependencies
