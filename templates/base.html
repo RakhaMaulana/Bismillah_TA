@@ -146,30 +146,30 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <!-- PERBAIKAN: Flash messages dengan ikon yang sesuai kategori -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="alert-container">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {% if category == 'success' %}
-                                <i class="fas fa-check-circle me-2"></i>
-                            {% elif category == 'error' or category == 'danger' %}
-                                <i class="fas fa-exclamation-circle me-2"></i>
-                            {% elif category == 'warning' %}
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                            {% else %}
-                                <i class="fas fa-info-circle me-2"></i>
-                            {% endif %}
-                            {{ message | escape }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
 
+    <!-- Pop-up Notification Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="flash-{{ category }}">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle me-2"></i>
+                        {% elif category == 'error' or category == 'danger' %}
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle me-2"></i>
+                        {% endif %}
+                        {{ message | escape }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div class="container mt-4">
         {% block content %}{% endblock %}
     </div>
 
@@ -188,13 +188,13 @@
                 }
             });
 
-            // Auto-dismiss flash messages after 5 seconds
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
+            // Pop-up notification auto-hide
+            const flashes = document.querySelectorAll('.flashes li');
+            flashes.forEach(flash => {
                 setTimeout(() => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
+                    flash.classList.add('hide');
+                    setTimeout(() => flash.remove(), 350);
+                }, 4000);
             });
         });
     </script>

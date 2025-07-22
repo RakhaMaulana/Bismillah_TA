@@ -3,65 +3,277 @@
 {% block title %}Voter Status{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4 fw-bold">Voter Status</h1>
+<div class="status-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <div class="status-card shadow-lg">
+                    <div class="card-header text-center">
+                        <div class="status-icon mb-3">
+                            <i class="fas fa-users fa-3x text-primary"></i>
+                        </div>
+                        <h1 class="card-title mb-0">Voter Status Dashboard</h1>
+                        <p class="card-subtitle text-muted mt-2">Monitor voter registration and voting progress</p>
+                    </div>
 
-    <div class="mb-3 d-flex justify-content-between">
-        <input type="text" id="searchInput" class="form-control w-50" placeholder="Search NPM...">
-    </div>
+                    <div class="card-body">
+                        <!-- Statistics Cards -->
+                        <div class="row mb-4">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card total-voters">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3 class="stat-number" id="totalVoters">{{ voters|length }}</h3>
+                                        <p class="stat-label">Total Voters</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card approved-voters">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3 class="stat-number" id="approvedVoters">{{ voters|selectattr('approved')|list|length }}</h3>
+                                        <p class="stat-label">Approved</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card senat-voted">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-vote-yea"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3 class="stat-number" id="senatVoted">{{ voters|selectattr('token_used_senat')|list|length }}</h3>
+                                        <p class="stat-label">Senat Votes</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-card dewan-voted">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-ballot-check"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <h3 class="stat-number" id="dewanVoted">{{ voters|selectattr('token_used_dewan')|list|length }}</h3>
+                                        <p class="stat-label">Dewan Votes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-    <div class="table-responsive">
-        <table class="table table-hover table-bordered" id="voterTable">
-            <thead class="table-dark">
-                <tr class="text-center">
-                    <th scope="col" onclick="sortTable(0)">NPM</th>
-                    <th scope="col" onclick="sortTable(1)">Approved</th>
-                    <th scope="col" onclick="sortTable(2)">Voted for Ketua Senat</th>
-                    <th scope="col" onclick="sortTable(3)">Voted for Ketua Dewan Musyawarah Taruna</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for voter in voters %}
-                <tr>
-                    <td class="text-center">{{ voter['id_number'] | e }}</td>
-                    <td class="text-center">
-                        <span class="badge {{ 'bg-success' if voter['approved'] else 'bg-danger' }}">
-                            {{ 'Yes' if voter['approved'] else 'No' }}
-                        </span>
-                    </td>
-                    <td class="text-center">
-                        <span class="badge {{ 'bg-success' if voter['token_used_senat'] else 'bg-danger' }}">
-                            {{ 'Yes' if voter['token_used_senat'] else 'No' }}
-                        </span>
-                    </td>
-                    <td class="text-center">
-                        <span class="badge {{ 'bg-success' if voter['token_used_dewan'] else 'bg-danger' }}">
-                            {{ 'Yes' if voter['token_used_dewan'] else 'No' }}
-                        </span>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        <!-- Search and Controls -->
+                        <div class="controls-section mb-4">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="search-wrapper">
+                                        <div class="input-group">
+                                            <span class="input-group-text search-icon">
+                                                <i class="fas fa-search"></i>
+                                            </span>
+                                            <input type="text"
+                                                   id="searchInput"
+                                                   class="form-control search-input"
+                                                   placeholder="Search by NPM..."
+                                                   autocomplete="off">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="resetSearch()">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="filter-controls">
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="all">
+                                                <i class="fas fa-list me-1"></i>All
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success filter-btn" data-filter="approved">
+                                                <i class="fas fa-check me-1"></i>Approved
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning filter-btn" data-filter="pending">
+                                                <i class="fas fa-clock me-1"></i>Pending
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info filter-btn" data-filter="voted">
+                                                <i class="fas fa-vote-yea me-1"></i>Voted
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Enhanced Table -->
+                        <div class="table-container">
+                            <div class="table-responsive">
+                                <table class="table table-hover modern-table" id="voterTable">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" class="sortable" onclick="sortTable(0)">
+                                                <i class="fas fa-id-card me-2"></i>NPM
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th scope="col" class="sortable" onclick="sortTable(1)">
+                                                <i class="fas fa-user-check me-2"></i>Approved
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th scope="col" class="sortable" onclick="sortTable(2)">
+                                                <i class="fas fa-vote-yea me-2"></i>Ketua Senat
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th scope="col" class="sortable" onclick="sortTable(3)">
+                                                <i class="fas fa-ballot-check me-2"></i>Ketua Dewan
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for voter in voters %}
+                                        <tr data-approved="{{ voter['approved'] }}" data-senat="{{ voter['token_used_senat'] }}" data-dewan="{{ voter['token_used_dewan'] }}">
+                                            <td class="npm-cell">
+                                                <div class="npm-container">
+                                                    <i class="fas fa-user-circle text-muted me-2"></i>
+                                                    <span class="npm-text">{{ voter['id_number'] | e }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="status-cell">
+                                                <span class="status-badge {{ 'approved' if voter['approved'] else 'pending' }}">
+                                                    <i class="fas {{ 'fa-check-circle' if voter['approved'] else 'fa-clock' }} me-1"></i>
+                                                    {{ 'Approved' if voter['approved'] else 'Pending' }}
+                                                </span>
+                                            </td>
+                                            <td class="vote-cell">
+                                                <span class="vote-badge {{ 'voted' if voter['token_used_senat'] else 'not-voted' }}">
+                                                    <i class="fas {{ 'fa-check-circle' if voter['token_used_senat'] else 'fa-times-circle' }} me-1"></i>
+                                                    {{ 'Voted' if voter['token_used_senat'] else 'Not Voted' }}
+                                                </span>
+                                            </td>
+                                            <td class="vote-cell">
+                                                <span class="vote-badge {{ 'voted' if voter['token_used_dewan'] else 'not-voted' }}">
+                                                    <i class="fas {{ 'fa-check-circle' if voter['token_used_dewan'] else 'fa-times-circle' }} me-1"></i>
+                                                    {{ 'Voted' if voter['token_used_dewan'] else 'Not Voted' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Results Info -->
+                        <div class="results-info mt-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Showing <span id="visibleRows">{{ voters|length }}</span> of {{ voters|length }} voters
+                                </span>
+                                <button class="btn btn-sm btn-outline-primary" onclick="refreshTable()">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+    // Enhanced voter status dashboard functionality
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('searchInput');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        // Initialize
+        updateVisibleRowsCount();
+
+        // Search functionality
         searchInput.addEventListener('keyup', function() {
             const filter = searchInput.value.toUpperCase();
             const rows = document.querySelectorAll("#voterTable tbody tr");
 
             rows.forEach(row => {
                 const npm = row.cells[0].textContent.toUpperCase();
-                row.style.display = npm.includes(filter) ? "" : "none";
+                const shouldShow = npm.includes(filter);
+                row.style.display = shouldShow ? "" : "none";
+            });
+
+            updateVisibleRowsCount();
+            updateSearchHighlight();
+        });
+
+        // Filter functionality
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all buttons
+                filterBtns.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+
+                const filterType = this.dataset.filter;
+                applyFilter(filterType);
             });
         });
 
         // Sort table by NPM by default
         sortTableByNPM();
     });
+
+    function applyFilter(filterType) {
+        const rows = document.querySelectorAll("#voterTable tbody tr");
+
+        rows.forEach(row => {
+            let shouldShow = true;
+
+            switch(filterType) {
+                case 'approved':
+                    shouldShow = row.dataset.approved === 'True';
+                    break;
+                case 'pending':
+                    shouldShow = row.dataset.approved === 'False';
+                    break;
+                case 'voted':
+                    shouldShow = row.dataset.senat === 'True' || row.dataset.dewan === 'True';
+                    break;
+                case 'all':
+                default:
+                    shouldShow = true;
+                    break;
+            }
+
+            row.style.display = shouldShow ? "" : "none";
+        });
+
+        updateVisibleRowsCount();
+    }
+
+    function updateVisibleRowsCount() {
+        const visibleRows = document.querySelectorAll("#voterTable tbody tr:not([style*='display: none'])");
+        document.getElementById('visibleRows').textContent = visibleRows.length;
+    }
+
+    function updateSearchHighlight() {
+        const searchTerm = document.getElementById('searchInput').value;
+        const rows = document.querySelectorAll("#voterTable tbody tr");
+
+        rows.forEach(row => {
+            const npmCell = row.querySelector('.npm-text');
+            let text = npmCell.textContent;
+
+            if (searchTerm && text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                const highlightedText = text.replace(regex, '<mark>$1</mark>');
+                npmCell.innerHTML = highlightedText;
+            } else {
+                npmCell.textContent = text;
+            }
+        });
+    }
 
     function sortTableByNPM() {
         sortTable(0);
@@ -85,25 +297,459 @@
         });
 
         rows.forEach(row => tbody.appendChild(row));
+        updateVisibleRowsCount();
     }
 
     function resetSearch() {
         document.getElementById('searchInput').value = "";
         document.querySelectorAll("#voterTable tbody tr").forEach(row => row.style.display = "");
+        updateVisibleRowsCount();
+        updateSearchHighlight();
+    }
+
+    function refreshTable() {
+        // Show loading state
+        const refreshBtn = document.querySelector('button[onclick="refreshTable()"]');
+        const originalContent = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+        refreshBtn.disabled = true;
+
+        // Simulate refresh (in real app, this would reload data)
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalContent;
+            refreshBtn.disabled = false;
+            // You could add actual refresh logic here
+            location.reload();
+        }, 1000);
     }
 </script>
 
 <style>
-    .table-responsive {
-        margin-top: 20px;
+    /* Voter Status Container */
+    .status-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        padding: 2rem 0;
     }
 
-    .table-hover tbody tr:hover {
-        background-color: rgba(0, 123, 255, 0.1);
+    .status-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="status-grid" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="2.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23status-grid)"/></svg>');
+        opacity: 0.3;
     }
 
-    th {
+    /* Status Card */
+    .status-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        position: relative;
+        z-index: 2;
+        animation: statusFadeIn 0.8s ease-out;
+        overflow: hidden;
+    }
+
+    .status-card .card-header {
+        background: rgba(248, 249, 250, 0.8);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        border-radius: 25px 25px 0 0;
+        padding: 2rem;
+    }
+
+    .status-card .card-body {
+        padding: 2rem;
+    }
+
+    /* Status Icon */
+    .status-icon {
+        animation: statusPulse 2s infinite;
+    }
+
+    /* Statistics Cards */
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    .stat-card.total-voters {
+        border-left: 4px solid #007bff;
+    }
+
+    .stat-card.approved-voters {
+        border-left: 4px solid #28a745;
+    }
+
+    .stat-card.senat-voted {
+        border-left: 4px solid #17a2b8;
+    }
+
+    .stat-card.dewan-voted {
+        border-left: 4px solid #ffc107;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .total-voters .stat-icon {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+    }
+
+    .approved-voters .stat-icon {
+        background: linear-gradient(45deg, #28a745, #1e7e34);
+    }
+
+    .senat-voted .stat-icon {
+        background: linear-gradient(45deg, #17a2b8, #138496);
+    }
+
+    .dewan-voted .stat-icon {
+        background: linear-gradient(45deg, #ffc107, #e0a800);
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: #495057;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    /* Controls Section */
+    .controls-section {
+        background: rgba(248, 249, 250, 0.5);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* Search Input */
+    .search-wrapper {
+        position: relative;
+    }
+
+    .search-input {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .search-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+    }
+
+    .search-icon {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+    }
+
+    /* Filter Controls */
+    .filter-controls {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .filter-btn {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .filter-btn.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+    /* Enhanced Table */
+    .table-container {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .modern-table {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .modern-table thead {
+        background: linear-gradient(45deg, #495057, #343a40);
+        color: white;
+    }
+
+    .modern-table thead th {
+        border: none;
+        padding: 1rem;
+        font-weight: 600;
+        position: relative;
         cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .modern-table thead th:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .modern-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .modern-table tbody tr:hover {
+        background: rgba(0, 123, 255, 0.05);
+        transform: scale(1.01);
+    }
+
+    .modern-table tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        vertical-align: middle;
+    }
+
+    /* Table Cell Styles */
+    .npm-cell {
+        font-weight: 600;
+    }
+
+    .npm-container {
+        display: flex;
+        align-items: center;
+    }
+
+    .npm-text {
+        font-family: 'Courier New', monospace;
+        font-size: 0.95rem;
+    }
+
+    .status-cell, .vote-cell {
+        text-align: center;
+    }
+
+    /* Status and Vote Badges */
+    .status-badge, .vote-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-badge.approved {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+    }
+
+    .status-badge.pending {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.2);
+    }
+
+    .vote-badge.voted {
+        background: rgba(23, 162, 184, 0.1);
+        color: #17a2b8;
+        border: 1px solid rgba(23, 162, 184, 0.2);
+    }
+
+    .vote-badge.not-voted {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+
+    /* Sort Icons */
+    .sort-icon {
+        margin-left: 0.5rem;
+        opacity: 0.6;
+        font-size: 0.8rem;
+    }
+
+    .sortable:hover .sort-icon {
+        opacity: 1;
+    }
+
+    /* Results Info */
+    .results-info {
+        background: rgba(248, 249, 250, 0.5);
+        border-radius: 10px;
+        padding: 1rem;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* Search Highlight */
+    mark {
+        background: rgba(255, 193, 7, 0.3);
+        padding: 0.1rem 0.2rem;
+        border-radius: 3px;
+    }
+
+    /* Animations */
+    @keyframes statusFadeIn {
+        0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes statusPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .filter-controls {
+            justify-content: flex-start;
+            margin-top: 1rem;
+        }
+
+        .filter-btn {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .status-container {
+            padding: 1rem 0;
+        }
+
+        .status-card .card-header,
+        .status-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .controls-section {
+            padding: 1rem;
+        }
+
+        .modern-table {
+            font-size: 0.875rem;
+        }
+
+        .modern-table thead th,
+        .modern-table tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.25rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .status-card {
+            margin: 0.5rem;
+            border-radius: 15px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+        }
+
+        .filter-btn {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.6rem;
+        }
+
+        .status-badge, .vote-badge {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .modern-table thead th {
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .status-card,
+        .stat-card,
+        .modern-table tbody tr,
+        .status-icon {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .search-input:focus,
+    .filter-btn:focus,
+    .sortable:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .status-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .modern-table {
+            border: 2px solid black;
+        }
+
+        .search-input {
+            border: 2px solid black;
+        }
     }
 </style>
 {% endblock %}

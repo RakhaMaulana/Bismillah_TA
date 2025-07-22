@@ -3,126 +3,737 @@
 {% block title %}Register Candidate{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="card shadow-lg p-4 border-0 rounded-3">
-        <h2 class="text-center mb-4 text-primary fw-bold">Register Candidate</h2>
-        <form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm(event)">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="candidate-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-lg-6 col-md-8 col-sm-10">
+                <div class="candidate-card shadow-lg">
+                    <div class="card-header text-center">
+                        <div class="candidate-icon mb-3">
+                            <i class="fas fa-user-plus fa-3x text-primary"></i>
+                        </div>
+                        <h2 class="card-title mb-0">Register Candidate</h2>
+                        <p class="card-subtitle text-muted mt-2">Join the election as a candidate</p>
+                    </div>
 
-            <div class="mb-3">
-                <label for="name" class="form-label fw-semibold">Name:</label>
-                <input type="text" id="name" name="name" class="form-control shadow-sm" required>
+                    <div class="card-body p-4">
+                        <form method="post" enctype="multipart/form-data" class="register-candidate-form" onsubmit="return validateForm(event)">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <div class="form-floating mb-4">
+                                <input type="text"
+                                       id="name"
+                                       name="name"
+                                       class="form-control candidate-input"
+                                       placeholder="Enter your full name"
+                                       required
+                                       maxlength="100"
+                                       autocomplete="name">
+                                <label for="name">
+                                    <i class="fas fa-user me-2"></i>Full Name
+                                </label>
+                                <div class="invalid-feedback">
+                                    Please enter a valid name
+                                </div>
+                            </div>
+
+                            <div class="form-floating mb-4">
+                                <input type="text"
+                                       id="class"
+                                       name="class"
+                                       class="form-control candidate-input"
+                                       placeholder="Enter your class"
+                                       required
+                                       maxlength="50"
+                                       autocomplete="organization">
+                                <label for="class">
+                                    <i class="fas fa-graduation-cap me-2"></i>Class
+                                </label>
+                                <div class="invalid-feedback">
+                                    Please enter your class
+                                </div>
+                            </div>
+
+                            <div class="form-floating mb-4">
+                                <select id="candidate_type"
+                                        name="candidate_type"
+                                        class="form-select candidate-select"
+                                        required>
+                                    <option value="" disabled selected>Choose candidate type</option>
+                                    <option value="senat">Senat</option>
+                                    <option value="demus">Dewan Musyawarah Taruna</option>
+                                </select>
+                                <label for="candidate_type">
+                                    <i class="fas fa-users me-2"></i>Candidate Type
+                                </label>
+                                <div class="invalid-feedback">
+                                    Please select a candidate type
+                                </div>
+                            </div>
+
+                            <div class="photo-upload-section mb-4">
+                                <label for="photo" class="form-label photo-label">
+                                    <i class="fas fa-camera me-2"></i>Candidate Photo
+                                </label>
+                                <div class="photo-upload-wrapper">
+                                    <input type="file"
+                                           id="photo"
+                                           name="photo"
+                                           class="form-control photo-input"
+                                           accept=".png,.jpg,.jpeg"
+                                           required>
+                                    <div class="photo-preview" id="photoPreview">
+                                        <div class="photo-placeholder">
+                                            <i class="fas fa-image fa-3x text-muted"></i>
+                                            <p class="mt-2 text-muted">Click to upload photo</p>
+                                            <small class="text-muted">JPG, JPEG, PNG (Max 5MB)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="invalid-feedback">
+                                    Please select a valid photo file
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100 register-btn">
+                                <span class="btn-text">
+                                    <i class="fas fa-user-plus me-2"></i>
+                                    Register as Candidate
+                                </span>
+                                <span class="btn-loading d-none">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Registering...
+                                </span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="card-footer text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Make sure all information is accurate before submitting
+                        </small>
+                    </div>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="class" class="form-label fw-semibold">Class:</label>
-                <input type="text" id="class" name="class" class="form-control shadow-sm" required>
-            </div>
-            <div class="mb-3">
-                <label for="candidate_type" class="form-label fw-semibold">Candidate Type:</label>
-                <select id="candidate_type" name="candidate_type" class="form-select shadow-sm" required>
-                    <option value="" disabled selected>-- Select Type --</option>
-                    <option value="senat">Senat</option>
-                    <option value="demus">Dewan Musyawarah Taruna</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="photo" class="form-label fw-semibold">Photo:</label>
-                <input type="file" id="photo" name="photo" class="form-control shadow-sm" accept=".png, .jpg, .jpeg" required>
-                <small class="text-muted">Allowed formats: JPG, JPEG, PNG</small>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 shadow-sm">Register</button>
-        </form>
+        </div>
     </div>
 </div>
 
-<!-- Popup Notification -->
-<div id="successPopup" class="popup-container">
+<!-- Enhanced Popup Notification -->
+<div id="successPopup" class="popup-overlay">
     <div class="popup-content">
-        <i class="fas fa-check-circle text-success fa-3x"></i>
-        <p class="mt-3">Candidate Registered Successfully!</p>
-        <button class="btn btn-success" onclick="closePopup()">OK</button>
+        <div class="popup-icon">
+            <i class="fas fa-check-circle text-success"></i>
+        </div>
+        <h4 class="popup-title">Success!</h4>
+        <p class="popup-message">Candidate registered successfully!</p>
+        <button class="btn btn-success popup-btn" onclick="closePopup()">
+            <i class="fas fa-check me-2"></i>OK
+        </button>
     </div>
 </div>
 
-<!-- CSS Styling -->
-<style>
-    body {
-        background-color: #f8f9fa;
-    }
-    .card {
-        max-width: 500px;
-        margin: auto;
-        background: white;
-    }
-    .form-control, .form-select {
-        border-radius: 10px;
-    }
-    .btn-primary {
-        border-radius: 10px;
-        font-weight: bold;
-        transition: 0.3s;
-    }
-    .btn-primary:hover {
-        background: #0056b3;
-    }
-    /* Popup Notification */
-    .popup-container {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-    }
-    .popup-content {
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    }
-</style>
-
-<!-- JavaScript -->
 <script>
+    // Enhanced form validation with modern UX
     function validateForm(event) {
         event.preventDefault(); // Prevent form from submitting instantly
 
-        const name = document.getElementById('name').value.trim();
-        const classInput = document.getElementById('class').value.trim();
-        const candidateType = document.getElementById('candidate_type').value;
-        const photo = document.getElementById('photo').files[0];
+        const nameInput = document.getElementById('name');
+        const classInput = document.getElementById('class');
+        const candidateTypeInput = document.getElementById('candidate_type');
+        const photoInput = document.getElementById('photo');
+        const submitBtn = document.querySelector('.register-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
 
-        if (!name || !classInput || !candidateType || !photo) {
-            alert('All fields are required.');
-            return false;
+        // Clear previous validation states
+        [nameInput, classInput, candidateTypeInput, photoInput].forEach(input => {
+            input.classList.remove('is-invalid', 'is-valid');
+        });
+
+        const name = nameInput.value.trim();
+        const classValue = classInput.value.trim();
+        const candidateType = candidateTypeInput.value;
+        const photo = photoInput.files[0];
+
+        let isValid = true;
+
+        // Validate name
+        if (!name || name.length < 2) {
+            nameInput.classList.add('is-invalid');
+            showNotification('Please enter a valid name (at least 2 characters)', 'error');
+            isValid = false;
+        } else {
+            nameInput.classList.add('is-valid');
         }
 
+        // Validate class
+        if (!classValue || classValue.length < 1) {
+            classInput.classList.add('is-invalid');
+            showNotification('Please enter your class', 'error');
+            isValid = false;
+        } else {
+            classInput.classList.add('is-valid');
+        }
+
+        // Validate candidate type
+        if (!candidateType) {
+            candidateTypeInput.classList.add('is-invalid');
+            showNotification('Please select a candidate type', 'error');
+            isValid = false;
+        } else {
+            candidateTypeInput.classList.add('is-valid');
+        }
+
+        // Validate photo
+        if (!photo) {
+            photoInput.classList.add('is-invalid');
+            showNotification('Please select a photo file', 'error');
+            isValid = false;
+        } else {
+            // File type validation
+            const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
+            if (!allowedExtensions.test(photo.name)) {
+                photoInput.classList.add('is-invalid');
+                showNotification('Invalid file type. Only JPG, JPEG, and PNG are allowed.', 'error');
+                isValid = false;
+            } else if (photo.size > 5 * 1024 * 1024) { // 5MB limit
+                photoInput.classList.add('is-invalid');
+                showNotification('File size too large. Maximum 5MB allowed.', 'error');
+                isValid = false;
+            } else {
+                photoInput.classList.add('is-valid');
+            }
+        }
+
+        // Security validation
         const invalidChars = /[;'"<>]/;
-        if (invalidChars.test(name) || invalidChars.test(classInput) || invalidChars.test(candidateType)) {
-            alert('Invalid characters detected in input.');
+        if (invalidChars.test(name) || invalidChars.test(classValue) || invalidChars.test(candidateType)) {
+            showNotification('Invalid characters detected in input.', 'error');
+            isValid = false;
+        }
+
+        if (!isValid) {
             return false;
         }
 
-        const allowedExtensions = /(\.jpg|\.jpeg|\.png)$/i;
-        if (!allowedExtensions.test(photo.name)) {
-            alert('Invalid file type. Only JPG, JPEG, and PNG are allowed.');
-            return false;
-        }
+        // Show loading state
+        submitBtn.disabled = true;
+        btnText.classList.add('d-none');
+        btnLoading.classList.remove('d-none');
 
         // Show success popup
         document.getElementById('successPopup').style.display = 'flex';
-        setTimeout(() => document.querySelector('form').submit(), 2000); // Submit form after showing popup
+        setTimeout(() => {
+            document.querySelector('form').submit();
+        }, 2000); // Submit form after showing popup
 
         return false; // Prevent immediate form submission
     }
 
     function closePopup() {
         document.getElementById('successPopup').style.display = 'none';
+
+        // Reset form state
+        const submitBtn = document.querySelector('.register-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+
+        submitBtn.disabled = false;
+        btnText.classList.remove('d-none');
+        btnLoading.classList.add('d-none');
     }
+
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existingNotifications = document.querySelectorAll('.custom-notification');
+        existingNotifications.forEach(notification => notification.remove());
+
+        // Create notification
+        const notification = document.createElement('div');
+        notification.className = `custom-notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'} me-2"></i>
+            ${message}
+        `;
+
+        document.body.appendChild(notification);
+
+        // Show notification
+        setTimeout(() => notification.classList.add('show'), 100);
+
+        // Hide notification
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 4000);
+    }
+
+    // Enhanced initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        const photoInput = document.getElementById('photo');
+        const photoPreview = document.getElementById('photoPreview');
+
+        // Photo preview functionality
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoPreview.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview" class="preview-image">
+                        <div class="photo-overlay">
+                            <i class="fas fa-edit text-white"></i>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Real-time validation
+        const inputs = ['name', 'class'];
+        inputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            input.addEventListener('input', function() {
+                this.classList.remove('is-invalid', 'is-valid');
+
+                // Basic real-time validation
+                if (this.value.trim().length >= 2) {
+                    this.classList.add('is-valid');
+                } else if (this.value.length > 0) {
+                    this.classList.add('is-invalid');
+                }
+            });
+        });
+
+        // Candidate type validation
+        document.getElementById('candidate_type').addEventListener('change', function() {
+            this.classList.remove('is-invalid');
+            if (this.value) {
+                this.classList.add('is-valid');
+            }
+        });
+    });
 </script>
+
+<style>
+    /* Candidate Registration Container */
+    .candidate-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .candidate-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="candidate-grid" width="25" height="25" patternUnits="userSpaceOnUse"><circle cx="12.5" cy="12.5" r="2" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23candidate-grid)"/></svg>');
+        opacity: 0.3;
+    }
+
+    /* Candidate Card */
+    .candidate-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        position: relative;
+        z-index: 2;
+        animation: candidateFadeIn 0.8s ease-out;
+        overflow: hidden;
+    }
+
+    .candidate-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15) !important;
+    }
+
+    .candidate-card .card-header {
+        background: rgba(248, 249, 250, 0.8);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        border-radius: 25px 25px 0 0;
+        padding: 2rem 2rem 1.5rem;
+    }
+
+    .candidate-card .card-body {
+        padding: 2rem;
+    }
+
+    .candidate-card .card-footer {
+        background: rgba(248, 249, 250, 0.6);
+        border-top: 1px solid rgba(0,0,0,0.05);
+        border-radius: 0 0 25px 25px;
+        padding: 1rem 2rem;
+    }
+
+    /* Candidate Icon */
+    .candidate-icon {
+        animation: candidatePulse 2s infinite;
+    }
+
+    /* Enhanced Form Controls */
+    .candidate-input, .candidate-select {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 1rem 1.5rem 1rem 3rem;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .candidate-input:focus, .candidate-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.15);
+        background: white;
+        transform: translateY(-1px);
+    }
+
+    .candidate-input.is-valid, .candidate-select.is-valid {
+        border-color: #28a745;
+        background: rgba(40, 167, 69, 0.05);
+    }
+
+    .candidate-input.is-invalid, .candidate-select.is-invalid {
+        border-color: #dc3545;
+        background: rgba(220, 53, 69, 0.05);
+        animation: inputShake 0.5s ease-in-out;
+    }
+
+    .form-floating > label {
+        padding-left: 3rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .form-floating > .candidate-input:focus ~ label,
+    .form-floating > .candidate-input:not(:placeholder-shown) ~ label,
+    .form-floating > .candidate-select:focus ~ label,
+    .form-floating > .candidate-select:not([value=""]) ~ label {
+        color: #007bff;
+        transform: scale(0.85) translateY(-0.5rem) translateX(-0.5rem);
+    }
+
+    /* Photo Upload Section */
+    .photo-upload-section {
+        margin-bottom: 2rem;
+    }
+
+    .photo-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .photo-upload-wrapper {
+        position: relative;
+        border: 2px dashed #dee2e6;
+        border-radius: 15px;
+        padding: 1rem;
+        transition: all 0.3s ease;
+        background: rgba(248, 249, 250, 0.5);
+    }
+
+    .photo-upload-wrapper:hover {
+        border-color: #007bff;
+        background: rgba(0, 123, 255, 0.05);
+    }
+
+    .photo-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .photo-preview {
+        position: relative;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .photo-placeholder {
+        text-align: center;
+        color: #6c757d;
+    }
+
+    .preview-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 12px;
+    }
+
+    .photo-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 123, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.3s ease;
+        border-radius: 12px;
+    }
+
+    .photo-preview:hover .photo-overlay {
+        opacity: 1;
+    }
+
+    /* Enhanced Register Button */
+    .register-btn {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        border-radius: 15px;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .register-btn:hover:not(:disabled) {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+    }
+
+    .register-btn:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    /* Enhanced Popup */
+    .popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+    }
+
+    .popup-content {
+        background: white;
+        padding: 3rem 2rem;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        max-width: 400px;
+        width: 90%;
+        animation: popupSlideIn 0.4s ease-out;
+    }
+
+    .popup-icon i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .popup-title {
+        color: #495057;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+
+    .popup-message {
+        color: #6c757d;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    .popup-btn {
+        border-radius: 12px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+    }
+
+    /* Custom Notifications */
+    .custom-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        transform: translateX(400px);
+        transition: all 0.3s ease;
+        z-index: 9999;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+        max-width: 350px;
+    }
+
+    .custom-notification.show {
+        transform: translateX(0);
+    }
+
+    .custom-notification.error {
+        background: linear-gradient(45deg, rgba(220, 53, 69, 0.9), rgba(200, 35, 51, 0.9));
+        border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+
+    .custom-notification.info {
+        background: linear-gradient(45deg, rgba(23, 162, 184, 0.9), rgba(19, 132, 150, 0.9));
+        border: 1px solid rgba(23, 162, 184, 0.3);
+    }
+
+    /* Animations */
+    @keyframes candidateFadeIn {
+        0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes candidatePulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes inputShake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes popupSlideIn {
+        0% { opacity: 0; transform: translateY(-50px) scale(0.9); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .candidate-card {
+            margin: 1rem;
+            border-radius: 20px;
+        }
+
+        .candidate-card .card-header,
+        .candidate-card .card-body,
+        .candidate-card .card-footer {
+            padding: 1.5rem;
+        }
+
+        .candidate-input, .candidate-select {
+            font-size: 1rem;
+        }
+
+        .register-btn {
+            font-size: 1.1rem;
+            padding: 0.875rem 1.5rem;
+        }
+
+        .custom-notification {
+            right: 10px;
+            left: 10px;
+            transform: translateY(-100px);
+            max-width: none;
+        }
+
+        .custom-notification.show {
+            transform: translateY(0);
+        }
+
+        .popup-content {
+            padding: 2rem 1.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .candidate-card {
+            margin: 0.5rem;
+            border-radius: 15px;
+        }
+
+        .candidate-card .card-header {
+            padding: 1rem;
+        }
+
+        .candidate-card .card-body {
+            padding: 1rem;
+        }
+
+        .candidate-icon i {
+            font-size: 2rem !important;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+        }
+
+        .photo-preview {
+            min-height: 150px;
+        }
+
+        .preview-image {
+            height: 150px;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .candidate-card,
+        .candidate-input,
+        .candidate-select,
+        .register-btn,
+        .candidate-icon,
+        .custom-notification,
+        .popup-content {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .candidate-input:focus,
+    .candidate-select:focus,
+    .register-btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .candidate-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .candidate-input, .candidate-select {
+            border: 2px solid black;
+        }
+
+        .register-btn {
+            background: black;
+            color: white;
+        }
+    }
+</style>
 {% endblock %}

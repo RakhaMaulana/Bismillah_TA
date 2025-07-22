@@ -1,147 +1,889 @@
 {% extends "base.html" %}
 
-{% block title %}Register Voter{% endblock %}
+{% block title %}Register Voter - Crypvote{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4 fw-bold">Register Voter</h1>
-
-    {% if token %}
-        <div class="alert alert-info text-center fw-semibold">
-            <i class="fas fa-key"></i> Your registration token is: <strong>{{ token }}</strong>
-        </div>
-    {% endif %}
-
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <form method="post" enctype="multipart/form-data" class="card shadow-lg p-4 rounded-3" onsubmit="return validateForm()">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <!-- ID Number Input -->
-                <div class="mb-3">
-                    <label for="id_number" class="form-label fw-semibold">NPM</label>
-                    <input type="text" id="id_number" name="id_number" class="form-control" required pattern="^[0-9]{8,12}$" title="NPM harus berupa 8-12 digit angka">
-                </div>
-
-                <!-- Hidden Input for Photo Data -->
-                <input type="hidden" id="photo" name="photo" required>
-
-                <!-- Video and Capture Button -->
-                <div class="text-center">
-                    <div class="border rounded shadow-sm overflow-hidden mx-auto" style="width: 320px; height: 240px;">
-                        <video id="video" width="100%" height="100%" autoplay></video>
+<div class="register-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-12 col-lg-8 col-xl-6">
+                <div class="register-card shadow-lg border-0 rounded-4 p-4">
+                    <div class="text-center mb-4">
+                        <div class="register-icon mb-3">
+                            <i class="fas fa-user-plus fa-3x text-primary"></i>
+                        </div>
+                        <h1 class="fw-bold text-dark mb-2">Register as Voter</h1>
+                        <p class="text-muted">Complete your voter registration</p>
                     </div>
-                    <button type="button" class="btn btn-secondary mt-3" onclick="takePhoto()">
-                        <i class="fas fa-camera"></i> Take Photo
-                    </button>
+
+                    {% if token %}
+                        <div class="alert alert-success border-0 rounded-3 mb-4">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-key fa-2x me-3"></i>
+                                <div>
+                                    <h6 class="alert-heading mb-1">Registration Successful!</h6>
+                                    <p class="mb-0">Your registration token: <strong class="text-primary">{{ token }}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <form id="register-form"
+                          method="POST"
+                          enctype="multipart/form-data"
+                          onsubmit="return validateForm()"
+                          autocomplete="off"
+                          novalidate
+                          class="needs-validation">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Rate Limiting Protection -->
+                        <input type="hidden" name="timestamp" id="timestamp">
+                        <input type="hidden" name="form_hash" id="form_hash">
+
+                        <!-- NPM Input with Enhanced Security -->
+                        <div class="form-floating mb-4">
+                            <input type="text"
+                                   id="id_number"
+                                   name="id_number"
+                                   class="form-control form-control-lg"
+                                   placeholder="NPM"
+                                   required
+                                   pattern="^[0-9]{8,12}$"
+                                   maxlength="12"
+                                   autocomplete="off"
+                                   spellcheck="false"
+                                   data-bs-toggle="tooltip"
+                                   title="NPM must be 8-12 digits">
+                            <label for="id_number"><i class="fas fa-id-card me-2"></i>NPM (Student ID)</label>
+                            <div class="invalid-feedback">
+                                NPM must be 8-12 digits
+                            </div>
+                            <div class="valid-feedback">
+                                NPM format is valid
+                            </div>
+                        </div>
+
+                        <!-- Photo Capture Section -->
+                        <div class="photo-section mb-4">
+                            <label class="form-label fw-semibold mb-3">
+                                <i class="fas fa-camera me-2"></i>Identity Photo
+                            </label>
+
+                            <!-- Camera Container -->
+                            <div class="camera-container text-center">
+                                <div class="video-wrapper border rounded-3 shadow-sm overflow-hidden mx-auto position-relative">
+                                    <video id="video" width="100%" height="100%" autoplay muted playsinline></video>
+                                    <div class="camera-overlay">
+                                        <div class="camera-frame"></div>
+                                    </div>
+                                    <div id="camera-status" class="camera-status">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                        <span>Initializing camera...</span>
+                                    </div>
+                                </div>
+
+                                <!-- Camera Controls -->
+                                <div class="camera-controls mt-3">
+                                    <button type="button"
+                                            class="btn btn-primary"
+                                            id="take-photo"
+                                            onclick="takePhoto()"
+                                            disabled>
+                                        <i class="fas fa-camera"></i> Take Photo
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-secondary ms-2"
+                                            id="retake-photo"
+                                            onclick="retakePhoto()"
+                                            style="display: none;">
+                                        <i class="fas fa-redo"></i> Retake
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Photo Preview -->
+                            <div class="photo-preview-container text-center mt-3" style="display: none;">
+                                <img id="photo-preview"
+                                     class="img-fluid rounded-3 shadow-sm"
+                                     style="max-width: 320px; border: 2px solid #28a745;">
+                                <div class="photo-status mt-2 text-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Photo captured successfully</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden inputs for photo data -->
+                        <input type="hidden" id="photo" name="photo" required>
+                        <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+                        <!-- Security Information -->
+                        <div class="security-info mb-4">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="card-title mb-2">
+                                        <i class="fas fa-shield-alt text-success me-2"></i>
+                                        Security & Privacy
+                                    </h6>
+                                    <ul class="list-unstyled mb-0 small text-muted">
+                                        <li><i class="fas fa-check text-success me-2"></i>Data is processed securely</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>No data is shared with third parties</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid">
+                            <button type="submit"
+                                    class="btn btn-primary btn-lg py-3 fw-semibold"
+                                    id="register-btn">
+                                <span class="btn-text">
+                                    <i class="fas fa-user-plus me-2"></i>Complete Registration
+                                </span>
+                                <span class="btn-spinner d-none">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Processing...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <!-- Canvas for Capturing Image (Hidden) -->
-                <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-
-                <!-- Image Preview (Hidden Initially) -->
-                <div class="text-center mt-3">
-                    <img id="photo-preview" class="img-fluid rounded shadow-sm" style="display:none; max-width: 320px;">
-                </div>
-
-                <!-- Submit Button -->
-                <button type="submit" class="btn btn-primary w-100 mt-3">
-                    <i class="fas fa-user-plus"></i> Register
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Access the webcam
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const photoInput = document.getElementById('photo');
-    const photoPreview = document.getElementById('photo-preview');
+    // Enhanced Security and UX JavaScript for Voter Registration
+    (function() {
+        'use strict';
 
-    // Activate webcam
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            video.srcObject = stream;
-        })
-        .catch(err => {
-            console.error("Error accessing webcam: " + err);
+        // Security Variables
+        let video, canvas, context, stream;
+        let photoTaken = false;
+        let attemptCount = 0;
+        const MAX_ATTEMPTS = 3;
+        const LOCKOUT_TIME = 300000; // 5 minutes
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeForm();
+            setupRealTimeValidation();
+            setupFormProtection();
+            initializeCamera();
+            // Auto-start camera on page load
+            setTimeout(() => {
+                startCamera();
+            }, 500);
         });
 
-    // Function to capture photo
-    function takePhoto() {
-        const context = canvas.getContext('2d');
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataURL = canvas.toDataURL('image/jpeg');
+        function initializeForm() {
+            const timestamp = Date.now();
 
-        // Set hidden input value and display preview
-        photoInput.value = dataURL;
-        photoPreview.src = dataURL;
-        photoPreview.style.display = 'block';
-        photoPreview.classList.add('fade-in');
-    }
+            // Set timestamp and form hash for replay attack prevention
+            document.getElementById('timestamp').value = timestamp;
+            document.getElementById('form_hash').value = generateFormHash(timestamp);
 
-    // Function to validate form
-    function validateForm() {
-        // Validasi NPM
-        const idNumber = document.getElementById('id_number').value;
-        const idNumberRegex = /^[0-9]{8,12}$/;
+            // Initialize video elements
+            video = document.getElementById('video');
+            canvas = document.getElementById('canvas');
+            context = canvas.getContext('2d');
 
-        if (!idNumberRegex.test(idNumber)) {
-            alert('NPM harus berupa 8-12 digit angka');
-            return false;
+            // Check for previous lockout
+            checkLockoutStatus();
         }
 
-        // Validasi foto
-        const photoInput = document.getElementById('photo');
-        if (!photoInput.value) {
-            alert('Silakan ambil foto Anda terlebih dahulu');
-            return false;
+        function initializeCamera() {
+            const takeBtn = document.getElementById('take-photo');
+
+            // Initially disable take photo button
+            takeBtn.disabled = true;
+
+            // Set video constraints for better quality
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
         }
 
-        // Validasi ukuran foto (data URI biasanya panjang)
-        if (photoInput.value.length < 100) {
-            alert('Foto tidak valid atau terlalu kecil');
-            return false;
+        function setupRealTimeValidation() {
+            const idInput = document.getElementById('id_number');
+
+            // NPM validation with real-time feedback
+            idInput.addEventListener('input', function() {
+                validateNPM(this);
+            });
+
+            // Prevent non-numeric input
+            idInput.addEventListener('keypress', function(e) {
+                if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+
+            // Sanitize input on paste
+            idInput.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                const sanitized = paste.replace(/[^0-9]/g, '').substring(0, 12);
+                this.value = sanitized;
+                validateNPM(this);
+            });
         }
 
-        // Sanitasi input NPM - hapus karakter non-numerik
-        document.getElementById('id_number').value =
-            document.getElementById('id_number').value.replace(/[^0-9]/g, '');
+        function validateNPM(input) {
+            const value = input.value.trim();
+            const pattern = /^[0-9]{8,12}$/;
 
-        return true;
-    }
+            // Remove invalid characters
+            input.value = value.replace(/[^0-9]/g, '');
 
-    // Ensure preview doesn't display a broken image icon
-    document.addEventListener("DOMContentLoaded", () => {
-        photoPreview.removeAttribute('src');
-    });
+            if (input.value.length === 0) {
+                setFieldState(input, null);
+            } else if (input.value.length >= 8 && input.value.length <= 12 && pattern.test(input.value)) {
+                setFieldState(input, true);
+            } else {
+                setFieldState(input, false);
+            }
+        }
+
+        function setFieldState(input, isValid) {
+            input.classList.remove('is-valid', 'is-invalid');
+
+            if (isValid === true) {
+                input.classList.add('is-valid');
+            } else if (isValid === false) {
+                input.classList.add('is-invalid');
+            }
+        }
+
+        // Camera Functions with Enhanced Security
+        window.startCamera = function() {
+            const statusElement = document.getElementById('camera-status');
+            const takeBtn = document.getElementById('take-photo');
+
+            // Show loading
+            statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Starting camera...</span>';
+
+            // Enhanced camera constraints for security
+            const constraints = {
+                video: {
+                    width: { ideal: 640, max: 1280 },
+                    height: { ideal: 480, max: 720 },
+                    facingMode: 'user',
+                    frameRate: { ideal: 30, max: 60 }
+                },
+                audio: false
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(function(mediaStream) {
+                    stream = mediaStream;
+                    video.srcObject = stream;
+
+                    video.onloadedmetadata = function() {
+                        statusElement.innerHTML = '<i class="fas fa-camera"></i> <span>Camera ready - Position your face</span>';
+                        takeBtn.disabled = false;
+                    };
+                })
+                .catch(function(error) {
+                    console.error('Camera error:', error);
+                    let errorMessage = 'Camera access denied';
+
+                    if (error.name === 'NotAllowedError') {
+                        errorMessage = 'Please allow camera access and refresh the page';
+                    } else if (error.name === 'NotFoundError') {
+                        errorMessage = 'No camera found on this device';
+                    } else if (error.name === 'NotReadableError') {
+                        errorMessage = 'Camera is being used by another app';
+                    } else if (error.name === 'OverconstrainedError') {
+                        errorMessage = 'Camera constraints not supported';
+                    }
+
+                    statusElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>${errorMessage}</span>`;
+                    statusElement.className = 'camera-status text-danger';
+
+                    // Show manual start button if auto-start fails
+                    showManualStartButton();
+                });
+        };
+
+        function showManualStartButton() {
+            const cameraControls = document.querySelector('.camera-controls');
+            const manualStartBtn = document.createElement('button');
+            manualStartBtn.type = 'button';
+            manualStartBtn.className = 'btn btn-outline-primary me-2';
+            manualStartBtn.innerHTML = '<i class="fas fa-video"></i> Try Again';
+            manualStartBtn.onclick = startCamera;
+
+            // Insert at the beginning
+            cameraControls.insertBefore(manualStartBtn, cameraControls.firstChild);
+        }
+
+        window.takePhoto = function() {
+            if (!stream) {
+                alert('Please start the camera first');
+                return;
+            }
+
+            const statusElement = document.getElementById('camera-status');
+            const takeBtn = document.getElementById('take-photo');
+            const retakeBtn = document.getElementById('retake-photo');
+            const previewContainer = document.querySelector('.photo-preview-container');
+            const photoPreview = document.getElementById('photo-preview');
+            const photoInput = document.getElementById('photo');
+
+            try {
+                // Draw video frame to canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Get image data with quality control
+                const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+                // Validate image data
+                if (dataURL.length < 1000) {
+                    throw new Error('Photo data too small');
+                }
+
+                // Stop camera stream
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+
+                // Set photo data and show preview
+                photoInput.value = dataURL;
+                photoPreview.src = dataURL;
+                previewContainer.style.display = 'block';
+
+                // Hide video and show retake option
+                video.style.display = 'none';
+                statusElement.style.display = 'none';
+                takeBtn.style.display = 'none';
+                retakeBtn.style.display = 'inline-block';
+
+                photoTaken = true;
+
+                // Add visual feedback
+                photoPreview.onload = function() {
+                    this.style.opacity = '0';
+                    this.style.transform = 'scale(0.8)';
+                    this.style.transition = 'all 0.3s ease';
+
+                    setTimeout(() => {
+                        this.style.opacity = '1';
+                        this.style.transform = 'scale(1)';
+                    }, 50);
+                };
+
+            } catch (error) {
+                console.error('Photo capture error:', error);
+                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>Failed to capture photo</span>';
+                statusElement.className = 'camera-status text-danger';
+            }
+        };
+
+        window.retakePhoto = function() {
+            const previewContainer = document.querySelector('.photo-preview-container');
+            const photoInput = document.getElementById('photo');
+            const takeBtn = document.getElementById('take-photo');
+            const retakeBtn = document.getElementById('retake-photo');
+
+            // Clear photo data
+            photoInput.value = '';
+            previewContainer.style.display = 'none';
+
+            // Reset camera interface
+            video.style.display = 'block';
+            document.getElementById('camera-status').style.display = 'block';
+            takeBtn.style.display = 'inline-block';
+            retakeBtn.style.display = 'none';
+
+            photoTaken = false;
+
+            // Restart camera
+            startCamera();
+        };
+
+        function setupFormProtection() {
+            const form = document.getElementById('register-form');
+            let isSubmitting = false;
+
+            form.addEventListener('submit', function(e) {
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return false;
+                }
+                isSubmitting = true;
+
+                setTimeout(() => {
+                    isSubmitting = false;
+                }, 3000);
+            });
+        }
+
+        function generateFormHash(timestamp) {
+            const str = timestamp.toString() + 'crypvote_voter_salt';
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash).toString(16);
+        }
+
+        function checkLockoutStatus() {
+            const lastLockout = localStorage.getItem('registerLockout');
+            if (lastLockout && Date.now() - parseInt(lastLockout) < LOCKOUT_TIME) {
+                const remainingTime = Math.ceil((LOCKOUT_TIME - (Date.now() - parseInt(lastLockout))) / 1000);
+                showLockoutMessage(remainingTime);
+            }
+        }
+
+        function showLockoutMessage(seconds) {
+            const submitBtn = document.getElementById('register-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')})`;
+
+            const countdown = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(countdown);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-user-plus me-2"></i>Complete Registration';
+                    localStorage.removeItem('registerLockout');
+                } else {
+                    submitBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')})`;
+                }
+            }, 1000);
+        }
+
+        // Enhanced Form Validation Function
+        window.validateForm = function() {
+            const idNumber = document.getElementById('id_number').value.trim();
+            const photoInput = document.getElementById('photo').value;
+            const submitBtn = document.getElementById('register-btn');
+
+            // Show loading state
+            submitBtn.querySelector('.btn-text').classList.add('d-none');
+            submitBtn.querySelector('.btn-spinner').classList.remove('d-none');
+            submitBtn.disabled = true;
+
+            // Enhanced validation
+            if (!idNumber || !photoInput) {
+                showError('Please fill in all required fields');
+                return false;
+            }
+
+            // NPM validation
+            const npmPattern = /^[0-9]{8,12}$/;
+            if (!npmPattern.test(idNumber)) {
+                showError('NPM must be 8-12 digits');
+                return false;
+            }
+
+            // Photo validation
+            if (photoInput.length < 1000) {
+                showError('Please take a valid photo');
+                return false;
+            }
+
+            // Check if photo is actually taken (not just default)
+            if (!photoTaken) {
+                showError('Please take your photo first');
+                return false;
+            }
+
+            // File size validation (base64 encoded image should be reasonable size)
+            const imageSizeInBytes = (photoInput.length * 3) / 4;
+            const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+            if (imageSizeInBytes > maxSizeInBytes) {
+                showError('Photo file size is too large');
+                return false;
+            }
+
+            // Check timestamp for replay attacks
+            const timestamp = parseInt(document.getElementById('timestamp').value);
+            const now = Date.now();
+            if (now - timestamp > 600000) { // 10 minutes
+                showError('Form expired. Please refresh the page.');
+                return false;
+            }
+
+            // Sanitize NPM input one final time
+            document.getElementById('id_number').value = idNumber.replace(/[^0-9]/g, '');
+
+            return true;
+        };
+
+        function showError(message) {
+            const submitBtn = document.getElementById('register-btn');
+
+            // Reset button state
+            submitBtn.querySelector('.btn-text').classList.remove('d-none');
+            submitBtn.querySelector('.btn-spinner').classList.add('d-none');
+            submitBtn.disabled = false;
+
+            // Show error (will be handled by flash message system)
+            console.error('Form validation error:', message);
+            alert(message); // Temporary alert, should be replaced with toast notification
+
+            // Increment attempt counter
+            attemptCount++;
+            if (attemptCount >= MAX_ATTEMPTS) {
+                localStorage.setItem('registerLockout', Date.now().toString());
+                showLockoutMessage(LOCKOUT_TIME / 1000);
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Security: Prevent right-click on video
+        video = document.getElementById('video');
+        if (video) {
+            video.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+            });
+        }
+
+    })();
 </script>
 
 <style>
-    .fade-in {
-        animation: fadeIn 0.5s ease-in-out;
+    /* Register Container */
+    .register-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
+    .register-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.5;
+    }
+
+    /* Register Card */
+    .register-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+    }
+
+    .register-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Register Icon */
+    .register-icon {
+        animation: bounce 2s infinite;
+    }
+
+    /* Form Controls */
+    .form-floating > .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+
+    .form-floating > .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        transform: translateY(-1px);
+    }
+
+    .form-floating > label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        color: #007bff;
+    }
+
+    /* Photo Section */
+    .photo-section {
+        background: rgba(248, 249, 250, 0.8);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+    }
+
+    /* Video Container */
+    .video-wrapper {
+        width: 320px;
+        height: 240px;
+        position: relative;
+        background: #000;
+        border: 3px solid #007bff !important;
+    }
+
+    .camera-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .camera-frame {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border: 2px dashed rgba(255, 255, 255, 0.7);
+        border-radius: 50%;
+        animation: pulse-frame 2s infinite;
+    }
+
+    .camera-status {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        z-index: 3;
+    }
+
+    .camera-status i {
+        margin-right: 5px;
+        animation: blink 1.5s infinite;
+    }
+
+    /* Camera Controls */
+    .camera-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Photo Preview */
+    .photo-preview-container {
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .photo-status {
+        font-weight: 500;
+    }
+
+    /* Security Info */
+    .security-info .card {
+        border-left: 4px solid #28a745;
+        transition: all 0.3s ease;
+    }
+
+    .security-info .card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    /* Button Styles */
+    .btn-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-outline-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+    }
+
+    .btn-outline-secondary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.2);
+    }
+
+    /* Form Validation */
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        animation: shake 0.5s ease-in-out;
+    }
+
+    .form-control.is-valid {
+        border-color: #28a745;
+    }
+
+    .invalid-feedback,
+    .valid-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Loading States */
+    .btn-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Animations */
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+        60% { transform: translateY(-5px); }
+    }
+
+    @keyframes pulse-frame {
+        0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    }
+
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.3; }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .register-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .register-card {
+            margin: 1rem;
+            padding: 2rem 1.5rem;
         }
-        to {
-            opacity: 1;
+
+        .video-wrapper {
+            width: 280px;
+            height: 210px;
+        }
+
+        .form-floating > .form-control {
+            font-size: 16px; /* Prevent zoom on iOS */
+        }
+
+        .camera-controls {
+            flex-direction: column;
+        }
+
+        .camera-controls .btn {
+            width: 100%;
+            max-width: 200px;
         }
     }
 
-    .btn-secondary:hover {
-        transform: scale(1.05);
-        transition: all 0.2s ease-in-out;
+    @media (max-width: 480px) {
+        .video-wrapper {
+            width: 240px;
+            height: 180px;
+        }
+
+        .camera-frame {
+            width: 150px;
+            height: 150px;
+        }
     }
 
-    canvas, #photo-preview {
-        display: block;
-        margin: 0 auto;
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .register-card,
+        .form-control,
+        .btn-primary,
+        .register-icon,
+        .camera-frame,
+        .camera-status i {
+            animation: none;
+            transition: none;
+        }
     }
 
+    /* Focus Indicators */
+    .form-control:focus,
+    .btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .register-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .form-control {
+            border: 2px solid black;
+        }
+
+        .video-wrapper {
+            border: 3px solid black !important;
+        }
+    }
+
+    /* Camera specific styles */
+    #video {
+        object-fit: cover;
+    }
+
+    .camera-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        z-index: 4;
+    }
+
+    .camera-error {
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        text-align: center;
+        padding: 1rem;
+    }
 </style>
 {% endblock %}

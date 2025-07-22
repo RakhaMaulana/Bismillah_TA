@@ -2,96 +2,423 @@
 
 {% block content %}
 <!-- Hero Section -->
-<div class="jumbotron text-center bg-gradient-primary text-white py-5 position-relative">
-    <div class="container position-relative">
-        <h1 class="display-4 fw-bold mb-3">Welcome to Crypvote</h1>
-        <p class="lead">A secure, reliable, and anonymous voting experience awaits you.</p>
-        <div class="hero-buttons mt-4 d-flex justify-content-center gap-3">
-            <a href="{{ url_for('register_voter') }}" class="btn btn-light btn-lg px-4 shadow-sm">Register</a>
-            <!-- <a href="{{ url_for('vote') }}" class="btn btn-outline-light btn-lg px-4 shadow-sm">Vote Now</a> -->
+<section class="hero-section position-relative d-flex align-items-center justify-content-center overflow-hidden">
+    <div class="hero-bg-overlay"></div>
+    <div class="container position-relative text-center py-5 animate-fade-in">
+        <div class="hero-content">
+            <h1 class="display-3 fw-bold mb-3 text-white hero-title">Welcome to Crypvote</h1>
+            <p class="lead text-white-50 mb-4 hero-subtitle">A secure, reliable, and anonymous voting experience awaits you.</p>
+            <div class="hero-buttons d-flex justify-content-center gap-3 mt-4">
+                <a href="{{ url_for('register_voter') }}" class="btn btn-hero btn-lg px-5 py-3 rounded-pill fw-semibold position-relative">
+                    <i class="fas fa-user-plus me-2"></i>Register Now
+                </a>
+                <a href="{{ url_for('submit_token_page') }}" class="btn btn-hero-outline btn-lg px-5 py-3 rounded-pill fw-semibold">
+                    <i class="fas fa-vote-yea me-2"></i>Vote
+                </a>
+            </div>
         </div>
+        <img src="{{ url_for('static', filename='voting_process.png') }}" class="watermark-image floating" alt="Voting Process">
     </div>
-    <!-- Watermark Image -->
-    <img src="{{ url_for('static', filename='voting_process.png') }}" class="watermark-image">
-</div>
+    <div class="hero-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+</section>
 
 <!-- Features Section -->
-<div class="container mt-5">
-    <div class="row text-center g-4">
-        <div class="col-md-4">
-            <div class="card feature-card shadow border-0 p-4">
-                <div class="card-body">
-                    <i class="fas fa-lock text-primary fa-3x mb-3"></i>
-                    <h3 class="card-title">Secure</h3>
-                    <p class="card-text">Your votes are securely encrypted and stored.</p>
+<section class="features-section py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold text-dark mb-3">Why Choose Crypvote?</h2>
+            <p class="lead text-muted">Experience the future of secure digital voting</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-4">
+                <div class="card feature-card shadow border-0 p-4 h-100 text-center feature-card-1">
+                    <div class="card-body">
+                        <div class="feature-icon-wrapper mb-3">
+                            <i class="fas fa-lock text-primary fa-3x feature-icon"></i>
+                        </div>
+                        <h3 class="card-title mb-3 fw-bold">Secure</h3>
+                        <p class="card-text text-muted">Advanced encryption ensures your votes are protected with military-grade security.</p>
+                        <div class="feature-badge">
+                            <span class="badge bg-primary-gradient rounded-pill px-3 py-1">256-bit Encryption</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card feature-card shadow border-0 p-4">
-                <div class="card-body">
-                    <i class="fas fa-user-secret text-primary fa-3x mb-3"></i>
-                    <h3 class="card-title">Anonymous</h3>
-                    <p class="card-text">Your identity is protected, and your votes are anonymous.</p>
+            <div class="col-12 col-md-4">
+                <div class="card feature-card shadow border-0 p-4 h-100 text-center feature-card-2">
+                    <div class="card-body">
+                        <div class="feature-icon-wrapper mb-3">
+                            <i class="fas fa-user-secret text-success fa-3x feature-icon"></i>
+                        </div>
+                        <h3 class="card-title mb-3 fw-bold">Anonymous</h3>
+                        <p class="card-text text-muted">Your identity remains completely private while ensuring vote integrity.</p>
+                        <div class="feature-badge">
+                            <span class="badge bg-success-gradient rounded-pill px-3 py-1">Zero Knowledge</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card feature-card shadow border-0 p-4">
-                <div class="card-body">
-                    <i class="fas fa-check-circle text-primary fa-3x mb-3"></i>
-                    <h3 class="card-title">Reliable</h3>
-                    <p class="card-text">Our system ensures that every vote is counted accurately.</p>
+            <div class="col-12 col-md-4">
+                <div class="card feature-card shadow border-0 p-4 h-100 text-center feature-card-3">
+                    <div class="card-body">
+                        <div class="feature-icon-wrapper mb-3">
+                            <i class="fas fa-check-circle text-warning fa-3x feature-icon"></i>
+                        </div>
+                        <h3 class="card-title mb-3 fw-bold">Reliable</h3>
+                        <p class="card-text text-muted">BlindSignature technology guarantees every vote is counted accurately.</p>
+                        <div class="feature-badge">
+                            <span class="badge bg-warning-gradient rounded-pill px-3 py-1">99.9% Uptime</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
 <!-- How It Works Section -->
-<div class="container mt-5">
-    <div class="row align-items-center">
-        <div class="col-md-6">
-            <h2 class="mb-4 text-primary">How It Works</h2>
-            <p class="mb-4">Our voting system is designed to be secure, anonymous, and reliable. Here's how it works:</p>
-            <ul class="list-unstyled">
-                <li class="d-flex align-items-center gap-3 mb-3">
-                    <i class="fas fa-user-check fa-2x text-primary"></i>
-                    <span>Register as a voter by providing your ID and a photo.</span>
-                </li>
-                <li class="d-flex align-items-center gap-3 mb-3">
-                    <i class="fas fa-envelope-open-text fa-2x text-primary"></i>
-                    <span>Receive a unique token to cast your vote.</span>
-                </li>
-                <li class="d-flex align-items-center gap-3 mb-3">
-                    <i class="fas fa-vote-yea fa-2x text-primary"></i>
-                    <span>Cast your vote securely and anonymously.</span>
-                </li>
-            </ul>
+<section class="how-it-works-section py-5">
+    <div class="container">
+        <div class="row align-items-center justify-content-center">
+            <div class="col-12 col-lg-6">
+                <div class="text-center text-lg-start">
+                    <h2 class="display-5 fw-bold text-primary mb-4">How It Works</h2>
+                    <p class="lead mb-4 text-muted">Our voting system is designed to be secure, anonymous, and reliable. Here's your journey:</p>
+                </div>
+                <div class="steps-container">
+                    <div class="step-item d-flex align-items-start gap-4 mb-4">
+                        <div class="step-number">
+                            <div class="step-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                                <span class="fw-bold">1</span>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <i class="fas fa-user-check fa-lg text-primary"></i>
+                                <h5 class="mb-0 fw-bold">Register</h5>
+                            </div>
+                            <p class="text-muted mb-0">Register as a voter by providing your ID and a photo for verification.</p>
+                        </div>
+                    </div>
+                    <div class="step-item d-flex align-items-start gap-4 mb-4">
+                        <div class="step-number">
+                            <div class="step-circle bg-success text-white d-flex align-items-center justify-content-center">
+                                <span class="fw-bold">2</span>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <i class="fas fa-envelope fa-lg text-success"></i>
+                                <h5 class="mb-0 fw-bold">Get Token</h5>
+                            </div>
+                            <p class="text-muted mb-0">Receive a unique, secure token to authenticate your voting session.</p>
+                        </div>
+                    </div>
+                    <div class="step-item d-flex align-items-start gap-4">
+                        <div class="step-number">
+                            <div class="step-circle bg-warning text-white d-flex align-items-center justify-content-center">
+                                <span class="fw-bold">3</span>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <i class="fas fa-vote-yea fa-lg text-warning"></i>
+                                <h5 class="mb-0 fw-bold">Vote</h5>
+                            </div>
+                            <p class="text-muted mb-0">Cast your vote securely and anonymously with complete privacy.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-6 mt-5 mt-lg-0">
+                <div class="process-illustration text-center">
+                    <div class="process-graphic">
+                        <div class="process-circle process-circle-1">
+                            <i class="fas fa-user-plus fa-2x text-primary"></i>
+                        </div>
+                        <div class="process-circle process-circle-2">
+                            <i class="fas fa-envelope fa-2x text-success"></i>
+                        </div>
+                        <div class="process-circle process-circle-3">
+                            <i class="fas fa-vote-yea fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
+</section>
 
 <style>
-    .feature-card {
-        transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    }
-    .feature-card:hover {
-        transform: scale(1.05);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-    }
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #007bff, #0056b3);
+    /* Hero Section */
+    .hero-section {
+        min-height: 70vh;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 50%, #004085 100%);
+        overflow: hidden;
+        position: relative;
     }
 
-    /* Watermark Image Styling */
-    .watermark-image {
+    .hero-bg-overlay {
         position: absolute;
-        top: 175%;
-        width: 20%;
-        left: 75%;
-        opacity: 0.5; /* Transparansi rendah */
-        z-index: -1;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
+        z-index: 1;
+    }
+
+    .animate-fade-in {
+        animation: fadeInUp 1s ease-out;
+        z-index: 2;
+    }
+
+    .hero-title {
+        text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        letter-spacing: -0.5px;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        opacity: 0.9;
+    }
+
+    .btn-hero {
+        background: linear-gradient(45deg, #fff, #f8f9fa);
+        color: #007bff;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .btn-hero:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+        color: #0056b3;
+    }
+
+    .btn-hero-outline {
+        background: transparent;
+        color: white;
+        border: 2px solid rgba(255,255,255,0.8);
+        transition: all 0.3s ease;
+    }
+
+    .btn-hero-outline:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: white;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .hero-section .watermark-image {
+        position: absolute;
+        bottom: -10%;
+        right: -5%;
+        width: 25vw;
+        max-width: 350px;
+        opacity: 0.15;
+        z-index: 1;
+        pointer-events: none;
+        filter: blur(0.5px) grayscale(20%);
+    }
+
+    .floating {
+        animation: float 6s ease-in-out infinite;
+    }
+
+    /* Particles */
+    .hero-particles {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    .particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 50%;
+        animation: particleFloat 15s infinite linear;
+    }
+
+    .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 30%; animation-delay: 3s; }
+    .particle:nth-child(3) { left: 50%; animation-delay: 6s; }
+    .particle:nth-child(4) { left: 70%; animation-delay: 9s; }
+    .particle:nth-child(5) { left: 90%; animation-delay: 12s; }
+
+    /* Features Section */
+    .features-section {
+        background: linear-gradient(180deg, #fff 0%, #f8f9fa 100%);
+        padding: 5rem 0;
+    }
+
+    .feature-card {
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        border-radius: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        background: white;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #007bff, #0056b3);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+
+    .feature-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+
+    .feature-icon-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .feature-icon {
+        transition: all 0.3s ease;
+    }
+
+    .feature-card:hover .feature-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    .feature-badge {
+        margin-top: 1rem;
+    }
+
+    .bg-primary-gradient { background: linear-gradient(45deg, #007bff, #0056b3); }
+    .bg-success-gradient { background: linear-gradient(45deg, #28a745, #20c997); }
+    .bg-warning-gradient { background: linear-gradient(45deg, #ffc107, #fd7e14); }
+
+    /* How It Works Section */
+    .how-it-works-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 5rem 0;
+    }
+
+    .step-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .step-item {
+        position: relative;
+        padding-left: 2rem;
+    }
+
+    .step-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 25px;
+        top: 60px;
+        width: 2px;
+        height: 40px;
+        background: linear-gradient(180deg, #007bff, transparent);
+    }
+
+    .process-illustration {
+        position: relative;
+        height: 300px;
+    }
+
+    .process-circle {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        animation: pulse 2s infinite;
+    }
+
+    .process-circle-1 { top: 50px; left: 50px; animation-delay: 0s; }
+    .process-circle-2 { top: 150px; right: 50px; animation-delay: 0.7s; }
+    .process-circle-3 { bottom: 50px; left: 50%; transform: translateX(-50%); animation-delay: 1.4s; }
+
+    /* Animations */
+    @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(30px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+
+    @keyframes particleFloat {
+        0% { transform: translateY(100vh) translateX(0px); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(-100px) translateX(50px); opacity: 0; }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .hero-section {
+            min-height: 60vh;
+        }
+        .hero-section .watermark-image {
+            width: 40vw;
+            max-width: 200px;
+            bottom: -5%;
+            right: -10%;
+        }
+        .hero-section .display-3 {
+            font-size: 2.2rem;
+        }
+        .hero-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+        .hero-buttons .btn {
+            width: 200px;
+        }
+        .process-illustration {
+            height: 200px;
+        }
+        .process-circle {
+            width: 60px;
+            height: 60px;
+        }
     }
 </style>
 {% endblock %}

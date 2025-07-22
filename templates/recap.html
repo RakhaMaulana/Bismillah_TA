@@ -3,22 +3,123 @@
 {% block title %}Live Vote Count{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4 fw-bold">Live Vote Count</h1>
+<div class="live-count-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-11">
+                <div class="live-count-card shadow-lg border-0 rounded-4 p-4">
+                    <!-- Header Section -->
+                    <div class="text-center mb-5">
+                        <div class="live-count-icon mb-3">
+                            <i class="fas fa-chart-line fa-3x text-primary"></i>
+                        </div>
+                        <h1 class="fw-bold text-dark mb-2">Live Vote Count</h1>
+                        <p class="text-muted lead">Real-time Election Results Dashboard</p>
+                    </div>
 
-    <div class="text-center mb-4">
-        <button class="btn btn-outline-primary me-2" onclick="showChart('senat')">Ketua Senat</button>
-        <button class="btn btn-outline-secondary" onclick="showChart('demus')">Ketua Dewan Musyawarah Taruna</button>
-    </div>
+                    <!-- Control Panel -->
+                    <div class="control-panel mb-5">
+                        <div class="row align-items-center">
+                            <div class="col-lg-8">
+                                <div class="chart-selector">
+                                    <h5 class="section-title mb-3">
+                                        <i class="fas fa-users me-2"></i>
+                                        Select Election Type
+                                    </h5>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="chartType" id="senat" value="senat" checked>
+                                        <label class="btn btn-outline-primary btn-lg" for="senat">
+                                            <i class="fas fa-graduation-cap me-2"></i>
+                                            Ketua Senat
+                                        </label>
 
-    <div class="recap-section p-4 shadow-sm rounded bg-white position-relative">
-        <h2 class="text-center mb-4" id="chart-title">
-            Ketua Senat <span id="voteCount" class="text-muted">(Votes: 0)</span>
-        </h2>
+                                        <input type="radio" class="btn-check" name="chartType" id="demus" value="demus">
+                                        <label class="btn btn-outline-secondary btn-lg" for="demus">
+                                            <i class="fas fa-gavel me-2"></i>
+                                            Ketua Dewan Musyawarah Taruna
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="start-control text-center">
+                                    <div class="delay-control mb-3">
+                                        <label for="delaySlider" class="form-label text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Vote Delay: <span id="delayValue">2.0s</span>
+                                            <span id="delayStatus" class="badge bg-secondary ms-2 d-none">Active</span>
+                                        </label>
+                                        <input type="range" class="form-range" id="delaySlider"
+                                               min="500" max="5000" step="250" value="2000">
+                                        <div class="delay-info text-muted text-center mt-2">
+                                            <small>Adjust the delay between each vote update</small>
+                                        </div>
+                                    </div>
+                                    <button id="startBtn" class="btn btn-success btn-lg px-4 py-3 fw-semibold">
+                                        <i class="fas fa-play me-2"></i>
+                                        Start Live Count
+                                    </button>
+                                    <button id="stopBtn" class="btn btn-danger btn-lg px-4 py-3 fw-semibold d-none">
+                                        <i class="fas fa-stop me-2"></i>
+                                        Stop Count
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="chart-container position-relative">
-            <!-- Canvas Chart.js (bar chart) -->
-            <canvas id="voteChart" style="position: relative; z-index: 1;"></canvas>
+                    <!-- Status Indicator -->
+                    <div id="statusIndicator" class="status-indicator mb-4 d-none">
+                        <div class="status-card">
+                            <div class="status-icon">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <div class="status-content">
+                                <h6 class="status-title">Live Counting Active</h6>
+                                <p class="status-message">Monitoring real-time vote updates...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Section -->
+                    <div class="chart-section">
+                        <div class="chart-header mb-4">
+                            <h2 class="text-center mb-2" id="chart-title">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                Select election type to begin
+                            </h2>
+                            <div class="text-center">
+                                <span id="voteCount" class="badge bg-primary fs-6">Total Votes: 0</span>
+                                <span id="lastUpdate" class="badge bg-secondary fs-6 ms-2">Last Update: Never</span>
+                            </div>
+                        </div>
+
+                        <div class="chart-container position-relative">
+                            <div id="chartPlaceholder" class="chart-placeholder">
+                                <div class="placeholder-content">
+                                    <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+                                    <h4 class="text-muted">Ready to Start</h4>
+                                    <p class="text-muted">Select election type and click "Start Live Count" to begin monitoring</p>
+                                </div>
+                            </div>
+                            <canvas id="voteChart" class="d-none"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Cards -->
+                    <div id="statsSection" class="stats-section d-none">
+                        <h5 class="section-title mb-4">
+                            <i class="fas fa-analytics me-2"></i>
+                            Live Statistics
+                        </h5>
+                        <div class="row" id="statsCards">
+                            <!-- Statistics cards will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -36,9 +137,327 @@
     let candidatePhotos = {};
     let eventSource;
     let isChartInitialized = false;
+    let isLiveCountActive = false;
+    let startTime = null;
+    let updateCount = 0;
+    let voteQueue = []; // Queue for delayed vote processing
+    let isProcessingVotes = false;
+    let voteDelay = 2000; // Default 2 second delay between votes
+
     // Cache untuk gambar kandidat
     const imageCache = {};
     const defaultImage = "/static/Unknown.png";
+
+    // ✅ NEW: Initialize UI event listeners
+    document.addEventListener("DOMContentLoaded", function () {
+        console.log('🚀 DOM loaded, initializing UI...');
+        initializeUI();
+
+        // Preload default image
+        getCandidateImage(defaultImage).then(() => {
+            console.log('✅ Default image preloaded');
+        }).catch(() => {
+            console.log('⚠️ Default image failed to preload, continuing anyway');
+        });
+    });
+
+    function initializeUI() {
+        // Chart type selector event listeners
+        document.querySelectorAll('input[name="chartType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    currentChart = this.value;
+                    updateChartTitle();
+                    if (isLiveCountActive) {
+                        resetAndStartNewChart();
+                    }
+                }
+            });
+        });
+
+        // Start button event listener
+        document.getElementById('startBtn').addEventListener('click', startLiveCount);
+
+        // Stop button event listener
+        document.getElementById('stopBtn').addEventListener('click', stopLiveCount);
+
+        // Delay slider event listener
+        const delaySlider = document.getElementById('delaySlider');
+        const delayValue = document.getElementById('delayValue');
+
+        delaySlider.addEventListener('input', function() {
+            voteDelay = parseInt(this.value);
+            delayValue.textContent = (voteDelay / 1000).toFixed(1) + 's';
+            console.log('⏱️ Vote delay updated to:', voteDelay + 'ms');
+
+            // Update status if live counting is active
+            if (isLiveCountActive) {
+                const statusMessage = document.querySelector('.status-message');
+                if (statusMessage && statusMessage.innerHTML.includes('Delay:')) {
+                    statusMessage.innerHTML = statusMessage.innerHTML.replace(
+                        /Delay: \d+\.\ds/g,
+                        `Delay: ${(voteDelay/1000).toFixed(1)}s`
+                    );
+                }
+            }
+        });
+
+        updateChartTitle();
+    }    function updateChartTitle() {
+        const title = currentChart === 'senat' ?
+            'Ketua Senat' : 'Ketua Dewan Musyawarah Taruna';
+
+        if (isLiveCountActive) {
+            document.getElementById('chart-title').innerHTML = `
+                <i class="fas fa-chart-bar me-2"></i>
+                ${title} - Live Results
+            `;
+        } else {
+            document.getElementById('chart-title').innerHTML = `
+                <i class="fas fa-chart-bar me-2"></i>
+                ${title} - Ready to Start
+            `;
+        }
+    }
+
+    async function startLiveCount() {
+        if (isLiveCountActive) return;
+
+        console.log('🚀 Starting live count for:', currentChart);
+
+        isLiveCountActive = true;
+        startTime = new Date();
+        updateCount = 0;
+
+        // Update UI
+        document.getElementById('startBtn').classList.add('d-none');
+        document.getElementById('stopBtn').classList.remove('d-none');
+        document.getElementById('statusIndicator').classList.remove('d-none');
+        document.getElementById('chartPlaceholder').classList.add('d-none');
+        document.getElementById('voteChart').classList.remove('d-none');
+        document.getElementById('statsSection').classList.remove('d-none');
+        document.getElementById('delayStatus').classList.remove('d-none');
+
+        updateChartTitle();
+        updateLastUpdateTime();
+
+        // Start fetching data
+        await fetchVoteCounts(currentChart);
+
+        // Update statistics
+        updateStats();
+    }
+
+    function stopLiveCount() {
+        if (!isLiveCountActive) return;
+
+        console.log('🛑 Stopping live count');
+
+        isLiveCountActive = false;
+
+        // Close event source
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+
+        // Clear vote queue and stop processing
+        voteQueue = [];
+        isProcessingVotes = false;
+
+        // Update UI
+        document.getElementById('startBtn').classList.remove('d-none');
+        document.getElementById('stopBtn').classList.add('d-none');
+        document.getElementById('statusIndicator').classList.add('d-none');
+        document.getElementById('delayStatus').classList.add('d-none');
+
+        updateChartTitle();
+
+        // Update status
+        const statusMessage = document.querySelector('.status-message');
+        if (statusMessage) {
+            statusMessage.textContent = 'Live counting stopped';
+        }
+    }
+
+    async function resetAndStartNewChart() {
+        console.log('🔄 Resetting and starting new chart type:', currentChart);
+
+        // Reset chart
+        resetChart();
+
+        // Start new data fetching
+        await fetchVoteCounts(currentChart);
+        updateStats();
+    }
+
+    function updateLastUpdateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        document.getElementById('lastUpdate').textContent = `Last Update: ${timeString}`;
+    }
+
+    function updateStats() {
+        if (!isLiveCountActive) return;
+
+        const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
+        const candidates = Object.keys(voteData);
+
+        // ✅ IMPROVED: Better leader calculation with vote count
+        let leader = 'None';
+        let leaderVotes = 0;
+        if (candidates.length > 0) {
+            leader = candidates.reduce((a, b) => voteData[a] > voteData[b] ? a : b);
+            leaderVotes = voteData[leader] || 0;
+        }
+
+        const elapsedTime = startTime ?
+            Math.floor((new Date() - startTime) / 1000) : 0;
+
+        const statsHtml = `
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary">
+                        <i class="fas fa-vote-yea"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>${totalVotes}</h4>
+                        <p>Total Votes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card ${leaderVotes > 0 ? 'leader-highlight' : ''}">
+                    <div class="stat-icon bg-success">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4 title="${leader} has ${leaderVotes} votes">${leader}</h4>
+                        <p>Current Leader (${leaderVotes} votes)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-info">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>${candidates.length}</h4>
+                        <p>Candidates</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>${Math.floor(elapsedTime / 60)}:${(elapsedTime % 60).toString().padStart(2, '0')}</h4>
+                        <p>Elapsed Time</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('statsCards').innerHTML = statsHtml;
+    }
+
+    // ✅ NEW: Vote queue processing with delays for realistic live count effect
+    function addVoteToQueue(candidate) {
+        if (!isLiveCountActive) return;
+
+        console.log('📥 Adding vote to queue:', candidate);
+        voteQueue.push({
+            candidate: candidate,
+            timestamp: new Date()
+        });
+
+        // Start processing if not already running
+        if (!isProcessingVotes) {
+            processVoteQueue();
+        }
+    }
+
+    async function processVoteQueue() {
+        if (!isLiveCountActive || voteQueue.length === 0) {
+            isProcessingVotes = false;
+            return;
+        }
+
+        isProcessingVotes = true;
+        console.log(`🚀 Starting vote queue processing with ${voteQueue.length} votes, delay: ${voteDelay}ms`);
+
+        while (voteQueue.length > 0 && isLiveCountActive) {
+            const voteItem = voteQueue.shift();
+            console.log(`⚡ Processing vote ${voteQueue.length + 1} for: ${voteItem.candidate}`);
+
+            // Show processing animation
+            showVoteProcessingAnimation(voteItem.candidate);
+
+            // Apply delay BEFORE processing each vote for proper pacing
+            if (voteQueue.length >= 0) { // Always apply delay
+                console.log(`⏱️ Applying ${voteDelay}ms delay before processing vote...`);
+
+                // Show countdown timer during delay
+                const startTime = Date.now();
+                const updateTimer = () => {
+                    const elapsed = Date.now() - startTime;
+                    const remaining = Math.max(0, voteDelay - elapsed);
+                    const remainingSeconds = (remaining / 1000).toFixed(1);
+
+                    const statusMessage = document.querySelector('.status-message');
+                    if (statusMessage && remaining > 0) {
+                        statusMessage.innerHTML = `
+                            <i class="fas fa-hourglass-half text-warning me-2" style="animation: spin 2s linear infinite;"></i>
+                            Delay countdown: <span class="countdown-timer">${remainingSeconds}s</span>
+                            <span class="badge bg-warning text-dark">${voteQueue.length + 1} votes remaining</span>
+                        `;
+                    }
+                };
+
+                // Update timer every 100ms for smooth countdown
+                const timerInterval = setInterval(updateTimer, 100);
+                updateTimer(); // Initial call
+
+                await new Promise(resolve => setTimeout(() => {
+                    clearInterval(timerInterval);
+                    resolve();
+                }, voteDelay));
+            }
+
+            // Process the actual vote after delay
+            await updateChartWithVote(voteItem.candidate);
+
+            // Update UI elements
+            updateLastUpdateTime();
+            updateStats();
+        }
+
+        // Reset status when queue is empty
+        const statusMessage = document.querySelector('.status-message');
+        if (statusMessage && isLiveCountActive) {
+            statusMessage.textContent = 'Monitoring real-time vote updates...';
+        }
+
+        isProcessingVotes = false;
+        console.log('✅ Vote queue processing completed');
+    }
+
+    function showVoteProcessingAnimation(candidate) {
+        // Add a brief visual effect to show a vote is being counted
+        const statusMessage = document.querySelector('.status-message');
+        if (statusMessage) {
+            const remainingVotes = voteQueue.length + 1; // +1 for current vote being processed
+            statusMessage.innerHTML = `
+                <i class="fas fa-circle text-success me-2" style="animation: pulse 1s infinite;"></i>
+                Processing vote for <strong>${candidate}</strong>
+                <span class="ms-2 badge bg-info">Delay: ${(voteDelay/1000).toFixed(1)}s</span>
+                <span class="ms-1 badge bg-secondary">${remainingVotes} remaining</span>
+            `;
+        }
+    }
 
     // ✅ PERBAIKAN: Improved image loading dengan proper fallback
     async function getCandidateImage(src) {
@@ -158,6 +577,11 @@
     }
 
     async function fetchVoteCounts(chartType) {
+        if (!isLiveCountActive) {
+            console.log('⚠️ Live count not active, skipping fetch');
+            return;
+        }
+
         await fetchCandidatePhotos(chartType);
 
         if (eventSource) {
@@ -176,11 +600,18 @@
             eventSource = new EventSource(`/live_count?type=${chartType}`);
 
             eventSource.onmessage = function(event) {
+                if (!isLiveCountActive) {
+                    eventSource.close();
+                    return;
+                }
+
                 try {
                     const data = JSON.parse(event.data);
                     console.log('📨 SSE message received:', data);
                     if (data.type === currentChart) {
-                        updateChart(data.candidate);
+                        updateCount++;
+                        // ✅ NEW: Add to queue instead of direct update
+                        addVoteToQueue(data.candidate);
                     }
                 } catch (error) {
                     console.error('❌ Error parsing SSE data:', error);
@@ -191,9 +622,11 @@
                 console.error("❌ SSE error:", error);
                 eventSource.close();
 
-                // Fallback to polling after SSE error
-                console.log('🔄 Falling back to polling...');
-                setTimeout(() => startPolling(chartType), 1000);
+                if (isLiveCountActive) {
+                    // Fallback to polling after SSE error
+                    console.log('🔄 Falling back to polling...');
+                    setTimeout(() => startPolling(chartType), 1000);
+                }
             };
 
             eventSource.onopen = function() {
@@ -201,29 +634,54 @@
             };
         } catch (error) {
             console.error('❌ Error setting up SSE:', error);
-            startPolling(chartType);
+            if (isLiveCountActive) {
+                startPolling(chartType);
+            }
         }
     }
 
     function startPolling(chartType) {
-        setInterval(() => {
+        const pollInterval = setInterval(() => {
+            if (!isLiveCountActive) {
+                clearInterval(pollInterval);
+                return;
+            }
+
             fetch(`/live_count?type=${chartType}`)
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
                 })
-                .then(data => updateChart(data.candidate))
+                .then(data => {
+                    if (isLiveCountActive) {
+                        updateCount++;
+                        // ✅ NEW: Add to queue instead of direct update
+                        addVoteToQueue(data.candidate);
+                    }
+                })
                 .catch(error => console.error("❌ Error fetching votes:", error));
         }, 5000);
     }
 
-    async function updateChart(label) {
+    async function updateChartWithVote(label) {
+        if (!isLiveCountActive) return;
+
         voteData[label] = (voteData[label] || 0) + 1;
         console.log('🗳️ Vote updated:', label, 'Total votes:', voteData);
 
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
         const labels = Object.keys(voteData);
         const percentages = labels.map(key => totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0);
+
+        // Update vote count display with animation
+        const voteCountElement = document.getElementById('voteCount');
+        voteCountElement.classList.add('vote-update-animation');
+        voteCountElement.textContent = `Total Votes: ${totalVotes}`;
+
+        // Remove animation class after animation completes
+        setTimeout(() => {
+            voteCountElement.classList.remove('vote-update-animation');
+        }, 500);
 
         // ✅ NEW: Update chart smoothly without destroying
         if (isChartInitialized && voteChart) {
@@ -249,10 +707,6 @@
 
         // Update the chart with animation
         voteChart.update('active');
-
-        // Update total votes in UI
-        document.getElementById('voteCount').textContent =
-            `(Votes: ${Object.values(voteData).reduce((a, b) => a + b, 0)})`;
 
         // Update candidate images and overlays after animation
         setTimeout(async () => {
@@ -316,10 +770,6 @@
             await drawAllCandidates(voteChart, labels, percentages);
             showOverlayForWinners(voteChart, labels, percentages);
         }, 1600); // After initial animation completes
-
-        // Update total votes di UI
-        document.getElementById('voteCount').textContent =
-            `(Votes: ${Object.values(voteData).reduce((a, b) => a + b, 0)})`;
     }
 
     /**
@@ -392,7 +842,7 @@
     }
 
     /**
-     * Tampilkan overlay GIF untuk kandidat dengan suara tertinggi.
+     * ✅ FIXED: Tampilkan overlay GIF hanya untuk kandidat dengan suara tertinggi berdasarkan vote count
      */
     function showOverlayForWinners(chart, labels, percentages) {
         // Hapus overlay winner lama (jika ada)
@@ -400,16 +850,26 @@
         container.querySelectorAll('.winner-overlay').forEach(el => el.remove());
 
         const datasetMeta = chart.getDatasetMeta(0);
-        const maxVotes = Math.max(...percentages);
+
+        // ✅ FIXED: Cari kandidat dengan vote count tertinggi, bukan persentase
+        if (Object.keys(voteData).length === 0) return;
+
+        const maxVoteCount = Math.max(...Object.values(voteData));
 
         // Only show overlay if there are actual votes
-        if (maxVotes === 0) return;
+        if (maxVoteCount === 0) return;
 
-        const topCandidates = labels.filter((_, i) => percentages[i] === maxVotes);
+        // ✅ FIXED: Hanya kandidat dengan vote count tertinggi yang mendapat fire.gif
+        const topCandidates = Object.keys(voteData).filter(candidate => voteData[candidate] === maxVoteCount);
+
+        console.log('🔥 Showing fire overlay for top candidates:', topCandidates, 'with votes:', maxVoteCount);
 
         topCandidates.forEach(async candidate => {
             const index = labels.indexOf(candidate);
+            if (index === -1) return; // Skip if candidate not in current chart
+
             const bar = datasetMeta.data[index];
+            if (!bar) return; // Skip if bar doesn't exist
 
             let imgSrc = defaultImage;
             if (candidatePhotos[candidate] && candidatePhotos[candidate].photo) {
@@ -435,13 +895,14 @@
                 gifOverlay.alt = "Fire Overlay";
                 gifOverlay.classList.add('winner-overlay');
                 gifOverlay.style.position = "absolute";
-                gifOverlay.style.opacity = "0.5";
+                gifOverlay.style.opacity = "0.7"; // ✅ IMPROVED: Slightly more visible
                 gifOverlay.style.pointerEvents = "none";
                 gifOverlay.style.left = gifX + "px";
                 gifOverlay.style.top = gifY + "px";
                 gifOverlay.style.width = gifSizeWidth + "px";
                 gifOverlay.style.height = gifSizeHeight + "px";
                 gifOverlay.style.transition = "all 0.5s ease-in-out";
+                gifOverlay.style.zIndex = "10";
 
                 gifOverlay.onerror = function() {
                     console.log('⚠️ Fire GIF not found, removing overlay');
@@ -449,6 +910,7 @@
                 };
 
                 container.appendChild(gifOverlay);
+                console.log(`🔥 Fire overlay added for ${candidate} at position (${gifX}, ${gifY})`);
             } catch (error) {
                 console.error('❌ Error creating winner overlay:', error);
             }
@@ -463,6 +925,10 @@
         voteData = {};
         isChartInitialized = false; // ✅ NEW: Reset initialization flag
 
+        // Clear vote queue and processing state
+        voteQueue = [];
+        isProcessingVotes = false;
+
         // Clear image cache for new chart type
         Object.keys(imageCache).forEach(key => {
             if (key.includes('/uploads/')) {
@@ -470,46 +936,575 @@
             }
         });
 
-        console.log('🧹 Chart reset and image cache cleared');
+        // Reset vote count display
+        document.getElementById('voteCount').textContent = 'Total Votes: 0';
+
+        console.log('🧹 Chart reset, queue cleared, and image cache cleared');
     }
-
-    function showChart(chartType) {
-        currentChart = chartType;
-        document.getElementById('chart-title').innerHTML =
-            (chartType === 'senat' ? 'Ketua Senat' : 'Ketua Dewan Musyawarah Taruna') +
-            ' <span id="voteCount" class="text-muted">(Votes: 0)</span>';
-        resetChart();
-        fetchVoteCounts(chartType);
-
-        console.log('🔄 Switched to chart type:', chartType);
-    }
-
-    // ✅ PERBAIKAN: Preload default image when page loads
-    document.addEventListener("DOMContentLoaded", function () {
-        console.log('🚀 DOM loaded, preloading default image...');
-
-        // Preload default image
-        getCandidateImage(defaultImage).then(() => {
-            console.log('✅ Default image preloaded');
-            showChart('senat');
-        }).catch(() => {
-            console.log('⚠️ Default image failed to preload, continuing anyway');
-            showChart('senat');
-        });
-    });
 </script>
 
 <style>
-    body { background-color: #f8f9fa; }
-    .recap-section { max-width: 1200px; margin: auto; background-color: #fff; border-radius: 10px; }
-    .btn { transition: all 0.3s ease-in-out; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); }
-    .chart-container { position: relative; height: 400px; }
-    #voteChart { z-index: 1; }
+    /* Live Count Container */
+    .live-count-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        padding: 2rem 0;
+    }
 
-    /* ✅ NEW: Smooth transitions for chart updates */
-    .chart-container .winner-overlay {
+    .live-count-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.5;
+    }
+
+    /* Live Count Card */
+    .live-count-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+        margin: 2rem 0;
+    }
+
+    .live-count-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Live Count Icon */
+    .live-count-icon {
+        animation: pulse 3s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+    }
+
+    /* Control Panel */
+    .control-panel {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+        backdrop-filter: blur(10px);
+    }
+
+    .section-title {
+        color: #495057;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Chart Selector */
+    .chart-selector .btn-group {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .btn-check:checked + .btn {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border-color: #007bff;
+        color: white;
+        transform: scale(1.02);
+    }
+
+    .btn-outline-primary,
+    .btn-outline-secondary {
+        border: 2px solid;
+        border-radius: 0;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-primary:hover,
+    .btn-outline-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Start Control */
+    .start-control {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .delay-control {
+        width: 100%;
+        max-width: 250px;
+    }
+
+    .delay-control .form-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .delay-info {
+        font-size: 0.8rem;
+        font-style: italic;
+    }
+
+    #delayStatus {
+        animation: pulse 2s infinite;
+        font-size: 0.7rem;
+    }
+
+    .form-range {
+        background: linear-gradient(45deg, #e9ecef, #dee2e6);
+        height: 6px;
+        border-radius: 3px;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    .form-range::-webkit-slider-thumb {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+
+    .form-range::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+    }
+
+    .form-range::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .btn-success,
+    .btn-danger {
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        min-width: 200px;
+    }
+
+    .btn-success {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        border: none;
+    }
+
+    .btn-danger {
+        background: linear-gradient(45deg, #dc3545, #c82333);
+        border: none;
+    }
+
+    .btn-success:hover,
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    }
+
+    /* Status Indicator */
+    .status-indicator {
+        animation: slideDown 0.5s ease-out;
+    }
+
+    .status-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+        border-left: 4px solid #28a745;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.1);
+    }
+
+    .status-icon {
+        flex-shrink: 0;
+    }
+
+    .status-content {
+        flex-grow: 1;
+    }
+
+    .status-title {
+        color: #28a745;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .status-message {
+        color: #6c757d;
+        margin: 0;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .status-message i.fa-circle {
+        display: inline-block;
+    }
+
+    .countdown-timer {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #ff6b35;
+    }
+
+    @keyframes countdown {
+        0% { color: #28a745; }
+        50% { color: #ffc107; }
+        100% { color: #dc3545; }
+    }
+
+    @keyframes statusPulse {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.6;
+            transform: scale(0.8);
+        }
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Chart Section */
+    .chart-section {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+    }
+
+    .chart-header {
+        text-align: center;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .chart-header .badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .vote-update-animation {
+        animation: voteUpdate 0.5s ease-out;
+        transform-origin: center;
+    }
+
+    @keyframes voteUpdate {
+        0% {
+            transform: scale(1);
+            background-color: var(--bs-primary);
+        }
+        50% {
+            transform: scale(1.1);
+            background-color: #28a745;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+        }
+        100% {
+            transform: scale(1);
+            background-color: var(--bs-primary);
+        }
+    }
+
+    /* Chart Container */
+    .chart-container {
+        position: relative;
+        height: 400px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(248, 249, 250, 0.5);
+    }
+
+    .chart-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(248, 249, 250, 0.8);
+        border-radius: 12px;
+    }
+
+    .placeholder-content {
+        text-align: center;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    #voteChart {
+        z-index: 1;
+        position: relative;
+    }
+
+    /* Statistics Section */
+    .stats-section {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        animation: slideUp 0.5s ease-out;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        height: 100%;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .leader-highlight {
+        border: 2px solid #28a745;
+        box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.05), rgba(32, 201, 151, 0.05));
+    }
+
+    .leader-highlight:hover {
+        box-shadow: 0 0 25px rgba(40, 167, 69, 0.4);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.bg-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+    }
+
+    .stat-icon.bg-success {
+        background: linear-gradient(45deg, #28a745, #20c997);
+    }
+
+    .stat-icon.bg-info {
+        background: linear-gradient(45deg, #17a2b8, #138496);
+    }
+
+    .stat-icon.bg-warning {
+        background: linear-gradient(45deg, #ffc107, #e0a800);
+    }
+
+    .stat-content h4 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #495057;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .stat-content p {
+        color: #6c757d;
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    /* Winner Overlay */
+    .winner-overlay {
         transition: all 0.5s ease-in-out;
+        filter: brightness(1.2) saturate(1.5);
+        z-index: 10;
+    }
+
+    /* Animations */
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .control-panel {
+            padding: 1.5rem;
+        }
+
+        .control-panel .row {
+            gap: 1.5rem;
+        }
+
+        .start-control {
+            margin-top: 1rem;
+        }
+
+        .btn-outline-primary,
+        .btn-outline-secondary {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .live-count-container {
+            padding: 1rem 0;
+        }
+
+        .live-count-card {
+            margin: 1rem 0;
+            padding: 1.5rem !important;
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+
+        .btn-group {
+            flex-direction: column;
+        }
+
+        .btn-outline-primary,
+        .btn-outline-secondary {
+            border-radius: 8px !important;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+
+        .start-control .btn {
+            min-width: 150px;
+            padding: 0.75rem 1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .control-panel {
+            padding: 1rem;
+        }
+
+        .chart-section,
+        .stats-section {
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+
+        .stat-content h4 {
+            font-size: 1.5rem;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .live-count-icon,
+        .status-indicator,
+        .stats-section,
+        .placeholder-content,
+        .stat-card,
+        .btn,
+        .winner-overlay {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .btn:focus,
+    .btn-check:focus + .btn {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .live-count-card,
+        .control-panel,
+        .chart-section,
+        .stats-section {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .stat-card,
+        .status-card {
+            border: 1px solid black;
+        }
     }
 </style>
 {% endblock %}

@@ -1,60 +1,665 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Login - Crypvote{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4">Login</h1>
-    <form id="login-form" method="POST" action="{{ url_for('login') }}" onsubmit="return validateForm()" autocomplete="off">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group mb-3">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" class="form-control" required autocomplete="off">
-        </div>
-        <div class="form-group mb-3">
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" class="form-control" required autocomplete="new-password">
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Login</button>
-    </form>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="alert alert-info mt-3">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message | escape }}</div>
-                {% endfor %}
+<div class="login-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="login-card shadow-lg border-0 rounded-4 p-4">
+                    <div class="text-center mb-4">
+                        <div class="login-icon mb-3">
+                            <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                        </div>
+                        <h2 class="fw-bold text-dark mb-2">Welcome Back</h2>
+                        <p class="text-muted">Sign in to your account</p>
+                    </div>
+
+                    <form id="login-form" method="POST" action="{{ url_for('login') }}"
+                          onsubmit="return validateForm()"
+                          autocomplete="off"
+                          novalidate
+                          class="needs-validation">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Rate Limiting Protection -->
+                        <input type="hidden" name="timestamp" id="timestamp">
+                        <input type="hidden" name="form_hash" id="form_hash">
+
+                        <div class="form-floating mb-3">
+                            <input type="text"
+                                   id="username"
+                                   name="username"
+                                   class="form-control form-control-lg"
+                                   placeholder="Username"
+                                   required
+                                   autocomplete="off"
+                                   spellcheck="false"
+                                   maxlength="50"
+                                   pattern="^[A-Za-z0-9_\-\.@]{3,50}$"
+                                   data-bs-toggle="tooltip"
+                                   title="Username must be 3-50 characters, alphanumeric with _-@. allowed">
+                            <label for="username"><i class="fas fa-user me-2"></i>Username</label>
+                            <div class="invalid-feedback">
+                                Please enter a valid username (3-50 chars, alphanumeric with _-@. allowed)
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input type="password"
+                                   id="password"
+                                   name="password"
+                                   class="form-control form-control-lg"
+                                   placeholder="Password"
+                                   required
+                                   autocomplete="current-password"
+                                   spellcheck="false"
+                                   maxlength="128"
+                                   minlength="8">
+                            <label for="password"><i class="fas fa-lock me-2"></i>Password</label>
+                            <div class="invalid-feedback">
+                                Password must be at least 8 characters long
+                            </div>
+                        </div>
+
+                        <!-- Simple Math CAPTCHA for Bot Protection -->
+                        <div class="form-floating mb-3">
+                            <input type="text"
+                                   id="captcha"
+                                   name="captcha"
+                                   class="form-control captcha-input"
+                                   placeholder="CAPTCHA"
+                                   required
+                                   autocomplete="off"
+                                   inputmode="numeric"
+                                   pattern="[0-9]*">
+                            <label for="captcha">
+                                <i class="fas fa-calculator me-2"></i>
+                                Security Check: <span id="captcha-question" class="fw-bold text-primary"></span>
+                            </label>
+                            <div class="invalid-feedback">
+                                Please solve the math problem correctly
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit"
+                                    class="btn btn-primary btn-lg py-3 fw-semibold"
+                                    id="loginBtn">
+                                <span class="btn-text">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                </span>
+                                <span class="btn-spinner d-none">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Signing In...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Security Badge -->
+
+
+                </div>
             </div>
-        {% endif %}
-    {% endwith %}
+        </div>
+    </div>
 </div>
 
-<script>
-    function validateForm() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        // Validasi dasar
-        if (!username.trim() || !password.trim()) {
-            alert('Please fill in all fields');
-            return false;
-        }
-
-        // Validasi karakter yang diizinkan
-        const validChars = /^[A-Za-z0-9_\-\.@]+$/;
-        if (!validChars.test(username)) {
-            alert('Username contains invalid characters');
-            return false;
-        }
-
-        return true;
+<style>
+    /* Login Container */
+    .login-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
     }
 
-    // Tambahan: Pastikan form tidak menggunakan autocomplete dari browser
-    window.onload = function() {
-        // Reset form untuk menghindari browser yang mengabaikan autocomplete="off"
-        setTimeout(function() {
-            document.getElementById('login-form').reset();
-        }, 100);
-    };
+    .login-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.5;
+    }
+
+    /* Login Card */
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+    }
+
+    .login-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Login Icon */
+    .login-icon {
+        animation: pulse 2s infinite;
+    }
+
+    /* Form Controls */
+    .form-floating > .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+
+    /* CAPTCHA Input - Remove Number Spinners */
+    .captcha-input {
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .captcha-input::-webkit-outer-spin-button,
+    .captcha-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .form-floating > .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        transform: translateY(-1px);
+    }
+
+    .form-floating > label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        color: #007bff;
+    }
+
+    /* Button Styles */
+    .btn-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+
+    /* Security Badge */
+    .security-badge {
+        padding: 0.5rem 1rem;
+        background: rgba(40, 167, 69, 0.1);
+        border: 1px solid rgba(40, 167, 69, 0.2);
+        border-radius: 25px;
+        display: inline-block;
+    }
+
+    /* Form Validation */
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        animation: shake 0.5s ease-in-out;
+    }
+
+    .form-control.is-valid {
+        border-color: #28a745;
+    }
+
+    .invalid-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    /* CAPTCHA Styling */
+    #captcha-question {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Loading Animation */
+    .btn-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Animations */
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+        .login-card {
+            margin: 1rem;
+            padding: 2rem 1.5rem;
+        }
+
+        .form-floating > .form-control {
+            font-size: 16px; /* Prevent zoom on iOS */
+        }
+    }
+
+    /* Security Indicators */
+    .strength-meter {
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        margin-top: 0.5rem;
+        overflow: hidden;
+    }
+
+    .strength-meter-fill {
+        height: 100%;
+        transition: all 0.3s ease;
+        border-radius: 2px;
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .login-card,
+        .form-control,
+        .btn-primary,
+        .login-icon {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .form-control:focus,
+    .btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .login-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .form-control {
+            border: 2px solid black;
+        }
+    }
+</style>
+
+<script>
+    // Enhanced Security and UX JavaScript
+    (function() {
+        'use strict';
+
+        // Security Variables
+        let attemptCount = 0;
+        let lastAttempt = 0;
+        let captchaAnswer = 0;
+        const MAX_ATTEMPTS = 5;
+        const LOCKOUT_TIME = 300000; // 5 minutes
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeForm();
+            // Ensure CAPTCHA is generated after DOM is fully loaded
+            setTimeout(() => {
+                generateCaptcha();
+                // Fallback: check if CAPTCHA was generated, if not, try again
+                setTimeout(() => {
+                    const captchaQuestion = document.getElementById('captcha-question');
+                    if (!captchaQuestion.textContent || captchaQuestion.textContent.trim() === '') {
+                        generateCaptcha();
+                    }
+                }, 100);
+            }, 50);
+            setupRealTimeValidation();
+            preventAutocomplete();
+            setupFormProtection();
+        });
+
+        function initializeForm() {
+            const form = document.getElementById('login-form');
+            const timestamp = Date.now();
+
+            // Set timestamp and form hash for replay attack prevention
+            document.getElementById('timestamp').value = timestamp;
+            document.getElementById('form_hash').value = generateFormHash(timestamp);
+
+            // Check for previous lockout
+            checkLockoutStatus();
+        }
+
+        function generateCaptcha() {
+            // Ensure the element exists before proceeding
+            const captchaQuestionElement = document.getElementById('captcha-question');
+            if (!captchaQuestionElement) {
+                console.warn('CAPTCHA question element not found, retrying...');
+                setTimeout(generateCaptcha, 100);
+                return;
+            }
+
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            const operations = ['+', '-', '*'];
+            const operation = operations[Math.floor(Math.random() * operations.length)];
+
+            let question, answer;
+            switch(operation) {
+                case '+':
+                    question = `${num1} + ${num2} = ?`;
+                    answer = num1 + num2;
+                    break;
+                case '-':
+                    if (num1 < num2) [num1, num2] = [num2, num1]; // Ensure positive result
+                    question = `${num1} - ${num2} = ?`;
+                    answer = num1 - num2;
+                    break;
+                case '*':
+                    question = `${num1} × ${num2} = ?`;
+                    answer = num1 * num2;
+                    break;
+            }
+
+            // Set the question with error handling
+            try {
+                captchaQuestionElement.textContent = question;
+                captchaAnswer = answer;
+                console.log('CAPTCHA generated:', question, '=', answer); // Debug log
+            } catch (error) {
+                console.error('Error setting CAPTCHA question:', error);
+                setTimeout(generateCaptcha, 100); // Retry if error occurs
+            }
+        }
+
+        function setupRealTimeValidation() {
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const captchaInput = document.getElementById('captcha');
+
+            // Username validation
+            usernameInput.addEventListener('input', function() {
+                validateUsername(this);
+            });
+
+            // Password validation
+            passwordInput.addEventListener('input', function() {
+                validatePassword(this);
+            });
+
+            // CAPTCHA validation
+            captchaInput.addEventListener('input', function() {
+                validateCaptcha(this);
+            });
+        }
+
+        function validateUsername(input) {
+            const value = input.value.trim();
+            const pattern = /^[A-Za-z0-9_\-\.@]{3,50}$/;
+
+            if (value.length === 0) {
+                setFieldState(input, null);
+            } else if (pattern.test(value)) {
+                setFieldState(input, true);
+            } else {
+                setFieldState(input, false);
+            }
+        }
+
+        function validatePassword(input) {
+            const value = input.value;
+
+            if (value.length === 0) {
+                setFieldState(input, null);
+            } else if (value.length >= 8) {
+                setFieldState(input, true);
+            } else {
+                setFieldState(input, false);
+            }
+        }
+
+        function validateCaptcha(input) {
+            const value = parseInt(input.value);
+
+            if (isNaN(value)) {
+                setFieldState(input, null);
+            } else if (value === captchaAnswer) {
+                setFieldState(input, true);
+            } else {
+                setFieldState(input, false);
+            }
+        }
+
+        function setFieldState(input, isValid) {
+            input.classList.remove('is-valid', 'is-invalid');
+
+            if (isValid === true) {
+                input.classList.add('is-valid');
+            } else if (isValid === false) {
+                input.classList.add('is-invalid');
+            }
+        }
+
+        function preventAutocomplete() {
+            // Enhanced autocomplete prevention
+            const form = document.getElementById('login-form');
+            const inputs = form.querySelectorAll('input[type="text"], input[type="password"]');
+
+            inputs.forEach(input => {
+                input.setAttribute('data-lpignore', 'true');
+                input.setAttribute('data-form-type', 'other');
+            });
+
+            // Clear form periodically to prevent persistence
+            setTimeout(() => {
+                inputs.forEach(input => {
+                    if (input.type !== 'hidden') {
+                        input.value = '';
+                    }
+                });
+            }, 100);
+        }
+
+        function setupFormProtection() {
+            // Prevent multiple rapid submissions
+            const form = document.getElementById('login-form');
+            let isSubmitting = false;
+
+            form.addEventListener('submit', function(e) {
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return false;
+                }
+                isSubmitting = true;
+
+                setTimeout(() => {
+                    isSubmitting = false;
+                }, 2000);
+            });
+        }
+
+        function generateFormHash(timestamp) {
+            // Simple hash for form validation
+            const str = timestamp.toString() + 'crypvote_salt';
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash).toString(16);
+        }
+
+        function checkLockoutStatus() {
+            const lastLockout = localStorage.getItem('loginLockout');
+            if (lastLockout && Date.now() - parseInt(lastLockout) < LOCKOUT_TIME) {
+                const remainingTime = Math.ceil((LOCKOUT_TIME - (Date.now() - parseInt(lastLockout))) / 1000);
+                showLockoutMessage(remainingTime);
+            }
+        }
+
+        function showLockoutMessage(seconds) {
+            const form = document.getElementById('login-form');
+            const submitBtn = document.getElementById('loginBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')})`;
+
+            const countdown = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(countdown);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+                    localStorage.removeItem('loginLockout');
+                } else {
+                    submitBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')})`;
+                }
+            }, 1000);
+        }
+
+        // Main form validation function
+        window.validateForm = function() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const captcha = parseInt(document.getElementById('captcha').value);
+            const submitBtn = document.getElementById('loginBtn');
+
+            // Show loading state
+            submitBtn.querySelector('.btn-text').classList.add('d-none');
+            submitBtn.querySelector('.btn-spinner').classList.remove('d-none');
+            submitBtn.disabled = true;
+
+            // Enhanced validation
+            if (!username || !password || isNaN(captcha)) {
+                showError('Please fill in all fields');
+                return false;
+            }
+
+            // Username validation
+            const usernamePattern = /^[A-Za-z0-9_\-\.@]{3,50}$/;
+            if (!usernamePattern.test(username)) {
+                showError('Invalid username format');
+                return false;
+            }
+
+            // Password validation
+            if (password.length < 8) {
+                showError('Password must be at least 8 characters');
+                return false;
+            }
+
+            // CAPTCHA validation
+            if (captcha !== captchaAnswer) {
+                showError('Incorrect security answer');
+                // Generate new CAPTCHA with delay to ensure proper rendering
+                setTimeout(() => {
+                    generateCaptcha();
+                    document.getElementById('captcha').value = '';
+                }, 100);
+                return false;
+            }
+
+            // Rate limiting check
+            const now = Date.now();
+            if (now - lastAttempt < 1000) {
+                showError('Please wait before trying again');
+                return false;
+            }
+            lastAttempt = now;
+
+            // Check timestamp for replay attacks
+            const timestamp = parseInt(document.getElementById('timestamp').value);
+            if (now - timestamp > 300000) { // 5 minutes
+                showError('Form expired. Please refresh the page.');
+                return false;
+            }
+
+            return true;
+        };
+
+        function showError(message) {
+            const submitBtn = document.getElementById('loginBtn');
+
+            // Reset button state
+            submitBtn.querySelector('.btn-text').classList.remove('d-none');
+            submitBtn.querySelector('.btn-spinner').classList.add('d-none');
+            submitBtn.disabled = false;
+
+            // Show error (will be handled by the flash message system)
+            console.error('Form validation error:', message);
+
+            // Increment attempt counter
+            attemptCount++;
+            if (attemptCount >= MAX_ATTEMPTS) {
+                localStorage.setItem('loginLockout', Date.now().toString());
+                showLockoutMessage(LOCKOUT_TIME / 1000);
+            }
+        }
+
+        // Prevent form submission on Enter in CAPTCHA field (to prevent bypass)
+        document.getElementById('captcha').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                validateCaptcha(this);
+            }
+        });
+
+        // Security: Clear sensitive data on page unload
+        window.addEventListener('beforeunload', function() {
+            const form = document.getElementById('login-form');
+            if (form) {
+                form.reset();
+            }
+        });
+
+        // Additional initialization check for CAPTCHA
+        window.addEventListener('load', function() {
+            // Double-check CAPTCHA generation after full page load
+            setTimeout(() => {
+                const captchaQuestion = document.getElementById('captcha-question');
+                if (!captchaQuestion.textContent || captchaQuestion.textContent.trim() === '') {
+                    console.log('CAPTCHA not found after page load, generating...');
+                    generateCaptcha();
+                }
+            }, 200);
+        });
+
+    })();
 </script>
 {% endblock %}

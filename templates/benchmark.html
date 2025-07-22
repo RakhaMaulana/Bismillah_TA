@@ -1,123 +1,208 @@
 {% extends "base.html" %}
 
-{% block title %}E-Voting Performance Benchmark{% endblock %}
+{% block title %}Performance Benchmark - Crypvote{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">🚀 E-Voting Performance Benchmark</h2>
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title">System Performance Analysis</h5>
-            <p class="card-text">
-                This benchmark will test the e-voting pipeline:
-                <strong>Vote Generation → Tabulation → Verification</strong>
-            </p>
-
-            <div class="alert alert-info mb-4">
-                <h6 class="alert-heading">📊 Benchmark Process</h6>
-                <ul class="mb-0">
-                    <li><strong>Generate Votes:</strong> Create actual ballots with blind signatures</li>
-                    <li><strong>Tabulation:</strong> Count all generated votes</li>
-                    <li><strong>Verification:</strong> Verify signature authenticity</li>
-                    <li><strong>Compare with zkVoting:</strong> Benchmark against latest research (2300ms casting, 3.9ms tally)</li>
-                </ul>
-            </div>
-
-            <!-- Research Reference Card -->
-            <div class="alert alert-light border mb-4">
-                <h6 class="alert-heading">📚 Baseline Comparison: zkVoting Research</h6>
-                <p class="mb-2"><strong>Paper:</strong> "zkVoting: A coercion-resistant e-voting system"</p>
-                <p class="mb-2"><strong>Performance Metrics:</strong></p>
-                <ul class="mb-1">
-                    <li>Ballot casting time: <strong>2300 milliseconds</strong></li>
-                    <li>Tally time: <strong>3.9 milliseconds per ballot</strong></li>
-                    <li>Algorithm complexity: <strong>O(n)</strong></li>
-                    <li>Features: Coercion-resistant, E2E verifiable, Zero-knowledge proofs</li>
-                </ul>
-            </div>
-
-            <!-- ✅ FIXED FORM WITHOUT BUTTONS -->
-            <form id="benchmarkForm" class="mb-4" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-
-                <div class="row">
-                    <div class="col-md-8">
-                        <label for="votingIterations" class="form-label">Number of Votes to Generate:</label>
-                        <input type="number" class="form-control" id="votingIterations" name="voting_iterations"
-                               value="50" min="10" max="1024">
-                        <small class="form-text text-muted">
-                            Total ballots to generate and count (10-1024).
-                            <strong>Recommended:</strong> 50-200 for quick tests, 500-1024 for full benchmark.
-                        </small>
+<div class="benchmark-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-11">
+                <div class="benchmark-card shadow-lg border-0 rounded-4 p-4">
+                    <!-- Header Section -->
+                    <div class="text-center mb-5">
+                        <div class="benchmark-icon mb-3">
+                            <i class="fas fa-rocket fa-3x text-primary"></i>
+                        </div>
+                        <h1 class="fw-bold text-dark mb-2">Performance Benchmark</h1>
+                        <p class="text-muted lead">E-Voting System Performance Analysis vs zkVoting Research</p>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary btn-lg w-100" id="runBtn">
-                            <i class="fas fa-rocket"></i> Run Benchmark vs zkVoting
-                        </button>
-                    </div>
-                </div>
-            </form>
 
-            <!-- ✅ IMPROVED PROGRESS INDICATOR -->
-            <div id="loadingIndicator" class="text-center d-none">
-                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <h5 id="loadingText" class="mb-2">Initializing benchmark...</h5>
+                    <!-- Benchmark Info Cards -->
+                    <div class="row mb-5">
+                        <div class="col-lg-8">
+                            <div class="info-card h-100">
+                                <h5 class="card-title mb-3">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Benchmark Process
+                                </h5>
+                                <div class="process-steps">
+                                    <div class="step-item">
+                                        <div class="step-icon">
+                                            <i class="fas fa-vote-yea"></i>
+                                        </div>
+                                        <div class="step-content">
+                                            <strong>Vote Generation</strong>
+                                            <p class="mb-0 text-muted">Create actual ballots with blind signatures</p>
+                                        </div>
+                                    </div>
+                                    <div class="step-item">
+                                        <div class="step-icon">
+                                            <i class="fas fa-calculator"></i>
+                                        </div>
+                                        <div class="step-content">
+                                            <strong>Tabulation</strong>
+                                            <p class="mb-0 text-muted">Count all generated votes efficiently</p>
+                                        </div>
+                                    </div>
+                                    <div class="step-item">
+                                        <div class="step-icon">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <div class="step-content">
+                                            <strong>Verification</strong>
+                                            <p class="mb-0 text-muted">Verify signature authenticity and integrity</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                <!-- ✅ IMPROVED: More accurate progress bar -->
-                <div class="progress mb-3" style="height: 25px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-                         role="progressbar" style="width: 0%" id="progressBar">
-                        <span id="progressText">0%</span>
-                    </div>
-                </div>
-
-                <!-- ✅ IMPROVED: Time estimation -->
-                <div class="mb-3">
-                    <small class="text-muted">
-                        <span id="timeEstimate">Estimated time: Calculating...</span> |
-                        <span id="elapsedTime">Elapsed: 0s</span>
-                    </small>
-                </div>
-
-                <!-- Progress Steps -->
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card border-primary" id="generationCard">
-                            <div class="card-body text-center">
-                                <h6 class="card-title">📝 Generation</h6>
-                                <p class="card-text" id="generationStatus">Waiting...</p>
-                                <div class="progress progress-sm">
-                                    <div class="progress-bar bg-primary" id="generationProgress" style="width: 0%"></div>
+                        <div class="col-lg-4">
+                            <div class="research-card h-100">
+                                <h6 class="card-title mb-3">
+                                    <i class="fas fa-university me-2"></i>
+                                    zkVoting Research Baseline
+                                </h6>
+                                <div class="research-metrics">
+                                    <div class="metric-item">
+                                        <span class="metric-label">Ballot Casting</span>
+                                        <span class="metric-value">2,300ms</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Tally Time</span>
+                                        <span class="metric-value">3.9ms/ballot</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Complexity</span>
+                                        <span class="metric-value">O(n)</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card border-warning" id="tabulationCard">
-                            <div class="card-body text-center">
-                                <h6 class="card-title">📊 Tabulation</h6>
-                                <p class="card-text" id="tabulationStatus">Waiting...</p>
-                                <div class="progress progress-sm">
-                                    <div class="progress-bar bg-warning" id="tabulationProgress" style="width: 0%"></div>
+
+                    <!-- Benchmark Configuration -->
+                    <div class="config-section mb-5">
+                        <h5 class="section-title mb-4">
+                            <i class="fas fa-cogs me-2"></i>
+                            Benchmark Configuration
+                        </h5>
+
+                        <form id="benchmarkForm" method="POST" class="benchmark-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                            <div class="row align-items-end">
+                                <div class="col-lg-8">
+                                    <div class="form-floating mb-3">
+                                        <input type="number"
+                                               class="form-control form-control-lg"
+                                               id="votingIterations"
+                                               name="voting_iterations"
+                                               value="50"
+                                               min="10"
+                                               max="1024"
+                                               required>
+                                        <label for="votingIterations">
+                                            <i class="fas fa-list-ol me-2"></i>
+                                            Number of Votes to Generate
+                                        </label>
+                                    </div>
+                                    <div class="form-help">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Range: 10-1024 votes.
+                                            <strong>Quick test:</strong> 50-200 votes |
+                                            <strong>Full benchmark:</strong> 500-1024 votes
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="d-grid">
+                                        <button type="submit"
+                                                class="btn btn-primary btn-lg py-3 fw-semibold"
+                                                id="runBtn">
+                                            <i class="fas fa-rocket me-2"></i>
+                                            Run Benchmark
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Progress Section -->
+                    <div id="loadingIndicator" class="progress-section d-none">
+                        <div class="text-center mb-4">
+                            <div class="loading-spinner mb-3">
+                                <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <h4 id="loadingText" class="mb-3">Initializing benchmark...</h4>
+
+                            <!-- Main Progress Bar -->
+                            <div class="main-progress mb-4">
+                                <div class="progress" style="height: 30px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                         role="progressbar" style="width: 0%" id="progressBar">
+                                        <span id="progressText" class="fw-semibold">0%</span>
+                                    </div>
+                                </div>
+                                <div class="progress-info mt-2">
+                                    <small class="text-muted">
+                                        <span id="timeEstimate">Estimated time: Calculating...</span> •
+                                        <span id="elapsedTime">Elapsed: 0s</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Steps -->
+                        <div class="row">
+                            <div class="col-lg-4 mb-3">
+                                <div class="progress-card" id="generationCard">
+                                    <div class="progress-header">
+                                        <i class="fas fa-vote-yea fa-2x text-primary mb-2"></i>
+                                        <h6 class="card-title">Vote Generation</h6>
+                                    </div>
+                                    <div class="progress-body">
+                                        <p class="progress-status" id="generationStatus">Waiting...</p>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-primary" id="generationProgress" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <div class="progress-card" id="tabulationCard">
+                                    <div class="progress-header">
+                                        <i class="fas fa-calculator fa-2x text-warning mb-2"></i>
+                                        <h6 class="card-title">Tabulation</h6>
+                                    </div>
+                                    <div class="progress-body">
+                                        <p class="progress-status" id="tabulationStatus">Waiting...</p>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-warning" id="tabulationProgress" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4 mb-3">
+                                <div class="progress-card" id="verificationCard">
+                                    <div class="progress-header">
+                                        <i class="fas fa-shield-alt fa-2x text-success mb-2"></i>
+                                        <h6 class="card-title">Verification</h6>
+                                    </div>
+                                    <div class="progress-body">
+                                        <p class="progress-status" id="verificationStatus">Waiting...</p>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-success" id="verificationProgress" style="width: 0%"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card border-success" id="verificationCard">
-                            <div class="card-body text-center">
-                                <h6 class="card-title">🔓 Verification</h6>
-                                <p class="card-text" id="verificationStatus">Waiting...</p>
-                                <div class="progress progress-sm">
-                                    <div class="progress-bar bg-success" id="verificationProgress" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Debug Information -->
             <div id="debugInfo" class="alert alert-info d-none">
@@ -125,191 +210,249 @@
                 <pre id="debugContent"></pre>
             </div>
 
-            <!-- Results (unchanged) -->
-            <div id="results" class="d-none">
-                <!-- Your existing results HTML content -->
-                <h4 class="mb-3">🎉 Benchmark Results</h4>
+                    <!-- Results Section -->
+                    <div id="results" class="results-section d-none">
+                        <div class="text-center mb-4">
+                            <h2 class="fw-bold text-success mb-2">
+                                <i class="fas fa-trophy me-2"></i>
+                                Benchmark Results
+                            </h2>
+                            <p class="text-muted">Performance analysis complete</p>
+                        </div>
 
-                <!-- Overall Performance Summary -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="alert alert-success">
-                            <h5 class="alert-heading">📊 Overall Performance Summary</h5>
-                            <div class="row text-center">
-                                <div class="col-md-3">
-                                    <strong>Total Votes:</strong><br>
-                                    <span id="totalVotes" class="h4 text-primary">0</span>
+                        <!-- Overall Performance Summary -->
+                        <div class="summary-cards mb-5">
+                            <div class="row">
+                                <div class="col-lg-3 col-md-6 mb-3">
+                                    <div class="summary-card">
+                                        <div class="summary-icon">
+                                            <i class="fas fa-vote-yea"></i>
+                                        </div>
+                                        <div class="summary-content">
+                                            <h3 id="totalVotes">0</h3>
+                                            <p>Total Votes</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <strong>Total Time:</strong><br>
-                                    <span id="totalTime" class="h4 text-info">0ms</span>
+                                <div class="col-lg-3 col-md-6 mb-3">
+                                    <div class="summary-card">
+                                        <div class="summary-icon">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        <div class="summary-content">
+                                            <h3 id="totalTime">0ms</h3>
+                                            <p>Total Time</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <strong>vs zkVoting:</strong><br>
-                                    <span id="overallSpeedup" class="h4 text-success">0x</span>
+                                <div class="col-lg-3 col-md-6 mb-3">
+                                    <div class="summary-card">
+                                        <div class="summary-icon">
+                                            <i class="fas fa-chart-line"></i>
+                                        </div>
+                                        <div class="summary-content">
+                                            <h3 id="overallSpeedup">0x</h3>
+                                            <p>vs zkVoting</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <strong>Performance:</strong><br>
-                                    <span id="performanceRating" class="h4">⭐</span>
+                                <div class="col-lg-3 col-md-6 mb-3">
+                                    <div class="summary-card">
+                                        <div class="summary-icon">
+                                            <i class="fas fa-star"></i>
+                                        </div>
+                                        <div class="summary-content">
+                                            <h3 id="performanceRating">⭐</h3>
+                                            <p>Rating</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Vote Distribution Card -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="mb-0">🗳️ Vote Distribution</h5>
-                            </div>
-                            <div class="card-body">
-                                <div id="voteDistribution" class="row text-center">
+                        <!-- Vote Distribution -->
+                        <div class="vote-distribution-section mb-5">
+                            <h5 class="section-title mb-4">
+                                <i class="fas fa-chart-pie me-2"></i>
+                                Vote Distribution
+                            </h5>
+                            <div class="distribution-card">
+                                <div id="voteDistribution" class="row">
                                     <!-- Vote counts akan diisi oleh JavaScript -->
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Detailed Results -->
-                <div class="row mb-4">
-                    <!-- Generation Results -->
-                    <div class="col-md-4">
-                        <div class="card border-primary">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">📝 Vote Generation</h5>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-sm">
-                                    <tbody>
-                                        <tr><th>Generated Votes</th><td id="genVotes">0</td></tr>
-                                        <tr><th>Generation Time</th><td id="genTime">0ms</td></tr>
-                                        <tr><th>Time per Vote</th><td id="genAvgTime">0ms</td></tr>
-                                        <tr><th>Votes per Second</th><td id="genThroughput">0</td></tr>
-                                        <tr><th>Success Rate</th><td id="genSuccessRate">0%</td></tr>
-                                    </tbody>
-                                </table>
+                        <!-- Detailed Performance Metrics -->
+                        <div class="detailed-results mb-5">
+                            <h5 class="section-title mb-4">
+                                <i class="fas fa-analytics me-2"></i>
+                                Detailed Performance Metrics
+                            </h5>
+                            <div class="row">
+                                <!-- Generation Results -->
+                                <div class="col-lg-4 mb-4">
+                                    <div class="metric-card generation">
+                                        <div class="metric-header">
+                                            <i class="fas fa-vote-yea fa-2x"></i>
+                                            <h6>Vote Generation</h6>
+                                        </div>
+                                        <div class="metric-body">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Generated Votes</span>
+                                                <span class="metric-value" id="genVotes">0</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Generation Time</span>
+                                                <span class="metric-value" id="genTime">0ms</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Time per Vote</span>
+                                                <span class="metric-value" id="genAvgTime">0ms</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Votes per Second</span>
+                                                <span class="metric-value" id="genThroughput">0</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Success Rate</span>
+                                                <span class="metric-value" id="genSuccessRate">0%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tabulation Results -->
+                                <div class="col-lg-4 mb-4">
+                                    <div class="metric-card tabulation">
+                                        <div class="metric-header">
+                                            <i class="fas fa-calculator fa-2x"></i>
+                                            <h6>Tabulation</h6>
+                                        </div>
+                                        <div class="metric-body">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Ballots Counted</span>
+                                                <span class="metric-value" id="tabBallots">0</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Tabulation Time</span>
+                                                <span class="metric-value" id="tabTime">0ms</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Time per Ballot</span>
+                                                <span class="metric-value" id="tabPerBallot">0ms</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Ballots per Second</span>
+                                                <span class="metric-value" id="tabThroughput">0</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">vs zkVoting</span>
+                                                <span class="metric-value" id="tabSpeedup">0x</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Verification Results -->
+                                <div class="col-lg-4 mb-4">
+                                    <div class="metric-card verification">
+                                        <div class="metric-header">
+                                            <i class="fas fa-shield-alt fa-2x"></i>
+                                            <h6>Verification</h6>
+                                        </div>
+                                        <div class="metric-body">
+                                            <div class="metric-item">
+                                                <span class="metric-label">Votes Verified</span>
+                                                <span class="metric-value" id="verVotes">0</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Verification Time</span>
+                                                <span class="metric-value" id="verTime">0ms</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Time per Vote</span>
+                                                <span class="metric-value" id="verAvgTime">0ms</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Verifications/sec</span>
+                                                <span class="metric-value" id="verThroughput">0</span>
+                                            </div>
+                                            <div class="metric-item">
+                                                <span class="metric-label">Success Rate</span>
+                                                <span class="metric-value" id="verSuccessRate">0%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Tabulation Results -->
-                    <div class="col-md-4">
-                        <div class="card border-warning">
-                            <div class="card-header bg-warning text-dark">
-                                <h5 class="mb-0">📊 Tabulation</h5>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-sm">
-                                    <tbody>
-                                        <tr><th>Ballots Counted</th><td id="tabBallots">0</td></tr>
-                                        <tr><th>Tabulation Time</th><td id="tabTime">0ms</td></tr>
-                                        <tr><th>Time per Ballot</th><td id="tabPerBallot">0ms</td></tr>
-                                        <tr><th>Ballots per Second</th><td id="tabThroughput">0</td></tr>
-                                        <tr><th>vs zkVoting</th><td id="tabSpeedup">0x</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Verification Results -->
-                    <div class="col-md-4">
-                        <div class="card border-success">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="mb-0">🔓 Verification</h5>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-sm">
-                                    <tbody>
-                                        <tr><th>Votes Verified</th><td id="verVotes">0</td></tr>
-                                        <tr><th>Verification Time</th><td id="verTime">0ms</td></tr>
-                                        <tr><th>Time per Vote</th><td id="verAvgTime">0ms</td></tr>
-                                        <tr><th>Verifications/sec</th><td id="verThroughput">0</td></tr>
-                                        <tr><th>Success Rate</th><td id="verSuccessRate">0%</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Performance Comparison -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">🏆 Performance Comparison vs zkVoting Research</h5>
-                            </div>
-                            <div class="card-body">
+                        <!-- Performance Comparison -->
+                        <div class="comparison-section">
+                            <h5 class="section-title mb-4">
+                                <i class="fas fa-trophy me-2"></i>
+                                Performance Comparison vs zkVoting Research
+                            </h5>
+                            <div class="comparison-card">
                                 <div class="table-responsive">
-                                    <table class="table table-striped">
+                                    <table class="table table-modern">
                                         <thead>
                                             <tr>
                                                 <th>Process</th>
                                                 <th>Our System</th>
-                                                <th>zkVoting (Research)</th>
+                                                <th>zkVoting Research</th>
                                                 <th>Performance</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td><strong>Ballot Casting</strong></td>
+                                                <td class="fw-semibold">Ballot Casting</td>
                                                 <td id="compGenTime">-</td>
-                                                <td>2300ms per ballot</td>
-                                                <td id="compGenSpeedup">-</td>
+                                                <td>2,300ms per ballot</td>
+                                                <td id="compGenSpeedup" class="fw-semibold">-</td>
                                             </tr>
                                             <tr>
-                                                <td><strong>Tabulation</strong></td>
+                                                <td class="fw-semibold">Tabulation</td>
                                                 <td id="compTabTime">-</td>
                                                 <td>3.9ms per ballot</td>
-                                                <td id="compTabSpeedup">-</td>
+                                                <td id="compTabSpeedup" class="fw-semibold">-</td>
                                             </tr>
                                             <tr class="table-success">
-                                                <td><strong>Overall E2E</strong></td>
-                                                <td id="compOverallTime">-</td>
-                                                <td>~2300ms per vote</td>
-                                                <td id="compOverallSpeedup">-</td>
+                                                <td class="fw-bold">Overall E2E</td>
+                                                <td id="compOverallTime" class="fw-semibold">-</td>
+                                                <td class="fw-semibold">~2,300ms per vote</td>
+                                                <td id="compOverallSpeedup" class="fw-bold">-</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
-
-                                <!-- Feature Comparison -->
-                                <!-- <div class="mt-4">
-                                    <h6>📋 Feature Comparison:</h6>
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h6 class="text-success">✅ Our System:</h6>
-                                            <ul class="list-unstyled">
-                                                <li>✓ Blind signature scheme</li>
-                                                <li>✓ Vote anonymity</li>
-                                                <li>✓ Signature verification</li>
-                                                <li>✓ Real-time counting</li>
-                                                <li>✓ Database integrity</li>
-                                            </ul>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <h6 class="text-primary">🔬 zkVoting Research:</h6>
-                                            <ul class="list-unstyled">
-                                                <li>✓ Coercion resistance</li>
-                                                <li>✓ End-to-end verifiability</li>
-                                                <li>✓ Zero-knowledge proofs</li>
-                                                <li>✓ Fake keys approach</li>
-                                                <li>✓ O(n) tally complexity</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div> -->
                             </div>
                         </div>
                     </div>
+
+                    <!-- Error Message -->
+                    <div id="errorMessage" class="error-section d-none">
+                        <div class="error-card">
+                            <div class="error-icon">
+                                <i class="fas fa-exclamation-triangle fa-3x"></i>
+                            </div>
+                            <div class="error-content">
+                                <!-- Error content will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Debug Information -->
+                    <div id="debugInfo" class="debug-section d-none">
+                        <h6 class="debug-title">
+                            <i class="fas fa-bug me-2"></i>
+                            Debug Information
+                        </h6>
+                        <pre id="debugContent" class="debug-content"></pre>
+                    </div>
                 </div>
             </div>
-
-            <div id="errorMessage" class="alert alert-danger d-none"></div>
         </div>
     </div>
 </div>
@@ -346,24 +489,6 @@ function safeToggleClass(elementId, className, add = true) {
 function getCSRFToken() {
     const tokenInput = document.querySelector('input[name="csrf_token"]');
     return tokenInput ? tokenInput.value : null;
-}
-
-function getPerformanceRating(speedup) {
-    if (speedup > 10) return '🚀 EXCEPTIONAL';
-    if (speedup > 2) return '⭐ EXCELLENT';
-    if (speedup > 1) return '✅ BETTER';
-    if (speedup > 0.5) return '👍 COMPETITIVE';
-    return '⚠️ NEEDS WORK';
-}
-
-function formatSpeedupText(speedup) {
-    if (speedup > 1) {
-        return `${speedup.toFixed(1)}x faster`;
-    } else if (speedup < 1 && speedup > 0) {
-        return `${(1/speedup).toFixed(1)}x slower`;
-    } else {
-        return 'N/A';
-    }
 }
 
 function formatTimeInMs(timeInSeconds) {
@@ -643,7 +768,7 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
             safeUpdateElement('totalVotes', votingIterations);
             safeUpdateElement('totalTime', formatTimeInMs(totalTime));
             safeUpdateElement('overallSpeedup', `${speedup.toFixed(1)}x`);
-            safeUpdateElement('performanceRating', getPerformanceRating(speedup));
+            safeUpdateElement('performanceRating', 'Complete');
         }
 
         // Generation results
@@ -672,7 +797,7 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
             safeUpdateElement('tabTime', formatTimeInMs(time));
             safeUpdateElement('tabPerBallot', formatTimeInMs(timePerBallot));
             safeUpdateElement('tabThroughput', `${throughput.toFixed(2)}`);
-            safeUpdateElement('tabSpeedup', formatSpeedupText(speedup));
+            safeUpdateElement('tabSpeedup', `${speedup.toFixed(2)}x`);
         }
 
         // Verification results
@@ -701,13 +826,13 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
             const overallSpeedup = overallTime > 0 ? 2.3 / overallTime : 0;
 
             safeUpdateElement('compGenTime', `${formatTimeInMs(genTime)} per vote`);
-            safeUpdateElement('compGenSpeedup', formatSpeedupText(genSpeedup));
+            safeUpdateElement('compGenSpeedup', `${genSpeedup.toFixed(2)}x`);
 
             safeUpdateElement('compTabTime', `${formatTimeInMs(tabTime)} per ballot`);
-            safeUpdateElement('compTabSpeedup', formatSpeedupText(tabSpeedup));
+            safeUpdateElement('compTabSpeedup', `${tabSpeedup.toFixed(2)}x`);
 
             safeUpdateElement('compOverallTime', `${formatTimeInMs(overallTime)} per vote`);
-            safeUpdateElement('compOverallSpeedup', formatSpeedupText(overallSpeedup));
+            safeUpdateElement('compOverallSpeedup', `${overallSpeedup.toFixed(2)}x`);
         }
 
         if (runBtn) runBtn.disabled = false;
@@ -750,25 +875,664 @@ console.log('✅ Benchmark script initialized');
 </script>
 
 <style>
-/* ✅ ADDITIONAL STYLES */
-.progress-sm {
-    height: 8px;
-}
+    /* Benchmark Container */
+    .benchmark-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        padding: 2rem 0;
+    }
 
-.card-body .progress {
-    margin-top: 0.5rem;
-}
+    .benchmark-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.5;
+    }
 
-/* Smooth transitions for progress bars */
-.progress-bar {
-    transition: width 0.3s ease;
-}
+    /* Benchmark Card */
+    .benchmark-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+        margin: 2rem 0;
+    }
 
-/* Better mobile responsiveness */
-@media (max-width: 768px) {
-    .col-md-8, .col-md-4 {
+    .benchmark-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Benchmark Icon */
+    .benchmark-icon {
+        animation: rocket 3s infinite;
+    }
+
+    @keyframes rocket {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        25% { transform: translateY(-5px) rotate(-2deg); }
+        50% { transform: translateY(-8px) rotate(0deg); }
+        75% { transform: translateY(-5px) rotate(2deg); }
+    }
+
+    /* Info Cards */
+    .info-card {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+        background: rgba(248, 249, 250, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .research-card {
+        background: rgba(52, 58, 64, 0.05);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(52, 58, 64, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .research-card:hover {
+        background: rgba(52, 58, 64, 0.08);
+        transform: translateY(-2px);
+    }
+
+    /* Process Steps */
+    .process-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 12px;
+        border-left: 4px solid #007bff;
+        transition: all 0.3s ease;
+    }
+
+    .step-item:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: translateX(5px);
+    }
+
+    .step-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .step-content strong {
+        color: #495057;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    /* Research Metrics */
+    .research-metrics {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
         margin-bottom: 1rem;
     }
-}
+
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .metric-value {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.95rem;
+    }
+
+    .research-features {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .feature-badge {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Section Titles */
+    .section-title {
+        color: #495057;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Form Controls */
+    .benchmark-form {
+        background: rgba(248, 249, 250, 0.8);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+    }
+
+    .form-floating > .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+
+    .form-floating > .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        transform: translateY(-1px);
+    }
+
+    .form-floating > label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        color: #007bff;
+    }
+
+    .form-help {
+        margin-top: 0.5rem;
+    }
+
+    /* Button Styles */
+    .btn-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+    }
+
+    /* Progress Section */
+    .progress-section {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .loading-spinner {
+        animation: pulse 2s infinite;
+    }
+
+    .main-progress .progress {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .main-progress .progress-bar {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border-radius: 15px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .progress-info {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    /* Progress Cards */
+    .progress-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        text-align: center;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .progress-card:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .progress-header {
+        margin-bottom: 1rem;
+    }
+
+    .progress-header i {
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-status {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-card .progress {
+        height: 8px;
+        border-radius: 4px;
+    }
+
+    /* Results Section */
+    .results-section {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Summary Cards */
+    .summary-cards {
+        margin-bottom: 3rem;
+    }
+
+    .summary-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .summary-card:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .summary-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        margin: 0 auto 1rem;
+    }
+
+    .summary-content h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #007bff;
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-content p {
+        color: #6c757d;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    /* Vote Distribution */
+    .distribution-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Metric Cards */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .metric-card:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+
+    .metric-card.generation {
+        border-left: 4px solid #007bff;
+    }
+
+    .metric-card.tabulation {
+        border-left: 4px solid #ffc107;
+    }
+
+    .metric-card.verification {
+        border-left: 4px solid #28a745;
+    }
+
+    .metric-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-header i {
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-header h6 {
+        color: #495057;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .metric-body .metric-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    }
+
+    .metric-body .metric-item:last-child {
+        border-bottom: none;
+    }
+
+    .metric-body .metric-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .metric-body .metric-value {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    /* Comparison Table */
+    .comparison-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .table-modern {
+        margin: 0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table-modern thead th {
+        background: linear-gradient(45deg, #343a40, #495057);
+        color: white;
+        border: none;
+        font-weight: 600;
+        padding: 1rem;
+    }
+
+    .table-modern tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .table-modern tbody tr:hover {
+        background: rgba(0, 123, 255, 0.02);
+    }
+
+    /* Error Section */
+    .error-section {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+        text-align: center;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .error-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .error-icon {
+        color: #dc3545;
+        animation: shake 1s ease-in-out;
+    }
+
+    .error-content {
+        max-width: 600px;
+    }
+
+    /* Debug Section */
+    .debug-section {
+        background: rgba(52, 58, 64, 0.05);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(52, 58, 64, 0.1);
+        margin-top: 2rem;
+    }
+
+    .debug-title {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .debug-content {
+        background: rgba(52, 58, 64, 0.8);
+        color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0;
+        font-size: 0.85rem;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    /* Animations */
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(30px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .benchmark-container {
+            padding: 1rem 0;
+        }
+
+        .benchmark-card {
+            margin: 1rem 0;
+            padding: 2rem 1.5rem;
+        }
+
+        .process-steps {
+            gap: 1rem;
+        }
+
+        .step-item {
+            flex-direction: column;
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .step-icon {
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .benchmark-card {
+            padding: 1.5rem 1rem;
+        }
+
+        .info-card,
+        .research-card,
+        .benchmark-form {
+            padding: 1.5rem;
+        }
+
+        .summary-card,
+        .metric-card {
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .summary-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.25rem;
+        }
+
+        .summary-content h3 {
+            font-size: 1.5rem;
+        }
+
+        .research-features {
+            justify-content: center;
+        }
+
+        .progress-info {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .benchmark-container {
+            padding: 0.5rem 0;
+        }
+
+        .benchmark-card {
+            margin: 0.5rem;
+            padding: 1rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+        }
+
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .benchmark-card,
+        .info-card,
+        .research-card,
+        .summary-card,
+        .metric-card,
+        .progress-card,
+        .btn-primary,
+        .benchmark-icon,
+        .loading-spinner {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .form-control:focus,
+    .btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .benchmark-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .form-control {
+            border: 2px solid black;
+        }
+
+        .summary-card,
+        .metric-card,
+        .progress-card {
+            border: 1px solid black;
+        }
+    }
+
+    /* Utility Classes */
+    .progress-sm {
+        height: 8px;
+    }
+
+    .text-gradient {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
 </style>
 {% endblock %}

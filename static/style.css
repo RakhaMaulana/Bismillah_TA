@@ -15,19 +15,48 @@ h1 {
     padding: 20px;
 }
 
+
+/* Pop-up notification style for .flashes */
 .flashes {
-    list-style-type: none;
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    z-index: 9999;
+    min-width: 250px;
+    max-width: 350px;
+    list-style: none;
     padding: 0;
-    margin-top: 20px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
 }
 
 .flashes li {
-    background-color: #ffdddd;
+    background: linear-gradient(90deg, #ffdddd 80%, #ffeaea 100%);
     color: #d8000c;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #d8000c;
-    border-radius: 5px;
+    padding: 16px 24px 16px 16px;
+    border-left: 6px solid #d8000c;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    font-size: 1.05em;
+    font-weight: 500;
+    opacity: 0.98;
+    animation: fadeInPop 0.5s;
+    position: relative;
+    pointer-events: auto;
+    transition: opacity 0.3s;
+}
+
+.flashes li.hide {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+@keyframes fadeInPop {
+    0% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    100% { opacity: 0.98; transform: translateY(0) scale(1); }
 }
 
 .hero {

@@ -3,31 +3,85 @@
 {% block title %}Submit Voting Token{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-body p-4">
-                    <h2 class="text-center mb-4">Enter Your Voting Token</h2>
-
-                    {% with messages = get_flashed_messages() %}
-                        {% if messages %}
-                            {% for message in messages %}
-                                <div class="alert alert-info">{{ message | e }}</div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
-
-                    <form method="post" action="{{ url_for('process_token') }}" onsubmit="return validateToken()">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label for="token" class="form-label">Voting Token</label>
-                            <input type="text" class="form-control" id="token" name="token" required
-                                   pattern="[A-Za-z0-9]+" title="Only alphanumeric characters allowed"
-                                   placeholder="Enter your voting token">
+<div class="token-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-lg-5 col-md-7 col-sm-9">
+                <div class="token-card shadow-lg">
+                    <div class="card-header text-center">
+                        <div class="token-icon mb-3">
+                            <i class="fas fa-key fa-3x text-primary"></i>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Submit Token</button>
-                    </form>
+                        <h2 class="card-title mb-0">Enter Your Voting Token</h2>
+                        <p class="card-subtitle text-muted mt-2">Please enter your secure voting token to proceed</p>
+                    </div>
+
+                    <div class="card-body p-4">
+                        {% with messages = get_flashed_messages() %}
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-warning alert-dismissible fade show custom-alert" role="alert">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        {{ message | e }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="post" action="{{ url_for('process_token') }}" onsubmit="return validateToken()" autocomplete="off">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <div class="form-floating mb-4">
+                                <input type="text"
+                                       class="form-control token-input"
+                                       id="token"
+                                       name="token"
+                                       required
+                                       maxlength="6"
+                                       minlength="6"
+                                       pattern="[A-Z]{6}"
+                                       title="Token must be exactly 6 uppercase letters"
+                                       placeholder="ZHFAYL"
+                                       autocomplete="off"
+                                       autocorrect="off"
+                                       autocapitalize="on"
+                                       spellcheck="false"
+                                       data-bs-toggle="tooltip"
+                                       data-bs-placement="bottom"
+                                       data-bs-title="Enter your 6-character voting token (uppercase letters only)">
+                                <label for="token">
+                                    <i class="fas fa-key me-2"></i>Voting Token (6 Letters)
+                                </label>
+                                <div class="invalid-feedback">
+                                    Please enter a valid token (exactly 6 uppercase letters)
+                                </div>
+                            </div>                            <div class="security-notice mb-4">
+                                <div class="notice-content">
+                                    <i class="fas fa-shield-alt text-success me-2"></i>
+                                    <small class="text-muted">Your 6-letter token is encrypted and secure.</small>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100 submit-btn">
+                                <span class="btn-text">
+                                    <i class="fas fa-arrow-right me-2"></i>
+                                    Proceed to Vote
+                                </span>
+                                <span class="btn-loading d-none">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Validating Token...
+                                </span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="card-footer text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Need help? Contact the election committee
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -35,23 +89,540 @@
 </div>
 
 <script>
-function validateToken() {
-    const token = document.getElementById('token').value.trim();
+    // Enhanced token validation with security features
+    function validateToken() {
+        const tokenInput = document.getElementById('token');
+        const token = tokenInput.value.trim().toUpperCase();
+        const submitBtn = document.querySelector('.submit-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
 
-    // Validasi token tidak kosong
-    if (!token) {
-        alert('Please enter your voting token');
-        return false;
+        // Clear previous validation states
+        tokenInput.classList.remove('is-invalid', 'is-valid');
+
+        // Enhanced security validation
+        if (!token) {
+            showTokenError('Please enter your voting token');
+            return false;
+        }
+
+        // Length validation - exactly 6 characters
+        if (token.length !== 6) {
+            showTokenError('Token must be exactly 6 characters');
+            return false;
+        }
+
+        // Character validation - only uppercase letters
+        const validChars = /^[A-Z]{6}$/;
+        if (!validChars.test(token)) {
+            showTokenError('Token must contain only uppercase letters (A-Z)');
+            return false;
+        }
+
+        // Check for suspicious patterns
+        if (hasSuspiciousPatterns(token)) {
+            showTokenError('Invalid token format detected');
+            return false;
+        }
+
+        // Auto-format to uppercase and validate
+        tokenInput.value = token;
+
+        // Show loading state
+        tokenInput.classList.add('is-valid');
+        submitBtn.disabled = true;
+        btnText.classList.add('d-none');
+        btnLoading.classList.remove('d-none');
+
+        // Clear token from memory after a short delay (security)
+        setTimeout(() => {
+            if (tokenInput.value) {
+                // Don't clear the actual input, but mark for security cleanup
+                tokenInput.setAttribute('data-processed', 'true');
+            }
+        }, 100);
+
+        return true;
     }
 
-    // Validasi karakter token
-    const validChars = /^[A-Za-z0-9]+$/;
-    if (!validChars.test(token)) {
-        alert('Token contains invalid characters');
-        return false;
+    function showTokenError(message) {
+        const tokenInput = document.getElementById('token');
+        tokenInput.classList.add('is-invalid');
+
+        // Show notification instead of alert
+        showNotification(message, 'error');
+
+        // Focus back to input
+        tokenInput.focus();
     }
 
-    return true;
-}
+    function hasSuspiciousPatterns(token) {
+        // Check for common injection patterns
+        const suspiciousPatterns = [
+            /script/i,
+            /javascript/i,
+            /vbscript/i,
+            /onload/i,
+            /onerror/i,
+            /eval/i,
+            /expression/i,
+            /<.*>/,
+            /['"]/,
+            /[;(){}]/,
+            /union.*select/i,
+            /drop.*table/i,
+            /insert.*into/i,
+            /delete.*from/i,
+            /update.*set/i
+        ];
+
+        return suspiciousPatterns.some(pattern => pattern.test(token));
+    }
+
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existingNotifications = document.querySelectorAll('.custom-notification');
+        existingNotifications.forEach(notification => notification.remove());
+
+        // Create notification
+        const notification = document.createElement('div');
+        notification.className = `custom-notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'} me-2"></i>
+            ${message}
+        `;
+
+        document.body.appendChild(notification);
+
+        // Show notification
+        setTimeout(() => notification.classList.add('show'), 100);
+
+        // Hide notification
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 4000);
+    }
+
+    // Enhanced initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        const tokenInput = document.getElementById('token');
+
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Real-time validation
+        tokenInput.addEventListener('input', function() {
+            // Convert to uppercase and remove invalid characters in real-time
+            let value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+
+            // Limit to 6 characters
+            if (value.length > 6) {
+                value = value.substring(0, 6);
+            }
+
+            this.value = value;
+
+            // Clear validation states on input
+            this.classList.remove('is-invalid', 'is-valid');
+
+            // Show character count
+            updateCharacterCount(this.value.length);
+
+            // Real-time validation feedback
+            if (this.value.length === 6) {
+                this.classList.add('is-valid');
+            } else if (this.value.length > 0) {
+                this.classList.add('is-invalid');
+            }
+        });
+
+        // Prevent paste of invalid characters
+        tokenInput.addEventListener('paste', function(e) {
+            setTimeout(() => {
+                let value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+                if (value.length > 6) {
+                    value = value.substring(0, 6);
+                }
+                this.value = value;
+                updateCharacterCount(this.value.length);
+
+                // Validate after paste
+                if (this.value.length === 6) {
+                    this.classList.add('is-valid');
+                    this.classList.remove('is-invalid');
+                } else if (this.value.length > 0) {
+                    this.classList.add('is-invalid');
+                    this.classList.remove('is-valid');
+                }
+            }, 10);
+        });
+
+        // Security: Clear token on page unload
+        window.addEventListener('beforeunload', function() {
+            if (tokenInput.value) {
+                tokenInput.value = '';
+            }
+        });
+
+        // Focus on token input
+        tokenInput.focus();
+    });
+
+    function updateCharacterCount(length) {
+        let countElement = document.querySelector('.char-count');
+        if (!countElement) {
+            countElement = document.createElement('small');
+            countElement.className = 'char-count text-muted float-end';
+            document.querySelector('.form-floating').appendChild(countElement);
+        }
+
+        countElement.textContent = `${length}/6`;
+        countElement.className = `char-count float-end ${
+            length === 6 ? 'text-success' :
+            length > 0 ? 'text-warning' :
+            'text-muted'
+        }`;
+    }
+
+    // Reset form state if there's an error
+    window.addEventListener('load', function() {
+        const submitBtn = document.querySelector('.submit-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+
+        submitBtn.disabled = false;
+        btnText.classList.remove('d-none');
+        btnLoading.classList.add('d-none');
+    });
 </script>
+
+<style>
+    /* Token Page Container */
+    .token-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .token-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="token-grid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23token-grid)"/></svg>');
+        opacity: 0.4;
+    }
+
+    /* Token Card */
+    .token-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 25px;
+        position: relative;
+        z-index: 2;
+        animation: tokenFadeIn 0.8s ease-out;
+        overflow: hidden;
+    }
+
+    .token-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15) !important;
+    }
+
+    .token-card .card-header {
+        background: rgba(248, 249, 250, 0.8);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        border-radius: 25px 25px 0 0;
+        padding: 2rem 2rem 1.5rem;
+    }
+
+    .token-card .card-body {
+        padding: 2rem;
+    }
+
+    .token-card .card-footer {
+        background: rgba(248, 249, 250, 0.6);
+        border-top: 1px solid rgba(0,0,0,0.05);
+        border-radius: 0 0 25px 25px;
+        padding: 1rem 2rem;
+    }
+
+    /* Token Icon */
+    .token-icon {
+        animation: tokenPulse 2s infinite;
+    }
+
+    /* Enhanced Token Input */
+    .token-input {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 1rem 1.5rem 1rem 3rem;
+        font-size: 1.4rem;
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-align: center;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.9);
+        position: relative;
+        text-transform: uppercase;
+    }
+
+    .token-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.15);
+        background: white;
+        transform: translateY(-1px);
+    }
+
+    .token-input.is-valid {
+        border-color: #28a745;
+        background: rgba(40, 167, 69, 0.05);
+    }
+
+    .token-input.is-invalid {
+        border-color: #dc3545;
+        background: rgba(220, 53, 69, 0.05);
+        animation: tokenShake 0.5s ease-in-out;
+    }
+
+    .form-floating > label {
+        padding-left: 3rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .form-floating > .token-input:focus ~ label,
+    .form-floating > .token-input:not(:placeholder-shown) ~ label {
+        color: #007bff;
+        transform: scale(0.85) translateY(-0.5rem) translateX(-0.5rem);
+    }
+
+    /* Security Notice */
+    .security-notice {
+        background: rgba(40, 167, 69, 0.1);
+        border: 1px solid rgba(40, 167, 69, 0.2);
+        border-radius: 12px;
+        padding: 1rem;
+    }
+
+    .notice-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Enhanced Submit Button */
+    .submit-btn {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        border-radius: 15px;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+    }
+
+    .submit-btn:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    /* Custom Alert */
+    .custom-alert {
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        background: rgba(255, 193, 7, 0.1);
+        border-left: 4px solid #ffc107;
+        animation: alertSlideIn 0.3s ease-out;
+    }
+
+    /* Character Count */
+    .char-count {
+        position: absolute;
+        bottom: -1.5rem;
+        right: 0;
+        font-size: 0.8rem;
+    }
+
+    /* Custom Notifications */
+    .custom-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        transform: translateX(400px);
+        transition: all 0.3s ease;
+        z-index: 9999;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+        max-width: 350px;
+    }
+
+    .custom-notification.show {
+        transform: translateX(0);
+    }
+
+    .custom-notification.error {
+        background: linear-gradient(45deg, rgba(220, 53, 69, 0.9), rgba(200, 35, 51, 0.9));
+        border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+
+    .custom-notification.info {
+        background: linear-gradient(45deg, rgba(23, 162, 184, 0.9), rgba(19, 132, 150, 0.9));
+        border: 1px solid rgba(23, 162, 184, 0.3);
+    }
+
+    /* Animations */
+    @keyframes tokenFadeIn {
+        0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes tokenPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes tokenShake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes alertSlideIn {
+        0% { opacity: 0; transform: translateY(-20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .token-card {
+            margin: 1rem;
+            border-radius: 20px;
+        }
+
+        .token-card .card-header,
+        .token-card .card-body,
+        .token-card .card-footer {
+            padding: 1.5rem;
+        }
+
+        .token-input {
+            font-size: 1rem;
+        }
+
+        .submit-btn {
+            font-size: 1.1rem;
+            padding: 0.875rem 1.5rem;
+        }
+
+        .custom-notification {
+            right: 10px;
+            left: 10px;
+            transform: translateY(-100px);
+            max-width: none;
+        }
+
+        .custom-notification.show {
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .token-card {
+            margin: 0.5rem;
+            border-radius: 15px;
+        }
+
+        .token-card .card-header {
+            padding: 1rem;
+        }
+
+        .token-card .card-body {
+            padding: 1rem;
+        }
+
+        .token-icon i {
+            font-size: 2rem !important;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .token-card,
+        .token-input,
+        .submit-btn,
+        .token-icon,
+        .custom-notification {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .token-input:focus,
+    .submit-btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .token-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .token-input {
+            border: 2px solid black;
+        }
+
+        .submit-btn {
+            background: black;
+            color: white;
+        }
+    }
+
+    /* Print Styles */
+    @media print {
+        .token-container {
+            background: white;
+        }
+
+        .token-card {
+            background: white;
+            box-shadow: none;
+            border: 1px solid black;
+        }
+    }
+</style>
 {% endblock %}

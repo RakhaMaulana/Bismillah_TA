@@ -1,107 +1,1010 @@
 {% extends "base.html" %}
 
-{% block title %}Approve Voter{% endblock %}
+{% block title %}Approve Voter - Crypvote{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4 fw-bold">Approve Voter</h1>
-
-    {% if voters %}
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <form method="post" class="card shadow-lg p-4 rounded-3" onsubmit="return validateForm()">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                    <div class="mb-3">
-                        <label for="voter_id" class="form-label fw-semibold">Select Voter to Approve:</label>
-                        <select id="voter_id" name="voter_id" class="form-select" onchange="updateVoterPhoto()" required>
-                            {% for voter in voters %}
-                                <option value="{{ voter[0] }}" data-photo="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}">{{ voter[1] }}</option>
-                            {% endfor %}
-                        </select>
+<div class="approve-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-12 col-xl-10">
+                <div class="approve-card shadow-lg border-0 rounded-4 p-4">
+                    <div class="text-center mb-4">
+                        <div class="approve-icon mb-3">
+                            <i class="fas fa-user-check fa-3x text-primary"></i>
+                        </div>
+                        <h1 class="fw-bold text-dark mb-2">Voter Approval</h1>
+                        <p class="text-muted">Review and approve voter registrations</p>
                     </div>
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" name="action" value="approve" class="btn btn-success w-50">
-                            <i class="fas fa-check-circle"></i> Approve
-                        </button>
-                        <button type="submit" name="action" value="reject" class="btn btn-danger w-50">
-                            <i class="fas fa-times-circle"></i> Reject
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                    {% if voters %}
+                        <div class="row">
+                            <!-- Voter Selection Form -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="selection-card h-100">
+                                    <h5 class="card-title mb-3">
+                                        <i class="fas fa-list-check me-2"></i>
+                                        Pending Approvals
+                                    </h5>
 
-        <div class="text-center mt-4">
-            <div class="card mx-auto shadow-lg" style="width: 18rem;">
-                <img id="voter-photo" src="{{ url_for('static', filename='uploads/' ~ voters[0][1] ~ '.jpg') }}" class="card-img-top img-fluid rounded" alt="Voter">
-                <div class="card-body">
-                    <p class="card-text text-muted">Current Voter Photo</p>
+                                    <form id="approve-form"
+                                          method="POST"
+                                          onsubmit="return validateForm(event)"
+                                          autocomplete="off"
+                                          novalidate
+                                          class="needs-validation">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                                        <!-- Rate Limiting Protection -->
+                                        <input type="hidden" name="timestamp" id="timestamp">
+                                        <input type="hidden" name="form_hash" id="form_hash">
+                                        <input type="hidden" name="submit_action" id="submit_action">
+
+                                        <div class="voter-selection mb-4">
+                                            <label for="voter_id" class="form-label fw-semibold mb-3">
+                                                <i class="fas fa-users me-2"></i>Select Voter to Review:
+                                            </label>
+                                            <select id="voter_id"
+                                                    name="voter_id"
+                                                    class="form-select form-select-lg"
+                                                    onchange="updateVoterInfo()"
+                                                    required>
+                                                <option value="">-- Choose a voter --</option>
+                                                {% for voter in voters %}
+                                                    <option value="{{ voter[0] }}"
+                                                            data-photo="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}"
+                                                            data-npm="{{ voter[1] }}">
+                                                        NPM: {{ voter[1] }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="invalid-feedback">
+                                                Please select a voter to review
+                                            </div>
+                                        </div>
+
+                                        <!-- Voter Info Display -->
+                                        <div id="voter-info" class="voter-info-card mb-4" style="display: none;">
+                                            <div class="info-header">
+                                                <h6 class="mb-2">
+                                                    <i class="fas fa-id-card me-2"></i>
+                                                    Voter Information
+                                                </h6>
+                                            </div>
+                                            <div class="info-body">
+                                                <div class="info-item">
+                                                    <span class="info-label">NPM:</span>
+                                                    <span class="info-value" id="voter-npm">-</span>
+                                                </div>
+                                                <div class="info-item">
+                                                    <span class="info-label">Status:</span>
+                                                    <span class="info-value">
+                                                        <span class="badge bg-warning">Pending Approval</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="action-buttons">
+                                            <h6 class="mb-3">
+                                                <i class="fas fa-gavel me-2"></i>
+                                                Decision
+                                            </h6>
+                                            <div class="d-grid gap-2">
+                                                <button type="submit"
+                                                        name="action"
+                                                        value="approve"
+                                                        class="btn btn-success btn-lg py-3 fw-semibold"
+                                                        id="approve-btn"
+                                                        onclick="setSubmitAction('approve')">
+                                                    <i class="fas fa-check-circle me-2"></i>
+                                                    Approve Voter
+                                                </button>
+                                                <button type="submit"
+                                                        name="action"
+                                                        value="reject"
+                                                        class="btn btn-danger btn-lg py-3 fw-semibold"
+                                                        id="reject-btn"
+                                                        onclick="setSubmitAction('reject')">
+                                                    <i class="fas fa-times-circle me-2"></i>
+                                                    Reject Voter
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Photo Preview -->
+                            <div class="col-lg-6">
+                                <div class="photo-card h-100">
+                                    <h5 class="card-title mb-3">
+                                        <i class="fas fa-camera me-2"></i>
+                                        Identity Photo
+                                    </h5>
+
+                                    <div class="photo-container">
+                                        <div class="photo-wrapper" id="photo-wrapper">
+                                            <div class="photo-placeholder">
+                                                <i class="fas fa-user fa-4x text-muted"></i>
+                                                <p class="text-muted mt-2">Select a voter to view photo</p>
+                                            </div>
+                                            <img id="voter-photo"
+                                                 class="voter-image"
+                                                 style="display: none;"
+                                                 alt="Voter Identity Photo">
+                                        </div>
+
+                                        <div class="photo-info mt-3" id="photo-info" style="display: none;">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="text-muted small">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Identity verification photo
+                                                </span>
+                                                <button type="button"
+                                                        class="btn btn-outline-primary btn-sm"
+                                                        onclick="viewFullSize()">
+                                                    <i class="fas fa-expand me-1"></i>
+                                                    Full Size
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon mb-3">
+                                <i class="fas fa-clipboard-check fa-4x text-muted"></i>
+                            </div>
+                            <h4 class="text-muted mb-2">No Pending Approvals</h4>
+                            <p class="text-muted">All voter registrations have been processed.</p>
+                            <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">
+                                <i class="fas fa-home me-2"></i>
+                                Back to Dashboard
+                            </a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
-    {% else %}
-        <div class="alert alert-info text-center fw-semibold">
-            <i class="fas fa-info-circle"></i> No voters to approve.
+    </div>
+</div>
+
+<!-- Full Size Photo Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-camera me-2"></i>
+                    Voter Identity Photo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modal-photo" class="img-fluid" alt="Full size voter photo">
+            </div>
         </div>
-    {% endif %}
+    </div>
 </div>
 
 <script>
-    function updateVoterPhoto() {
-        const voterSelect = document.getElementById('voter_id');
-        const selectedOption = voterSelect.options[voterSelect.selectedIndex];
-        const photoUrl = selectedOption.getAttribute('data-photo');
-        const voterPhoto = document.getElementById('voter-photo');
+    // Enhanced Voter Approval System with Security
+    (function() {
+        'use strict';
 
-        // Animasi perubahan foto
-        voterPhoto.style.opacity = 0;
-        setTimeout(() => {
-            voterPhoto.src = photoUrl;
-            voterPhoto.style.opacity = 1;
-        }, 200);
-    }
+        // Security Variables
+        let selectedVoterId = null;
+        let attemptCount = 0;
+        let submittingAction = null;  // Track which action is being submitted
+        const MAX_ATTEMPTS = 5;
+        const LOCKOUT_TIME = 300000; // 5 minutes
 
-    function validateForm() {
-        const voterId = document.getElementById('voter_id').value;
-        if (!voterId) {
-            alert('Please select a voter.');
-            return false;
-        }
-        return true;
-    }
+        // Function to set submit action
+        window.setSubmitAction = function(action) {
+            submittingAction = action;
+            document.getElementById('submit_action').value = action;
+        };
 
-    // Initialize the photo display with the first voter's photo
-    window.onload = function() {
-        if (document.getElementById('voter_id')) {
-            sortVotersByNPM();
-            updateVoterPhoto();
-        }
-    };
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeForm();
+            setupFormProtection();
+            setupRealTimeValidation();
 
-    function sortVotersByNPM() {
-        const voterSelect = document.getElementById('voter_id');
-        const options = Array.from(voterSelect.options);
-
-        options.sort((a, b) => {
-            const npmA = a.textContent.trim();
-            const npmB = b.textContent.trim();
-            return npmA.localeCompare(npmB, undefined, { numeric: true });
+            // Auto-sort voters by NPM
+            if (document.getElementById('voter_id')) {
+                sortVotersByNPM();
+            }
         });
 
-        options.forEach(option => voterSelect.appendChild(option));
-    }
+        function initializeForm() {
+            const timestamp = Date.now();
+
+            // Set timestamp and form hash for replay attack prevention
+            const timestampField = document.getElementById('timestamp');
+            const formHashField = document.getElementById('form_hash');
+
+            if (timestampField) {
+                timestampField.value = timestamp;
+            }
+
+            if (formHashField) {
+                formHashField.value = generateFormHash(timestamp);
+            }
+
+            // Check for previous lockout
+            checkLockoutStatus();
+        }
+
+        function setupRealTimeValidation() {
+            const voterSelect = document.getElementById('voter_id');
+
+            voterSelect.addEventListener('change', function() {
+                validateSelection(this);
+            });
+        }
+
+        function validateSelection(select) {
+            const value = select.value;
+
+            if (value) {
+                setFieldState(select, true);
+                enableActionButtons();
+            } else {
+                setFieldState(select, false);
+                disableActionButtons();
+            }
+        }
+
+        function setFieldState(input, isValid) {
+            input.classList.remove('is-valid', 'is-invalid');
+
+            if (isValid === true) {
+                input.classList.add('is-valid');
+            } else if (isValid === false) {
+                input.classList.add('is-invalid');
+            }
+        }
+
+        function enableActionButtons() {
+            const approveBtn = document.getElementById('approve-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+
+            if (approveBtn && rejectBtn) {
+                approveBtn.disabled = false;
+                rejectBtn.disabled = false;
+                approveBtn.classList.remove('disabled');
+                rejectBtn.classList.remove('disabled');
+            }
+        }
+
+        function disableActionButtons() {
+            const approveBtn = document.getElementById('approve-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+
+            if (approveBtn && rejectBtn) {
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                approveBtn.classList.add('disabled');
+                rejectBtn.classList.add('disabled');
+            }
+        }
+
+        // Enhanced updateVoterInfo function
+        window.updateVoterInfo = function() {
+            const voterSelect = document.getElementById('voter_id');
+            const selectedOption = voterSelect.options[voterSelect.selectedIndex];
+
+            if (!selectedOption || !selectedOption.value) {
+                hideVoterInfo();
+                hidePhotoInfo();
+                return;
+            }
+
+            const photoUrl = selectedOption.getAttribute('data-photo');
+            const npm = selectedOption.getAttribute('data-npm');
+            selectedVoterId = selectedOption.value;
+
+            // Update voter info
+            document.getElementById('voter-npm').textContent = npm;
+            document.getElementById('voter-info').style.display = 'block';
+
+            // Update photo with smooth transition
+            const voterPhoto = document.getElementById('voter-photo');
+            const photoPlaceholder = document.querySelector('.photo-placeholder');
+            const photoInfo = document.getElementById('photo-info');
+
+            // Fade out current content
+            if (voterPhoto.style.display !== 'none') {
+                voterPhoto.style.opacity = '0';
+            } else {
+                photoPlaceholder.style.opacity = '0';
+            }
+
+            setTimeout(() => {
+                // Hide placeholder and show photo
+                photoPlaceholder.style.display = 'none';
+                voterPhoto.style.display = 'block';
+                photoInfo.style.display = 'block';
+
+                // Load new photo
+                voterPhoto.onload = function() {
+                    this.style.opacity = '1';
+                };
+
+                voterPhoto.onerror = function() {
+                    showPhotoError();
+                };
+
+                voterPhoto.src = photoUrl;
+            }, 200);
+
+            // Validate selection
+            validateSelection(voterSelect);
+        };
+
+        function hideVoterInfo() {
+            document.getElementById('voter-info').style.display = 'none';
+            selectedVoterId = null;
+        }
+
+        function hidePhotoInfo() {
+            const voterPhoto = document.getElementById('voter-photo');
+            const photoPlaceholder = document.querySelector('.photo-placeholder');
+            const photoInfo = document.getElementById('photo-info');
+
+            voterPhoto.style.opacity = '0';
+            setTimeout(() => {
+                voterPhoto.style.display = 'none';
+                photoInfo.style.display = 'none';
+                photoPlaceholder.style.display = 'block';
+                photoPlaceholder.style.opacity = '1';
+            }, 200);
+        }
+
+        function showPhotoError() {
+            const photoWrapper = document.getElementById('photo-wrapper');
+            photoWrapper.innerHTML = `
+                <div class="photo-error">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                    <p class="text-warning mt-2">Photo not found</p>
+                    <small class="text-muted">The voter's photo could not be loaded</small>
+                </div>
+            `;
+        }
+
+        // Full size photo modal
+        window.viewFullSize = function() {
+            const voterPhoto = document.getElementById('voter-photo');
+            const modalPhoto = document.getElementById('modal-photo');
+
+            if (voterPhoto.src) {
+                modalPhoto.src = voterPhoto.src;
+                const photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
+                photoModal.show();
+            }
+        };
+
+        function sortVotersByNPM() {
+            const voterSelect = document.getElementById('voter_id');
+            const options = Array.from(voterSelect.options);
+
+            // Skip the first option (placeholder)
+            const dataOptions = options.slice(1);
+
+            dataOptions.sort((a, b) => {
+                const npmA = a.getAttribute('data-npm') || '';
+                const npmB = b.getAttribute('data-npm') || '';
+                return npmA.localeCompare(npmB, undefined, { numeric: true });
+            });
+
+            // Clear select and re-add sorted options
+            voterSelect.innerHTML = '';
+            voterSelect.appendChild(options[0]); // Add placeholder back
+            dataOptions.forEach(option => voterSelect.appendChild(option));
+        }
+
+        function setupFormProtection() {
+            const form = document.getElementById('approve-form');
+            let isSubmitting = false;
+
+            // Add click listeners for action buttons as backup
+            const approveBtn = document.getElementById('approve-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+
+            if (approveBtn) {
+                approveBtn.addEventListener('click', function(e) {
+                    setSubmitAction('approve');
+                });
+            }
+
+            if (rejectBtn) {
+                rejectBtn.addEventListener('click', function(e) {
+                    setSubmitAction('reject');
+                });
+            }
+
+            form.addEventListener('submit', function(e) {
+                // Prevent double submission
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Basic form validation before submission
+                const voterId = document.getElementById('voter_id').value;
+                if (!voterId) {
+                    e.preventDefault();
+                    showError('Please select a voter to review');
+                    return false;
+                }
+
+                // Ensure action is set
+                if (!submittingAction && !document.getElementById('submit_action').value) {
+                    e.preventDefault();
+                    showError('Please click either Approve or Reject button');
+                    return false;
+                }
+
+                // Check if form elements are properly initialized
+                const timestampField = document.getElementById('timestamp');
+                const formHashField = document.getElementById('form_hash');
+
+                if (!timestampField || !timestampField.value) {
+                    // Re-initialize if missing
+                    const timestamp = Date.now();
+                    if (timestampField) {
+                        timestampField.value = timestamp;
+                    }
+                    if (formHashField) {
+                        formHashField.value = generateFormHash(timestamp);
+                    }
+                }
+
+                isSubmitting = true;
+
+                // Reset the flag after a delay
+                setTimeout(() => {
+                    isSubmitting = false;
+                }, 3000);
+            });
+        }        function generateFormHash(timestamp) {
+            const str = timestamp.toString() + 'crypvote_approve_salt';
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash).toString(16);
+        }
+
+        function checkLockoutStatus() {
+            const lastLockout = localStorage.getItem('approveLockout');
+            if (lastLockout && Date.now() - parseInt(lastLockout) < LOCKOUT_TIME) {
+                const remainingTime = Math.ceil((LOCKOUT_TIME - (Date.now() - parseInt(lastLockout))) / 1000);
+                showLockoutMessage(remainingTime);
+            }
+        }
+
+        function showLockoutMessage(seconds) {
+            const approveBtn = document.getElementById('approve-btn');
+            const rejectBtn = document.getElementById('reject-btn');
+
+            if (approveBtn && rejectBtn) {
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                approveBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')})`;
+                rejectBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')})`;
+
+                const countdown = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(countdown);
+                        approveBtn.disabled = false;
+                        rejectBtn.disabled = false;
+                        approveBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Approve Voter';
+                        rejectBtn.innerHTML = '<i class="fas fa-times-circle me-2"></i>Reject Voter';
+                        localStorage.removeItem('approveLockout');
+                    } else {
+                        const timeStr = `${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')}`;
+                        approveBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${timeStr})`;
+                        rejectBtn.innerHTML = `<i class="fas fa-clock me-2"></i>Locked (${timeStr})`;
+                    }
+                }, 1000);
+            }
+        }
+
+        // Enhanced Form Validation
+        window.validateForm = function(event) {
+            try {
+                const voterId = document.getElementById('voter_id').value;
+
+                if (!voterId) {
+                    showError('Please select a voter to review');
+                    if (event) event.preventDefault();
+                    return false;
+                }
+
+                if (!selectedVoterId || selectedVoterId !== voterId) {
+                    showError('Invalid voter selection');
+                    if (event) event.preventDefault();
+                    return false;
+                }
+
+                // Check timestamp for replay attacks (optional)
+                const timestampElement = document.getElementById('timestamp');
+                if (timestampElement && timestampElement.value) {
+                    try {
+                        const timestamp = parseInt(timestampElement.value);
+                        const now = Date.now();
+                        if (now - timestamp > 600000) { // 10 minutes
+                            showError('Form expired. Please refresh the page.');
+                            if (event) event.preventDefault();
+                            return false;
+                        }
+                    } catch (e) {
+                        // Continue with submission despite timestamp issue
+                    }
+                }
+
+                // Show confirmation dialog
+                let action = '';
+                let npm = '';
+
+                try {
+                    // Try multiple methods to get the action
+                    action = submittingAction ||
+                             document.getElementById('submit_action').value ||
+                             (event && event.submitter ? event.submitter.value : '');
+                    npm = document.getElementById('voter-npm').textContent || 'Unknown';
+                } catch (e) {
+                    // Continue with basic confirmation
+                    action = submittingAction || 'process';
+                    npm = 'selected voter';
+                }
+
+                if (!action || (action !== 'approve' && action !== 'reject')) {
+                    showError('Please click either Approve or Reject button');
+                    if (event) event.preventDefault();
+                    return false;
+                }
+
+                // Skip confirmation dialog - proceed directly to submission                // Show loading state
+                if (event && event.submitter) {
+                    try {
+                        const button = event.submitter;
+                        const originalContent = button.innerHTML;
+                        button.disabled = true;
+                        button.innerHTML = `
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Processing...
+                        `;
+
+                        // Reset button after delay if form doesn't submit
+                        setTimeout(() => {
+                            button.disabled = false;
+                            button.innerHTML = originalContent;
+                        }, 5000);
+                    } catch (e) {
+                        // Could not update button state
+                    }
+                }
+
+                return true;
+            } catch (error) {
+                // If validation fails due to error, allow submission to proceed
+                // This prevents the form from being completely broken
+                return true;
+            }
+        };
+
+        function showError(message) {
+            alert(message); // Should be replaced with toast notification
+
+            // Increment attempt counter
+            attemptCount++;
+            if (attemptCount >= MAX_ATTEMPTS) {
+                localStorage.setItem('approveLockout', Date.now().toString());
+                showLockoutMessage(LOCKOUT_TIME / 1000);
+            }
+        }
+
+        // Initialize action buttons as disabled
+        document.addEventListener('DOMContentLoaded', function() {
+            disableActionButtons();
+        });
+
+    })();
 </script>
 
 <style>
-    .btn-success:hover, .btn-danger:hover {
-        transform: scale(1.05);
-        transition: all 0.2s ease-in-out;
+    /* Approve Container */
+    .approve-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
     }
 
-    .card-img-top {
-        transition: opacity 0.3s ease-in-out;
+    .approve-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.5;
+    }
+
+    /* Approve Card */
+    .approve-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+    }
+
+    .approve-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Approve Icon */
+    .approve-icon {
+        animation: pulse 2s infinite;
+    }
+
+    /* Selection Card */
+    .selection-card {
+        background: rgba(248, 249, 250, 0.8);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .selection-card:hover {
+        background: rgba(248, 249, 250, 0.95);
+        transform: translateX(2px);
+    }
+
+    /* Photo Card */
+    .photo-card {
+        background: rgba(248, 249, 250, 0.8);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(40, 167, 69, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .photo-card:hover {
+        background: rgba(248, 249, 250, 0.95);
+        transform: translateX(-2px);
+    }
+
+    /* Form Controls */
+    .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        transform: translateY(-1px);
+    }
+
+    .form-select.is-valid {
+        border-color: #28a745;
+    }
+
+    .form-select.is-invalid {
+        border-color: #dc3545;
+        animation: shake 0.5s ease-in-out;
+    }
+
+    /* Voter Info Card */
+    .voter-info-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0, 123, 255, 0.2);
+        animation: fadeInUp 0.3s ease-out;
+    }
+
+    .info-header {
+        border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-weight: 500;
+        color: #6c757d;
+    }
+
+    .info-value {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    /* Photo Container */
+    .photo-container {
+        position: relative;
+    }
+
+    .photo-wrapper {
+        width: 100%;
+        height: 400px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border: 2px dashed #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    .photo-wrapper:hover {
+        border-color: #007bff;
+        background: rgba(0, 123, 255, 0.02);
+    }
+
+    .photo-placeholder {
+        text-align: center;
+        transition: opacity 0.3s ease;
+    }
+
+    .voter-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        opacity: 0;
+    }
+
+    .photo-error {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid rgba(220, 53, 69, 0.1);
+    }
+
+    .btn-success {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-success:hover:not(:disabled) {
+        background: linear-gradient(45deg, #20c997, #17a2b8);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-danger {
+        background: linear-gradient(45deg, #dc3545, #fd7e14);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        background: linear-gradient(45deg, #fd7e14, #ffc107);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: rgba(248, 249, 250, 0.8);
+        border-radius: 15px;
+        border: 1px solid rgba(0, 123, 255, 0.1);
+    }
+
+    .empty-icon {
+        animation: bounce 2s infinite;
+    }
+
+    /* Modal Styles */
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .modal-header {
+        border-radius: 15px 15px 0 0;
+    }
+
+    /* Card Titles */
+    .card-title {
+        color: #495057;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Form Validation */
+    .invalid-feedback,
+    .valid-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Animations */
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+        60% { transform: translateY(-5px); }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .approve-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .selection-card,
+        .photo-card {
+            margin-bottom: 2rem;
+        }
+
+        .photo-wrapper {
+            height: 300px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .approve-card {
+            margin: 1rem;
+            padding: 2rem 1.5rem;
+        }
+
+        .selection-card,
+        .photo-card {
+            padding: 1.5rem;
+        }
+
+        .photo-wrapper {
+            height: 250px;
+        }
+
+        .action-buttons .btn {
+            font-size: 0.9rem;
+            padding: 0.75rem 1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .approve-card {
+            margin: 0.5rem;
+            padding: 1.5rem 1rem;
+        }
+
+        .selection-card,
+        .photo-card {
+            padding: 1rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .approve-card,
+        .form-select,
+        .btn-success,
+        .btn-danger,
+        .approve-icon,
+        .empty-icon,
+        .voter-image {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .form-select:focus,
+    .btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .approve-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .form-select {
+            border: 2px solid black;
+        }
+
+        .photo-wrapper {
+            border: 2px solid black;
+        }
+    }
+
+    /* Badge Styles */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 20px;
+    }
+
+    /* Loading States */
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
     }
 </style>
 {% endblock %}

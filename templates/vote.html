@@ -1,47 +1,154 @@
 {% extends "base.html" %}
 
-{% block title %}Vote{% endblock %}
+{% block title %}Vote - Crypvote{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4">
-        Vote for
-        {% if voting_stage == 'senat' %}
-            Ketua Senat
-        {% else %}
-            Ketua Dewan Musyawarah Taruna
-        {% endif %}
-    </h1>
-    {% if no_candidates %}
-        <div class="text-center">
-            <img src="{{ url_for('static', filename='Unknown.png') }}" alt="No Candidates" class="img-fluid mb-3">
-            <p class="lead">The admin has not input any candidate. Contact your admin</p>
-        </div>
-    {% else %}
-        <form method="post" action="{{ url_for('vote') }}" onsubmit="return validateForm()">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="voting_stage" value="{{ voting_stage }}">
+<div class="vote-container">
+    <div class="container">
+        <div class="row justify-content-center min-vh-100 align-items-center">
+            <div class="col-12 col-lg-10 col-xl-8">
+                <div class="vote-card shadow-lg border-0 rounded-4 p-4">
+                    <!-- Header Section -->
+                    <div class="text-center mb-5">
+                        <div class="vote-icon mb-3">
+                            <i class="fas fa-vote-yea fa-3x text-primary"></i>
+                        </div>
+                        <h1 class="fw-bold text-dark mb-2">
+                            {% if voting_stage == 'senat' %}
+                                <span class="badge bg-primary px-3 py-2 rounded-pill mb-2">SENAT</span><br>
+                                Vote for Ketua Senat
+                            {% else %}
+                                <span class="badge bg-success px-3 py-2 rounded-pill mb-2">DEWAN MUSYAWARAH</span><br>
+                                Vote for Ketua Dewan Musyawarah Taruna
+                            {% endif %}
+                        </h1>
+                        <p class="text-muted">Select your preferred candidate and cast your vote securely</p>
+                    </div>
 
-            <div class="form-group mb-3">
-                <label for="candidate">Choose Candidate:</label>
-                <select id="candidate" name="candidate" class="form-control" onchange="updateCandidatePhoto()" required>
-                    {% for candidate in candidates %}
-                        <option value="{{ candidate.id }}" data-photo="{{ url_for('static', filename=candidate.photo) }}" data-name="{{ candidate.name | e }}" data-class="{{ candidate.class | e }}">{{ candidate.name | e }}</option>
-                    {% endfor %}
-                </select>
+                    {% if no_candidates %}
+                        <div class="empty-state text-center py-5">
+                            <div class="empty-icon mb-4">
+                                <i class="fas fa-user-slash fa-5x text-muted"></i>
+                            </div>
+                            <h3 class="text-muted mb-3">No Candidates Available</h3>
+                            <p class="text-muted mb-4">The admin has not added any candidates yet. Please contact your administrator.</p>
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-home me-2"></i>Return to Dashboard
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="row">
+                            <!-- Voting Form Section -->
+                            <div class="col-lg-5 mb-4">
+                                <div class="form-card h-100">
+                                    <h5 class="card-title mb-4">
+                                        <i class="fas fa-ballot-check me-2"></i>
+                                        Cast Your Vote
+                                    </h5>
+
+                                    <form method="post" action="{{ url_for('vote') }}" onsubmit="return validateForm()">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="voting_stage" value="{{ voting_stage }}">
+
+                                        <div class="candidate-selection mb-4">
+                                            <label for="candidate" class="form-label fw-semibold mb-3">
+                                                <i class="fas fa-users me-2 text-primary"></i>
+                                                Choose Your Candidate:
+                                            </label>
+                                            <select id="candidate"
+                                                    name="candidate"
+                                                    class="form-select form-select-lg candidate-select"
+                                                    onchange="updateCandidatePhoto()"
+                                                    required>
+                                                {% for candidate in candidates %}
+                                                    <option value="{{ candidate.id }}"
+                                                            data-photo="{{ url_for('static', filename=candidate.photo) }}"
+                                                            data-name="{{ candidate.name | e }}"
+                                                            data-class="{{ candidate.class | e }}">
+                                                        {{ candidate.name | e }} - {{ candidate.class | e }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Your vote is anonymous and secure
+                                            </div>
+                                        </div>
+
+                                        <div class="vote-actions">
+                                            <button type="submit" class="btn btn-primary btn-lg w-100 vote-btn">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                Vote
+                                            </button>
+                                            <div class="mt-3 text-center">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-shield-alt me-1"></i>
+                                                    Your vote is encrypted and protected
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Candidate Preview Section -->
+                            <div class="col-lg-7">
+                                <div class="candidate-preview-card h-100">
+                                    <h5 class="card-title mb-4">
+                                        <i class="fas fa-user-tie me-2"></i>
+                                        Candidate Preview
+                                    </h5>
+
+                                    <div class="candidate-display">
+                                        <div class="candidate-photo-wrapper">
+                                            <div class="photo-frame">
+                                                <img id="candidate-photo"
+                                                     src="{{ url_for('static', filename=candidates[0].photo) }}"
+                                                     class="candidate-photo"
+                                                     alt="Candidate Photo"
+                                                     onerror="this.src='{{ url_for('static', filename='Unknown.png') }}'">
+                                                <div class="photo-overlay">
+                                                    <i class="fas fa-eye fa-2x"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="candidate-info">
+                                            <div class="info-card">
+                                                <h3 id="candidate-name" class="candidate-name">{{ candidates[0].name }}</h3>
+                                                <div class="candidate-details">
+                                                    <div class="detail-item">
+                                                        <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                                                        <span class="detail-label">Class:</span>
+                                                        <span id="candidate-class" class="detail-value">{{ candidates[0].class }}</span>
+                                                    </div>
+                                                    <div class="detail-item">
+                                                        <i class="fas fa-award me-2 text-success"></i>
+                                                        <span class="detail-label">Position:</span>
+                                                        <span class="detail-value">
+                                                            {% if voting_stage == 'senat' %}
+                                                                Ketua Senat Candidate
+                                                            {% else %}
+                                                                Ketua Dewan Musyawarah Candidate
+                                                            {% endif %}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Vote</button>
-        </form>
-        <div class="candidate-photo-container text-center mt-4">
-            <img id="candidate-photo" src="{{ url_for('static', filename=candidates[0].photo) }}" class="img-fluid candidate-photo" alt="Candidate" onerror="this.src='{{ url_for('static', filename='Unknown.png') }}'">
-            <h5 id="candidate-name" class="mt-3">{{ candidates[0].name }}</h5>
-            <p id="candidate-class">{{ candidates[0].class }}</p>
         </div>
-    {% endif %}
+    </div>
 </div>
 
 <script>
-    // ✅ PERBAIKAN: Default image URL for fallback
+    // Enhanced Vote Page JavaScript - keeping original logic
     const defaultImageUrl = "{{ url_for('static', filename='Unknown.png') }}";
 
     function updateCandidatePhoto() {
@@ -54,32 +161,43 @@
         const candidateNameElement = document.getElementById('candidate-name');
         const candidateClassElement = document.getElementById('candidate-class');
 
-        // ✅ PERBAIKAN: Set fallback image using onerror
+        // Add smooth transition effect
+        candidatePhoto.style.opacity = '0.5';
+        candidatePhoto.style.transform = 'scale(0.95)';
+
+        // Set fallback image using onerror
         candidatePhoto.onerror = function() {
-            console.log('⚠️ Image failed to load:', photoUrl, 'Using default image');
             this.src = defaultImageUrl;
             this.onerror = null; // Prevent infinite loop
+        };
+
+        candidatePhoto.onload = function() {
+            this.style.opacity = '1';
+            this.style.transform = 'scale(1)';
         };
 
         candidatePhoto.src = photoUrl;
         candidateNameElement.textContent = candidateName;
         candidateClassElement.textContent = candidateClass;
+
+        // Add selection animation
+        candidateSelect.classList.add('selection-made');
+        setTimeout(() => candidateSelect.classList.remove('selection-made'), 300);
     }
 
-    // ✅ PERBAIKAN: Enhanced image preloading and validation
+    // Enhanced image preloading and validation
     function preloadAndValidateImage(imageUrl) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => resolve(imageUrl);
             img.onerror = () => {
-                console.log('⚠️ Image not found:', imageUrl, 'Using default');
                 resolve(defaultImageUrl);
             };
             img.src = imageUrl;
         });
     }
 
-    // ✅ PERBAIKAN: Async image loading with fallback
+    // Async image loading with fallback
     async function updateCandidatePhotoAsync() {
         const candidateSelect = document.getElementById('candidate');
         const selectedOption = candidateSelect.options[candidateSelect.selectedIndex];
@@ -95,7 +213,6 @@
             const validImageUrl = await preloadAndValidateImage(photoUrl);
             candidatePhoto.src = validImageUrl;
         } catch (error) {
-            console.error('❌ Error loading image:', error);
             candidatePhoto.src = defaultImageUrl;
         }
 
@@ -108,26 +225,57 @@
 
         const invalidChars = /[;'"<>]/;
         if (invalidChars.test(candidate)) {
-            alert('Invalid characters detected in input.');
+            showNotification('Invalid characters detected in input.', 'error');
             return false;
         }
 
         if (!candidate) {
-            alert("Please choose a candidate.");
+            showNotification("Please choose a candidate.", 'error');
             return false;
         }
+
+        // Show loading state on submit button
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Casting Vote...';
+
+        // Reset button after timeout (fallback)
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }, 10000);
+
         return true;
     }
 
-    // ✅ PERBAIKAN: Enhanced initialization with image validation
-    window.onload = async function() {
-        console.log('🚀 Initializing vote page...');
+    function showNotification(message, type = 'info') {
+        // Create notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'} me-2"></i>
+            ${message}
+        `;
 
+        document.body.appendChild(notification);
+
+        // Show notification
+        setTimeout(() => notification.classList.add('show'), 100);
+
+        // Hide notification
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => document.body.removeChild(notification), 300);
+        }, 3000);
+    }
+
+    // Enhanced initialization with image validation
+    window.onload = async function() {
         // Set default fallback for initial image
         const initialPhoto = document.getElementById('candidate-photo');
         if (initialPhoto) {
             initialPhoto.onerror = function() {
-                console.log('⚠️ Initial image failed to load, using default');
                 this.src = defaultImageUrl;
                 this.onerror = null;
             };
@@ -136,15 +284,24 @@
         // Update candidate photo display
         await updateCandidatePhotoAsync();
 
-        console.log('✅ Vote page initialized successfully');
+        // Add hover effects
+        const photoFrame = document.querySelector('.photo-frame');
+        if (photoFrame) {
+            photoFrame.addEventListener('mouseenter', function() {
+                this.querySelector('.photo-overlay').style.opacity = '1';
+            });
+
+            photoFrame.addEventListener('mouseleave', function() {
+                this.querySelector('.photo-overlay').style.opacity = '0';
+            });
+        }
     };
 
-    // ✅ PERBAIKAN: Add global error handler for all images
+    // Add global error handler for all images
     document.addEventListener('DOMContentLoaded', function() {
         // Set fallback for any image that fails to load
         document.addEventListener('error', function(e) {
             if (e.target.tagName === 'IMG' && e.target.classList.contains('candidate-photo')) {
-                console.log('⚠️ Candidate image failed to load:', e.target.src);
                 e.target.src = defaultImageUrl;
             }
         }, true);
@@ -152,30 +309,389 @@
 </script>
 
 <style>
-    .candidate-photo {
-        width: 300px;
-        height: 300px;
-        object-fit: cover;
-        border: 2px solid #ddd;
-        border-radius: 8px;
+    /* Vote Container */
+    .vote-container {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .vote-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+        opacity: 0.3;
+    }
+
+    /* Main Vote Card */
+    .vote-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .vote-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Vote Icon */
+    .vote-icon {
+        animation: pulse 2s infinite;
+    }
+
+    /* Form Card */
+    .form-card {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 20px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 123, 255, 0.1);
         transition: all 0.3s ease;
     }
 
-    /* ✅ NEW: Loading state styling */
-    .candidate-photo:not([src]) {
-        background: #f0f0f0 url('{{ url_for('static', filename='Unknown.png') }}') center/cover no-repeat;
+    .form-card:hover {
+        background: rgba(248, 249, 250, 1);
+        transform: translateX(2px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
 
-    .candidate-photo:hover {
-        transform: scale(1.02);
+    /* Candidate Preview Card */
+    .candidate-preview-card {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 20px;
+        padding: 2rem;
+        border: 1px solid rgba(40, 167, 69, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .candidate-preview-card:hover {
+        background: rgba(248, 249, 250, 1);
+        transform: translateX(-2px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    /* Enhanced Form Controls */
+    .candidate-select {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .candidate-select:focus {
         border-color: #007bff;
-        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        transform: translateY(-2px);
     }
 
-    /* ✅ NEW: Error state styling */
-    .candidate-photo[src*="Unknown.png"] {
-        border-color: #ffc107;
-        background-color: #fff3cd;
+    .candidate-select.selection-made {
+        animation: selectionPulse 0.3s ease;
+        border-color: #28a745;
+    }
+
+    /* Enhanced Vote Button */
+    .vote-btn {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        border-radius: 15px;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .vote-btn:hover:not(:disabled) {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+    }
+
+    .vote-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Enhanced Candidate Photo */
+    .candidate-photo-wrapper {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .photo-frame {
+        position: relative;
+        display: inline-block;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .photo-frame:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+    }
+
+    .candidate-photo {
+        width: 280px;
+        height: 350px;
+        object-fit: cover;
+        transition: all 0.3s ease;
+        border: none;
+        border-radius: 20px;
+    }
+
+    .photo-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 123, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        opacity: 0;
+        transition: all 0.3s ease;
+        border-radius: 20px;
+    }
+
+    /* Enhanced Candidate Info */
+    .candidate-info {
+        text-align: center;
+    }
+
+    .info-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .candidate-name {
+        color: #2c3e50;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .candidate-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(0, 123, 255, 0.05);
+        border-radius: 10px;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .detail-value {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    /* Empty State */
+    .empty-state {
+        background: rgba(248, 249, 250, 0.9);
+        border-radius: 20px;
+        padding: 3rem;
+        border: 2px dashed #dee2e6;
+    }
+
+    .empty-icon {
+        animation: bounce 2s infinite;
+    }
+
+    /* Card Titles */
+    .card-title {
+        color: #495057;
+        font-weight: 700;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
+    }
+
+    /* Badges */
+    .badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+    }
+
+    /* Notifications */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        color: white;
+        font-weight: 500;
+        transform: translateX(400px);
+        transition: all 0.3s ease;
+        z-index: 9999;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .notification.show {
+        transform: translateX(0);
+    }
+
+    .notification.error {
+        background: linear-gradient(45deg, #dc3545, #c82333);
+    }
+
+    .notification.info {
+        background: linear-gradient(45deg, #17a2b8, #138496);
+    }
+
+    /* Animations */
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+        60% { transform: translateY(-5px); }
+    }
+
+    @keyframes selectionPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+        100% { transform: scale(1); }
+    }
+
+    @keyframes fadeInUp {
+        0% { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .form-card,
+        .candidate-preview-card {
+            margin-bottom: 2rem;
+        }
+
+        .candidate-photo {
+            width: 250px;
+            height: 300px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .vote-card {
+            margin: 1rem;
+            padding: 2rem 1.5rem;
+        }
+
+        .form-card,
+        .candidate-preview-card {
+            padding: 1.5rem;
+        }
+
+        .candidate-photo {
+            width: 220px;
+            height: 280px;
+        }
+
+        .vote-btn {
+            font-size: 1.1rem;
+            padding: 0.875rem 1.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .vote-card {
+            margin: 0.5rem;
+            padding: 1.5rem 1rem;
+        }
+
+        .form-card,
+        .candidate-preview-card {
+            padding: 1rem;
+        }
+
+        .candidate-photo {
+            width: 200px;
+            height: 250px;
+        }
+
+        .candidate-name {
+            font-size: 1.25rem;
+        }
+
+        .detail-item {
+            flex-direction: column;
+            text-align: center;
+            gap: 0.25rem;
+        }
+    }
+
+    /* Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+        .vote-card,
+        .candidate-select,
+        .vote-btn,
+        .photo-frame,
+        .vote-icon,
+        .empty-icon {
+            animation: none;
+            transition: none;
+        }
+    }
+
+    /* Focus Indicators */
+    .candidate-select:focus,
+    .vote-btn:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .vote-card {
+            background: white;
+            border: 2px solid black;
+        }
+
+        .candidate-select {
+            border: 2px solid black;
+        }
+
+        .vote-btn {
+            background: black;
+            color: white;
+        }
     }
 </style>
 {% endblock %}

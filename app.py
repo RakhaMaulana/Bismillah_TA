@@ -61,7 +61,7 @@ csrf = CSRFProtect(app)
 # Initialize Flask-Limiter for rate limiting
 limiter = Limiter(
     app,
-    default_limits=["40000000000 per hour"],
+    default_limits=["10000 per hour"],
     storage_uri="memory://"
 )
 
@@ -277,16 +277,36 @@ def approve_voter():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
 
-    voter_id = escape(request.form['voter_id'])
-    action = escape(request.form['action'])
+    try:
+        # Safely get form data with validation
+        voter_id = escape(request.form.get('voter_id', ''))
+        action = escape(request.form.get('action', '')) or escape(request.form.get('submit_action', ''))
 
-    # Validate input
-    if not voter_id.isdigit():
-        flash('Invalid voter ID format')
-        return redirect(url_for('approve_voter_page'))
+        # Validate input
+        if not voter_id or not voter_id.isdigit():
+            flash('Invalid voter ID format')
+            return redirect(url_for('approve_voter_page'))
 
-    if action not in ['approve', 'reject']:
-        flash('Invalid action')
+        if action not in ['approve', 'reject']:
+            flash('Invalid action')
+            return redirect(url_for('approve_voter_page'))
+
+        # Optional: Validate timestamp for replay attack prevention
+        timestamp = request.form.get('timestamp')
+        if timestamp:
+            try:
+                timestamp_int = int(timestamp)
+                current_time = int(time.time() * 1000)  # Convert to milliseconds
+                # Check if timestamp is within acceptable range (10 minutes)
+                if abs(current_time - timestamp_int) > 600000:
+                    flash('Form expired. Please refresh the page.')
+                    return redirect(url_for('approve_voter_page'))
+            except (ValueError, TypeError):
+                flash('Invalid form submission.')
+                return redirect(url_for('approve_voter_page'))
+
+    except Exception as e:
+        flash('An error occurred while processing your request.')
         return redirect(url_for('approve_voter_page'))
 
     with get_db_connection() as conn:
@@ -313,11 +333,36 @@ def submit_token_page():
 @app.route('/process_token', methods=['POST'])
 @limiter.limit("10 per minute")
 def process_token():
-    token = escape(request.form.get('token', ''))
+    # Get and sanitize token input
+    raw_token = request.form.get('token', '').strip().upper()
 
-    if not token:
+    # Comprehensive input validation for 6-character uppercase format
+    if not raw_token:
         flash('Token is required')
         return redirect(url_for('submit_token_page'))
+
+    # Length validation - exactly 6 characters
+    if len(raw_token) != 6:
+        flash('Token must be exactly 6 characters')
+        return redirect(url_for('submit_token_page'))
+
+    # Character validation - only uppercase letters A-Z
+    if not re.match(r'^[A-Z]{6}$', raw_token):
+        flash('Token must contain only uppercase letters (A-Z)')
+        return redirect(url_for('submit_token_page'))
+
+    # Check for suspicious patterns (though less likely with just letters)
+    suspicious_patterns = [
+        r'script', r'javascript', r'onload', r'onerror', r'eval'
+    ]
+
+    for pattern in suspicious_patterns:
+        if re.search(pattern, raw_token, re.IGNORECASE):
+            flash('Invalid token format detected')
+            return redirect(url_for('submit_token_page'))
+
+    # Use the sanitized token
+    token = escape(raw_token)
 
     # Validate and store token in session instead of URL
     salted_token = token + "PoltekSSN"
@@ -339,9 +384,15 @@ def process_token():
         flash('Your registration has not been approved yet')
         return redirect(url_for('submit_token_page'))
 
+    # Check if token has been used for both votes
+    if voter['token_used_senat'] == 1 and voter['token_used_dewan'] == 1:
+        flash('This token has already been used for both elections')
+        return redirect(url_for('submit_token_page'))
+
     # Store token and voter info in session
     session['voting_token'] = token
     session['voting_id_number'] = voter['id_number']
+    session['token_validated_at'] = time.time()
 
     return redirect(url_for('vote_page'))
 
@@ -532,14 +583,16 @@ def vote():
             if voting_stage == 'senat':
                 c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
                 flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
+                conn.commit()
+                return redirect(url_for('vote_page'))
             elif voting_stage == 'demus':
                 c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
                 flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
+                conn.commit()
                 # Clear voting session after completed both votes
                 session.pop('voting_token', None)
                 session.pop('voting_id_number', None)
-
-            conn.commit()
+                return redirect(url_for('index'))
 
         except Exception as e:
             conn.rollback()
