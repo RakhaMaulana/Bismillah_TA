@@ -2,7 +2,6 @@
 
 [![Security](https://img.shields.io/badge/Security-Penetration%20Tested-green)](https://s.id/InvictiScanReport)
 [![Code Quality](https://img.shields.io/badge/Code%20Quality-DeepSource%20Analyzed-blue)](https://s.id/DeepSourceScanResult)
-[![Performance](https://img.shields.io/badge/Performance-35x%20Faster%20than%20zkVoting-orange)](#performance-benchmarks)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 ## 📋 Table of Contents
@@ -152,14 +151,17 @@ docker-compose up
 ## 🔒 Security
 
 ### Penetration Testing Results
-- **Invicti Security Scanner**: [View Report](https://s.id/InvictiScanReport)
+- **Invicti Security Scanner**: 
+[View Report](https://s.id/InvictiScanReport)
   ![Invicti Results](image.png)
 
-- **Burp Suite Professional**: [View Report](https://s.id/DeepScanBurpSuite)
+- **Burp Suite Professional**: 
+[View Report](https://s.id/DeepScanBurpSuite)
   ![Burp Suite Results](image-1.png)
 
 ### Code Quality Analysis
-- **DeepSource Static Analysis**: [View Report](https://s.id/DeepSourceScanResult)
+- **DeepSource Static Analysis**: 
+[View Report](https://s.id/DeepSourceScanResult)
   ![DeepSource Results](image-2.png)
 
 ### Security Measures Implemented
@@ -280,15 +282,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **OWASP** security guidelines and best practices
 - **Flask** web framework and community
 
-## 📞 Support
-
-- 📧 **Email**: support@evoting-system.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/secure-evoting-system/issues)
-- 📖 **Documentation**: [Wiki](https://github.com/yourusername/secure-evoting-system/wiki)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/secure-evoting-system/discussions)
-
----
-
 **⚠️ Security Notice**: This system is designed for educational and research purposes. For production elections, please conduct thorough security audits and compliance reviews.
 
-**🚀 Performance Note**: Benchmark results may vary based on hardware specifications and network conditions. Test in your target environment for accurate measurements.
+**🚀 Performance Note**: Benchmark results may vary based on hardware specifications and network conditions. Test in your target environment for accurate measurements. Our test was using i7-10750H with 16GB RAM
