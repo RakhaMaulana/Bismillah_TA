@@ -38,9 +38,7 @@ try:
     from generate_dummy_votes import generate_dummy_votes_with_timing, create_dummy_candidates, get_or_create_keys
     from benchmark_tabulasi import measure_recap_performance
     BENCHMARK_MODULES_AVAILABLE = True
-    print("✅ Benchmark modules loaded successfully")
 except ImportError as e:
-    print(f"⚠️ Warning: Benchmark modules not found: {e}")
     BENCHMARK_MODULES_AVAILABLE = False
 
 
@@ -60,43 +58,147 @@ csrf = CSRFProtect(app)
 
 # Initialize Flask-Limiter for rate limiting
 limiter = Limiter(
-    app,
+    key_func=lambda: request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr),
+    app=app,
     default_limits=["10000 per hour"],
     storage_uri="memory://"
 )
 
+# Security helper functions
+def is_safe_redirect_url(target):
+    """Check if redirect URL is safe to prevent open redirect attacks"""
+    if not target:
+        return False
+    # Only allow relative URLs or same-origin URLs
+    return target.startswith('/') and not target.startswith('//')
+
+def validate_session_security():
+    """Enhanced session security validation"""
+    if 'user_id' in session:
+        # Check session age (optional: implement session timeout)
+        session_start = session.get('session_start')
+        if session_start:
+            session_age = time.time() - session_start
+            if session_age > 3600:  # 1 hour timeout
+                session.clear()
+                return False
+        else:
+            session['session_start'] = time.time()
+    return True
+
+def sanitize_error_message(error_msg):
+    """Sanitize error messages to prevent information disclosure"""
+    # Remove sensitive information from error messages
+    safe_msg = str(error_msg)[:200]  # Limit length
+    # Remove potential SQL error details
+    sensitive_patterns = ['sqlite', 'database', 'table', 'column', 'syntax error']
+    for pattern in sensitive_patterns:
+        if pattern in safe_msg.lower():
+            return "System error occurred"
+    return escape(safe_msg)
+
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+    # Enhanced security checks
+    if not filename or len(filename) > 255:  # Reasonable filename length
+        return False
+
+    # Check for path traversal and malicious patterns
+    dangerous_patterns = ['..', '/', '\\', '<', '>', '|', ':', '*', '?', '"', '\x00']
+    if any(pattern in filename for pattern in dangerous_patterns):
+        return False
+
+    # Ensure filename has extension
+    if '.' not in filename:
+        return False
+
+    # Check extension
+    extension = filename.rsplit('.', 1)[1].lower()
+    return extension in ALLOWED_EXTENSIONS
+
+
+@app.before_request
+def security_checks():
+    """Enhanced security checks for all requests"""
+    # Check session security
+    if not validate_session_security():
+        if request.endpoint not in ['index', 'login_page', 'login', 'register_voter_page', 'register_voter', 'submit_token_page']:
+            return redirect(url_for('login_page'))
+
+    # Content-Length validation
+    if request.content_length and request.content_length > 16 * 1024 * 1024:  # 16MB max
+        return "Request too large", 413
+
+    # Check for suspicious headers
+    user_agent = request.headers.get('User-Agent', '')
+    if not user_agent or len(user_agent) > 500:
+        return "Invalid request", 400
+
+    # Basic bot detection (optional)
+    suspicious_agents = ['sqlmap', 'nikto', 'nmap', 'masscan', 'nessus']
+    if any(agent in user_agent.lower() for agent in suspicious_agents):
+        return "Access denied", 403
 
 @app.after_request
 def apply_security_headers(response):
-    # PERBAIKAN: Content Security Policy yang mencakup semua sumber daya yang dibutuhkan
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com 'unsafe-inline'; "
-        "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; "
-        "img-src 'self' data:; "
-        "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-        "connect-src 'self'; "
-        "object-src 'none'; "
-        "frame-ancestors 'none'; "
-        "form-action 'self';"
-    )
+    # Enhanced Content Security Policy with conditional media access
+    if request.path == '/register_voter':
+        # Allow camera/media access for voter registration
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com 'unsafe-inline'; "
+            "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "media-src 'self' blob:; "
+            "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'; "
+            "form-action 'self'; "
+            "upgrade-insecure-requests;"
+        )
+    else:
+        # Standard CSP for other pages
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com 'unsafe-inline'; "
+            "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'; "
+            "form-action 'self'; "
+            "upgrade-insecure-requests;"
+        )
 
-    # Header keamanan lainnya tetap sama
+    # Enhanced security headers with conditional camera access
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
+    # Allow camera access only for voter registration page
+    if request.path == '/register_voter':
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=('self'), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()"
+    else:
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()"
+
     # Prevent caching of sensitive pages
-    if request.path in ['/vote', '/register_voter', '/login', '/approve_voter']:
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    if request.path in ['/vote', '/register_voter', '/login', '/approve_voter', '/voter_status', '/recap']:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+
+    # Add security headers for file uploads
+    if request.path.startswith('/uploads/'):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline';"
 
     return response
 
@@ -114,8 +216,26 @@ def login_page():
 @app.route('/login', methods=['POST'])
 @limiter.limit("10 per minute")
 def login():
-    username = escape(request.form['username'])
-    password = escape(request.form['password'])
+    # Enhanced input validation and sanitization
+    try:
+        username = escape(request.form.get('username', '').strip())
+        password = escape(request.form.get('password', '').strip())
+
+        # Length validation
+        if len(username) > 50 or len(password) > 100:
+            flash('Input too long')
+            return redirect(url_for('login_page'))
+
+        # SQL injection prevention - check for suspicious patterns
+        suspicious_patterns = ['--', ';', '/*', '*/', 'xp_', 'sp_', 'DROP', 'DELETE', 'INSERT', 'UPDATE', 'UNION', 'SELECT']
+        for pattern in suspicious_patterns:
+            if pattern.lower() in username.lower() or pattern.lower() in password.lower():
+                flash('Invalid characters detected')
+                return redirect(url_for('login_page'))
+
+    except (KeyError, TypeError, ValueError) as e:
+        flash('Invalid request format')
+        return redirect(url_for('login_page'))
 
     # Validasi input
     if not username or not password:
@@ -158,10 +278,27 @@ def register_candidate():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
 
-    # Validasi input
-    name = escape(request.form['name'])
-    candidate_class = escape(request.form['class'])
-    candidate_type = escape(request.form['candidate_type'])
+    # Enhanced input validation and sanitization
+    try:
+        name = escape(request.form.get('name', '').strip())
+        candidate_class = escape(request.form.get('class', '').strip())
+        candidate_type = escape(request.form.get('candidate_type', '').strip())
+
+        # Length validation
+        if len(name) > 100 or len(candidate_class) > 50 or len(candidate_type) > 20:
+            flash('Input too long')
+            return redirect(url_for('register_candidate_page'))
+
+        # XSS prevention - additional pattern checks
+        dangerous_patterns = ['<script', '</script', 'javascript:', 'vbscript:', 'onload=', 'onerror=', 'onclick=']
+        for pattern in dangerous_patterns:
+            if pattern.lower() in name.lower() or pattern.lower() in candidate_class.lower():
+                flash('Invalid characters detected')
+                return redirect(url_for('register_candidate_page'))
+
+    except (KeyError, TypeError, ValueError) as e:
+        flash('Invalid request format')
+        return redirect(url_for('register_candidate_page'))
 
     if not name or not candidate_class or not candidate_type:
         flash('Semua field harus diisi')
@@ -180,7 +317,7 @@ def register_candidate():
         flash('Tipe kandidat tidak valid')
         return redirect(url_for('register_candidate_page'))
 
-    # Validasi file photo
+    # Enhanced file upload security validation
     if 'photo' not in request.files:
         flash('Tidak ada file yang diunggah')
         return redirect(url_for('register_candidate_page'))
@@ -188,6 +325,17 @@ def register_candidate():
     photo = request.files['photo']
     if photo.filename == '':
         flash('Tidak ada file yang dipilih')
+        return redirect(url_for('register_candidate_page'))
+
+    # Additional file security checks
+    if photo.content_length and photo.content_length > 8 * 1024 * 1024:  # 8MB limit
+        flash('File terlalu besar (maksimal 8MB)')
+        return redirect(url_for('register_candidate_page'))
+
+    # Check for malicious filename patterns
+    dangerous_chars = ['..', '/', '\\', '<', '>', '|', ':', '*', '?', '"']
+    if any(char in photo.filename for char in dangerous_chars):
+        flash('Nama file tidak valid')
         return redirect(url_for('register_candidate_page'))
 
     if photo and allowed_file(photo.filename):
@@ -209,8 +357,23 @@ def register_voter_page():
 @app.route('/register_voter', methods=['POST'])
 @limiter.limit("10 per minute")
 def register_voter():
-    # Validasi input
-    id_number = escape(request.form['id_number'])
+    # Enhanced input validation and sanitization
+    try:
+        id_number = escape(request.form.get('id_number', '').strip())
+
+        # Length validation
+        if len(id_number) > 20:
+            flash('NPM terlalu panjang')
+            return redirect(url_for('register_voter_page'))
+
+        # Additional security patterns
+        if not id_number.isdigit():
+            flash('NPM harus berisi angka saja')
+            return redirect(url_for('register_voter_page'))
+
+    except (KeyError, TypeError, ValueError) as e:
+        flash('Invalid request format')
+        return redirect(url_for('register_voter_page'))
 
     # Regex validation for NPM
     if not re.match(r'^[0-9]{8,12}$', id_number):
@@ -219,9 +382,20 @@ def register_voter():
 
     photo_data = request.form.get('photo')
 
-    # Validasi photo_data
+    # Enhanced photo validation
     if not photo_data or ',' not in photo_data:
         flash('Foto diperlukan')
+        return redirect(url_for('register_voter_page'))
+
+    # Check for base64 data URL format
+    if not photo_data.startswith('data:image/'):
+        flash('Format foto tidak valid')
+        return redirect(url_for('register_voter_page'))
+
+    # Validate file size (estimate from base64)
+    estimated_size = len(photo_data) * 3 / 4  # Rough base64 to binary size
+    if estimated_size > 10 * 1024 * 1024:  # 10MB limit
+        flash('Ukuran foto terlalu besar')
         return redirect(url_for('register_voter_page'))
 
     filename = secure_filename(f"{id_number}.jpg")
@@ -240,16 +414,41 @@ def register_voter():
 
     photo_data = photo_data.split(',')[1]
     try:
-        decoded_data = base64.b64decode(photo_data)
-        # Check if it's a valid image
-        if len(decoded_data) < 100:  # Arbitrary minimum size for a valid image
+        # Enhanced base64 validation
+        if len(photo_data) > 15000000:  # ~10MB base64 limit
+            flash('Foto terlalu besar')
+            return redirect(url_for('register_voter_page'))
+
+        # Check for valid base64 characters
+        import string
+        valid_chars = string.ascii_letters + string.digits + '+/='
+        if not all(c in valid_chars for c in photo_data):
+            flash('Data foto tidak valid')
+            return redirect(url_for('register_voter_page'))
+
+        decoded_data = base64.b64decode(photo_data, validate=True)
+
+        # Enhanced image validation
+        if len(decoded_data) < 100:  # Minimum size for a valid image
             flash('Invalid image data')
+            return redirect(url_for('register_voter_page'))
+
+        # Check for image file signatures (magic bytes)
+        valid_signatures = [
+            b'\xff\xd8\xff',  # JPEG
+            b'\x89\x50\x4e\x47',  # PNG
+        ]
+        if not any(decoded_data.startswith(sig) for sig in valid_signatures):
+            flash('Format gambar tidak didukung')
             return redirect(url_for('register_voter_page'))
 
         with open(photo_filename, "wb") as fh:
             fh.write(decoded_data)
+    except (ValueError, TypeError, base64.binascii.Error) as e:
+        flash('Error processing image: Invalid format')
+        return redirect(url_for('register_voter_page'))
     except Exception as e:
-        flash(f'Error processing image: {str(e)}')
+        flash(f'Error processing image: {str(e)[:50]}')  # Limit error message length
         return redirect(url_for('register_voter_page'))
 
     digital_signature = hashlib.sha256(photo_data.encode()).hexdigest()
@@ -333,8 +532,18 @@ def submit_token_page():
 @app.route('/process_token', methods=['POST'])
 @limiter.limit("10 per minute")
 def process_token():
-    # Get and sanitize token input
-    raw_token = request.form.get('token', '').strip().upper()
+    # Enhanced token input validation and sanitization
+    try:
+        raw_token = request.form.get('token', '').strip().upper()
+
+        # Check request size to prevent DoS
+        if request.content_length and request.content_length > 1024:  # 1KB limit for token request
+            flash('Request too large')
+            return redirect(url_for('submit_token_page'))
+
+    except (AttributeError, TypeError, ValueError) as e:
+        flash('Invalid request format')
+        return redirect(url_for('submit_token_page'))
 
     # Comprehensive input validation for 6-character uppercase format
     if not raw_token:
@@ -346,9 +555,9 @@ def process_token():
         flash('Token must be exactly 6 characters')
         return redirect(url_for('submit_token_page'))
 
-    # Character validation - only uppercase letters A-Z
-    if not re.match(r'^[A-Z]{6}$', raw_token):
-        flash('Token must contain only uppercase letters (A-Z)')
+    # Character validation - uppercase letters and digits only
+    if not re.match(r'^[A-Z0-9]{6}$', raw_token):
+        flash('Token must contain only uppercase letters and digits (A-Z, 0-9)')
         return redirect(url_for('submit_token_page'))
 
     # Check for suspicious patterns (though less likely with just letters)
@@ -468,18 +677,35 @@ def vote_page():
 @app.route('/vote', methods=['POST'])
 @limiter.limit("10 per minute")
 def vote():
-    # Get token from session instead of form
+    # Enhanced session and input validation
     token = session.get('voting_token')
     if not token:
         flash('Invalid session. Please submit your token again.')
         return redirect(url_for('submit_token_page'))
 
-    # Validate form data
-    candidate_id = escape(request.form.get('candidate', ''))
-    voting_stage = escape(request.form.get('voting_stage', ''))
+    # Enhanced form data validation
+    try:
+        candidate_id = escape(request.form.get('candidate', '').strip())
+        voting_stage = escape(request.form.get('voting_stage', '').strip())
 
-    if not candidate_id.isdigit():
-        flash('Invalid candidate selection')
+        # Length validation
+        if len(candidate_id) > 10 or len(voting_stage) > 10:
+            flash('Invalid input length')
+            return redirect(url_for('vote_page'))
+
+        # Additional security checks
+        if not candidate_id or not candidate_id.isdigit():
+            flash('Invalid candidate selection')
+            return redirect(url_for('vote_page'))
+
+        # Ensure candidate_id is within reasonable range
+        candidate_id_int = int(candidate_id)
+        if candidate_id_int < 1 or candidate_id_int > 1000:  # Reasonable range
+            flash('Invalid candidate ID')
+            return redirect(url_for('vote_page'))
+
+    except (ValueError, TypeError, AttributeError) as e:
+        flash('Invalid request format')
         return redirect(url_for('vote_page'))
 
     if voting_stage not in ['senat', 'demus']:
@@ -613,11 +839,35 @@ def recap():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    # Validate filename to prevent path traversal
-    if not re.match(r'^[a-zA-Z0-9_\.-]+$', filename):
+    # Enhanced security validation for file access
+    if not filename or len(filename) > 255:
         return "Invalid filename", 400
 
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    # Strict filename validation to prevent path traversal and XSS
+    if not re.match(r'^[a-zA-Z0-9_\.-]+\.(jpg|jpeg|png)$', filename):
+        return "Invalid filename format", 400
+
+    # Additional checks for dangerous patterns
+    dangerous_patterns = ['..', '/', '\\', '<', '>', '|', ':', '*', '?', '"', '\x00', 'script', 'javascript']
+    if any(pattern in filename.lower() for pattern in dangerous_patterns):
+        return "Forbidden filename", 403
+
+    # Check if file exists and is within upload directory
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(file_path):
+        return "File not found", 404
+
+    # Ensure the resolved path is still within upload folder (prevent symlink attacks)
+    upload_folder_abs = os.path.abspath(app.config['UPLOAD_FOLDER'])
+    file_path_abs = os.path.abspath(file_path)
+    if not file_path_abs.startswith(upload_folder_abs):
+        return "Access denied", 403
+
+    response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    # Add security headers for file serving
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 
 @app.route('/voter_status', methods=['GET'])
@@ -643,7 +893,6 @@ def get_local_ip():
         s.close()
         return outer_local_ip
     except Exception as e:
-        print(f"Error detecting local IP: {e}")
         return "127.0.0.1"
 
 
@@ -668,18 +917,36 @@ def live_count():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
 
-    vote_type = request.args.get('type')  # Dapatkan jenis vote dari parameter URL
+    # Enhanced parameter validation
+    vote_type = request.args.get('type', '').strip()
+
+    # Input sanitization and validation
+    if not vote_type or len(vote_type) > 10:
+        return "Invalid vote type", 400
+
     if vote_type not in ['senat', 'demus']:
         return "Invalid vote type", 400
 
+    # Additional security headers for SSE
     def generate():
-        verified_ballots, _, _ = recap_votes()
-        for candidate_name, candidate_type in verified_ballots:
-            if candidate_type == vote_type:  # Hanya kirim data sesuai pilihan user
-                yield f"data: {json.dumps({'candidate': candidate_name, 'type': candidate_type})}\n\n"
-                time.sleep(0.2)  # Delay 0.2 detik
+        try:
+            verified_ballots, _, _ = recap_votes()
+            for candidate_name, candidate_type in verified_ballots:
+                if candidate_type == vote_type:  # Hanya kirim data sesuai pilihan user
+                    # Sanitize output data
+                    safe_candidate_name = escape(str(candidate_name)[:100])  # Limit length
+                    safe_candidate_type = escape(str(candidate_type))
 
-    return Response(generate(), mimetype='text/event-stream')
+                    yield f"data: {json.dumps({'candidate': safe_candidate_name, 'type': safe_candidate_type})}\n\n"
+                    time.sleep(0.2)  # Delay 0.2 detik
+        except Exception as e:
+            # Log error but don't expose details to client
+            yield f"data: {json.dumps({'error': 'Processing error'})}\n\n"
+
+    response = Response(generate(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    return response
 
 
 @app.route('/benchmark', methods=['GET'])
@@ -692,11 +959,9 @@ def benchmark_page():
 
 def simulate_random_voting(num_votes):
     """Simulate random voting process untuk benchmark - Maximum 1024 votes"""
-    print(f"\n🎲 Simulating {num_votes} random votes...")
 
     # ✅ PERBAIKAN: Limit maximum votes to 1024
     if num_votes > 1024:
-        print(f"⚠️ Warning: Limiting votes from {num_votes} to 1024 for performance")
         num_votes = 1024
 
     if num_votes == 0:
@@ -719,8 +984,6 @@ def simulate_random_voting(num_votes):
     if not candidates:
         raise Exception("No candidates found for random voting simulation")
 
-    print(f"   Available candidates: {[c['name'] for c in candidates]}")
-    print(f"   Maximum simulation limit: 1024 votes")
 
     vote_times = []
     successful_votes = 0
@@ -741,7 +1004,6 @@ def simulate_random_voting(num_votes):
         batch_end = min((batch_num + 1) * batch_size, num_votes)
         batch_votes = batch_end - batch_start
 
-        print(f"   📦 Processing batch {batch_num + 1}/{batches} ({batch_votes} votes)")
 
         for i in range(batch_start, batch_end):
             vote_start = time.time()
@@ -766,12 +1028,10 @@ def simulate_random_voting(num_votes):
                 successful_votes += 1
 
             except Exception as e:
-                print(f"   ❌ Random vote {i+1} failed: {str(e)}")
                 continue
 
         # Progress indicator per batch
         progress = (batch_end / num_votes) * 100
-        print(f"     📊 Batch {batch_num + 1} completed - Overall progress: {progress:.0f}%")
 
     total_time = time.time() - start_time
     avg_time_per_vote = sum(vote_times) / len(vote_times) if vote_times else 0
@@ -789,27 +1049,16 @@ def simulate_random_voting(num_votes):
         'vote_distribution': vote_distribution
     }
 
-    print(f"✅ Random voting simulation completed:")
-    print(f"   - Total votes: {successful_votes}")
-    print(f"   - Total time: {total_time:.4f}s")
-    print(f"   - Avg time per vote: {avg_time_per_vote:.4f}s")
-    print(f"   - Min/Max time: {min_time:.4f}s / {max_time:.4f}s")
-    print(f"   - Votes per second: {votes_per_second:.2f}")
 
     # ✅ PERBAIKAN: Display vote distribution
-    print(f"\n📊 Vote Distribution Summary:")
     total_senat = sum(vote_distribution['senat'].values())
     total_demus = sum(vote_distribution['demus'].values())
 
-    print(f"   SENAT ({total_senat} votes):")
     for name, count in vote_distribution['senat'].items():
         percentage = (count / total_senat * 100) if total_senat > 0 else 0
-        print(f"     • {name}: {count} votes ({percentage:.1f}%)")
 
-    print(f"   DEMUS ({total_demus} votes):")
     for name, count in vote_distribution['demus'].items():
         percentage = (count / total_demus * 100) if total_demus > 0 else 0
-        print(f"     • {name}: {count} votes ({percentage:.1f}%)")
 
     return results
 
@@ -821,23 +1070,30 @@ def run_complete_benchmark():
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        # Ambil parameter dari form
-        iterations = int(request.form.get('iterations', 5))
-        voting_iterations = int(request.form.get('voting_iterations', 50))
-        random_vote_count = int(request.form.get('random_vote_count', 0))
+        # Enhanced input validation and sanitization
+        try:
+            iterations = int(request.form.get('iterations', 5))
+            voting_iterations = int(request.form.get('voting_iterations', 50))
+            random_vote_count = int(request.form.get('random_vote_count', 0))
+        except (ValueError, TypeError) as e:
+            return jsonify({'error': 'Invalid input parameters'}), 400
 
-        # ✅ PERBAIKAN: Enhanced limits for 1024 maximum
+        # Check request size to prevent DoS
+        if request.content_length and request.content_length > 1024:  # 1KB limit
+            return jsonify({'error': 'Request too large'}), 400
+
+        # ✅ PERBAIKAN: Enhanced limits for 1024 maximum with additional security
         iterations = min(max(iterations, 1), 20)  # Reduced from 50 to 20
         voting_iterations = min(max(voting_iterations, 1), 1024)  # Maximum 1024
         random_vote_count = min(max(random_vote_count, 0), 1024)  # Maximum 1024
 
-        print(f"🚀 Starting complete benchmark (Max: 1024 votes):")
-        print(f"   - Generate votes: {voting_iterations}")
-        print(f"   - Random votes: {random_vote_count}")
-        print(f"   - Tabulation iterations: {iterations}")
+        # Additional security: prevent resource exhaustion
+        total_work = iterations * voting_iterations + random_vote_count
+        if total_work > 5000:  # Reasonable limit for total work
+            return jsonify({'error': 'Request would consume too many resources'}), 400
+
 
         # === STEP 1: GENERATE DUMMY VOTES ===
-        print("\n📝 STEP 1: Generating dummy votes...")
         generation_start = time.time()
 
         if not BENCHMARK_MODULES_AVAILABLE:
@@ -847,7 +1103,6 @@ def run_complete_benchmark():
         try:
             generation_results = generate_dummy_votes_with_timing(voting_iterations, measure_individual=True)
         except Exception as e:
-            print(f"❌ Error in vote generation: {str(e)}")
             return jsonify({'error': f'Failed to generate votes: {str(e)}'}), 500
 
         if not generation_results or generation_results.get('successful_votes', 0) == 0:
@@ -856,18 +1111,14 @@ def run_complete_benchmark():
         generation_end = time.time()
         generation_time = generation_end - generation_start
 
-        print(f"✅ Generated {generation_results['successful_votes']} votes in {generation_time:.4f}s")
-        print(f"   - Success rate: {generation_results.get('success_rate', 0):.1f}%")
 
         # === STEP 2: RANDOM VOTING SIMULATION ===
-        print("\n🎲 STEP 2: Random voting simulation...")
         random_voting_start = time.time()
 
         if random_vote_count > 0:
             try:
                 random_voting_results = simulate_random_voting(random_vote_count)
             except Exception as e:
-                print(f"❌ Error in random voting: {str(e)}")
                 random_voting_results = {
                     'total_votes': 0,
                     'total_time': 0,
@@ -878,7 +1129,6 @@ def run_complete_benchmark():
                     'vote_distribution': {'senat': {}, 'demus': {}}
                 }
         else:
-            print("   Skipping random voting simulation (count = 0)")
             random_voting_results = {
                 'total_votes': 0,
                 'total_time': 0,
@@ -892,16 +1142,13 @@ def run_complete_benchmark():
         random_voting_end = time.time()
         random_voting_time = random_voting_end - random_voting_start
 
-        print(f"✅ Simulated {random_voting_results['total_votes']} random votes in {random_voting_time:.4f}s")
 
         # === STEP 3: TABULATION BENCHMARK ===
-        print("\n📊 STEP 3: Tabulation benchmark...")
         tabulation_start = time.time()
 
         try:
             tabulation_data = measure_recap_performance(iterations)
         except Exception as e:
-            print(f"❌ Error in tabulation: {str(e)}")
             return jsonify({'error': f'Failed to run tabulation benchmark: {str(e)}'}), 500
 
         if not tabulation_data:
@@ -910,18 +1157,14 @@ def run_complete_benchmark():
         tabulation_end = time.time()
         tabulation_time = tabulation_end - tabulation_start
 
-        print(f"✅ Tabulated {tabulation_data['total_ballots']} ballots in {tabulation_time:.4f}s")
 
         # === STEP 4: DECRYPTION/VERIFICATION BENCHMARK ===
-        print("🔓 STEP 4: Decryption benchmark...")
         try:
             # Use the actual vote count from generation
             actual_vote_count = generation_results.get('total_votes', voting_iterations)
             decryption_results = benchmark_vote_decryption(actual_vote_count, 1)
             total_decryption_time = decryption_results.get('total_time', 0)
-            print(f"✅ Decrypted and verified votes in {total_decryption_time:.4f}s")
         except Exception as e:
-            print(f"❌ Error in decryption: {e}")
             # Provide default results if decryption fails
             decryption_results = {
                 'total_votes_verified': 0,
@@ -933,7 +1176,6 @@ def run_complete_benchmark():
                 'votes_per_second': 0
             }
             total_decryption_time = 0
-            print(f"✅ Decrypted and verified votes in {total_decryption_time:.4f}s")
 
         # === STEP 5: AGGREGATE RESULTS ===
         total_time = generation_time + random_voting_time + tabulation_time + total_decryption_time
@@ -948,7 +1190,6 @@ def run_complete_benchmark():
         decryption_speedup = (zkvoting_tally_time / decryption_results['avg_time_per_vote']) if decryption_results.get('avg_time_per_vote', 0) > 0 else 0
 
         # === STEP 6: GENERATE VISUALIZATION ===
-        print("\n📈 STEP 6: Generating charts...")
 
         try:
             charts = generate_complete_benchmark_charts(
@@ -1167,14 +1408,12 @@ def benchmark_vote_decryption(vote_count=100, iterations=1):
     """
     Benchmark vote decryption and verification process
     """
-    print(f"🔓 Running decryption benchmark with {iterations} iterations...")
 
     try:
         results = []
         total_votes_verified = 0
 
         for i in range(iterations):
-            print(f"   Running iteration {i+1}/{iterations}...")
             start_time = time.time()
 
             # Get ballots from database using raw SQL
@@ -1200,14 +1439,12 @@ def benchmark_vote_decryption(vote_count=100, iterations=1):
                     if verify_vote_signature(signature, decrypted_vote):
                         iteration_verified += 1
                 except Exception as e:
-                    print(f"     ❌ Vote verification failed: {e}")
                     continue
 
             iteration_time = time.time() - start_time
             results.append(iteration_time)
             total_votes_verified += iteration_verified
 
-            print(f"     ✅ Iteration {i+1} completed in {iteration_time:.4f}s - {iteration_verified}/{len(ballots)} votes verified")
 
         # Calculate statistics
         avg_time = statistics.mean(results) if results else 0
@@ -1227,12 +1464,6 @@ def benchmark_vote_decryption(vote_count=100, iterations=1):
             'votes_per_second': total_votes_verified / total_time if total_time > 0 else 0
         }
 
-        print(f"✅ Decryption benchmark completed:")
-        print(f"   - Total votes verified: {total_votes_verified}")
-        print(f"   - Successful iterations: {len(results)}")
-        print(f"   - Average time: {avg_time:.4f}s")
-        print(f"   - Median time: {median_time:.4f}s")
-        print(f"   - Verification success rate: {verification_success_rate:.1f}%")
 
         return benchmark_results
 

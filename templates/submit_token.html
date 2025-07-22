@@ -40,21 +40,21 @@
                                        required
                                        maxlength="6"
                                        minlength="6"
-                                       pattern="[A-Z]{6}"
-                                       title="Token must be exactly 6 uppercase letters"
-                                       placeholder="ZHFAYL"
+                                       pattern="[A-Z0-9]{6}"
+                                       title="Token must be exactly 6 characters (uppercase letters and digits)"
+                                       placeholder="A1B2C3"
                                        autocomplete="off"
                                        autocorrect="off"
                                        autocapitalize="on"
                                        spellcheck="false"
                                        data-bs-toggle="tooltip"
                                        data-bs-placement="bottom"
-                                       data-bs-title="Enter your 6-character voting token (uppercase letters only)">
+                                       data-bs-title="Enter your 6-character voting token (uppercase letters and digits)">
                                 <label for="token">
-                                    <i class="fas fa-key me-2"></i>Voting Token (6 Letters)
+                                    <i class="fas fa-key me-2"></i>Voting Token (6 Characters)
                                 </label>
                                 <div class="invalid-feedback">
-                                    Please enter a valid token (exactly 6 uppercase letters)
+                                    Please enter a valid token (exactly 6 uppercase letters and digits)
                                 </div>
                             </div>                            <div class="security-notice mb-4">
                                 <div class="notice-content">
@@ -112,10 +112,10 @@
             return false;
         }
 
-        // Character validation - only uppercase letters
-        const validChars = /^[A-Z]{6}$/;
+        // Character validation - uppercase letters and digits
+        const validChars = /^[A-Z0-9]{6}$/;
         if (!validChars.test(token)) {
-            showTokenError('Token must contain only uppercase letters (A-Z)');
+            showTokenError('Token must contain only uppercase letters and digits (A-Z, 0-9)');
             return false;
         }
 
@@ -221,7 +221,7 @@
         // Real-time validation
         tokenInput.addEventListener('input', function() {
             // Convert to uppercase and remove invalid characters in real-time
-            let value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+            let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
             // Limit to 6 characters
             if (value.length > 6) {
@@ -247,7 +247,7 @@
         // Prevent paste of invalid characters
         tokenInput.addEventListener('paste', function(e) {
             setTimeout(() => {
-                let value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+                let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
                 if (value.length > 6) {
                     value = value.substring(0, 6);
                 }

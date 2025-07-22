@@ -61,7 +61,9 @@ def get_db_connection():
 
 
 def generate_token(length=6):
-    return ''.join(secrets.choice(string.ascii_uppercase) for _ in range(length))
+    # Generate token with combination of uppercase letters and digits
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(characters) for _ in range(length))
 
 
 def save_keys(n, e, d):
