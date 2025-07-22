@@ -36,13 +36,6 @@ A secure electronic voting system implementing **RSA-based Blind Signature** sch
 - **Rate limiting** to prevent DoS attacks
 - **Audit logging** for election integrity
 
-### ⚡ Performance Features
-- **35x faster** vote casting than zkVoting research baseline
-- **20x faster** tabulation process
-- **Real-time** vote counting and results
-- **Scalable** architecture supporting 1000+ votes/hour
-- **Optimized** database operations
-
 ### 🎨 User Experience
 - **Responsive** web interface (HTML/CSS/JavaScript)
 - **Real-time** progress indicators
