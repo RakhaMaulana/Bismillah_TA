@@ -79,27 +79,22 @@
                                                    class="form-control search-input"
                                                    placeholder="Search by NPM..."
                                                    autocomplete="off">
-                                            <button class="btn btn-outline-secondary" type="button" onclick="resetSearch()">
-                                                <i class="fas fa-times"></i>
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="filter-controls">
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="all">
-                                                <i class="fas fa-list me-1"></i>All
-                                            </button>
-                                            <button type="button" class="btn btn-outline-success filter-btn" data-filter="approved">
-                                                <i class="fas fa-check me-1"></i>Approved
-                                            </button>
-                                            <button type="button" class="btn btn-outline-warning filter-btn" data-filter="pending">
-                                                <i class="fas fa-clock me-1"></i>Pending
-                                            </button>
-                                            <button type="button" class="btn btn-outline-info filter-btn" data-filter="voted">
-                                                <i class="fas fa-vote-yea me-1"></i>Voted
-                                            </button>
+                                        <div class="form-floating">
+                                            <select class="form-select filter-dropdown" id="filterDropdown">
+                                                <option value="all" selected>All Voters</option>
+                                                <option value="approved">Approved Only</option>
+                                                <option value="pending">Pending Approval</option>
+                                                <option value="voted">Has Voted</option>
+                                                <option value="not-voted">Not Voted</option>
+                                            </select>
+                                            <label for="filterDropdown">
+                                                <i class="fas fa-filter me-2"></i>Filter by Status
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
@@ -187,7 +182,7 @@
     // Enhanced voter status dashboard functionality
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('searchInput');
-        const filterBtns = document.querySelectorAll('.filter-btn');
+        const filterDropdown = document.getElementById('filterDropdown');
 
         // Initialize
         updateVisibleRowsCount();
@@ -207,17 +202,10 @@
             updateSearchHighlight();
         });
 
-        // Filter functionality
-        filterBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Remove active class from all buttons
-                filterBtns.forEach(b => b.classList.remove('active'));
-                // Add active class to clicked button
-                this.classList.add('active');
-
-                const filterType = this.dataset.filter;
-                applyFilter(filterType);
-            });
+        // Filter dropdown functionality
+        filterDropdown.addEventListener('change', function() {
+            const filterType = this.value;
+            applyFilter(filterType);
         });
 
         // Sort table by NPM by default
@@ -232,13 +220,16 @@
 
             switch(filterType) {
                 case 'approved':
-                    shouldShow = row.dataset.approved === 'True';
+                    shouldShow = row.dataset.approved === '1';
                     break;
                 case 'pending':
-                    shouldShow = row.dataset.approved === 'False';
+                    shouldShow = row.dataset.approved === '0';
                     break;
                 case 'voted':
-                    shouldShow = row.dataset.senat === 'True' || row.dataset.dewan === 'True';
+                    shouldShow = row.dataset.senat === '1' || row.dataset.dewan === '1';
+                    break;
+                case 'not-voted':
+                    shouldShow = row.dataset.senat === '0' && row.dataset.dewan === '0';
                     break;
                 case 'all':
                 default:
@@ -302,6 +293,7 @@
 
     function resetSearch() {
         document.getElementById('searchInput').value = "";
+        document.getElementById('filterDropdown').value = "all";
         document.querySelectorAll("#voterTable tbody tr").forEach(row => row.style.display = "");
         updateVisibleRowsCount();
         updateSearchHighlight();
@@ -490,16 +482,32 @@
         justify-content: flex-end;
     }
 
-    .filter-btn {
-        border-radius: 8px;
-        font-weight: 500;
+    .filter-dropdown {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 0.75rem 1rem 0.75rem 3rem;
+        font-size: 1rem;
         transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.9);
+        min-width: 200px;
     }
 
-    .filter-btn.active {
-        background: #007bff;
-        color: white;
+    .filter-dropdown:focus {
         border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+        background: white;
+    }
+
+    .form-floating > .filter-dropdown:focus ~ label,
+    .form-floating > .filter-dropdown:not([value=""]) ~ label {
+        color: #007bff;
+        transform: scale(0.85) translateY(-0.5rem) translateX(-0.5rem);
+    }
+
+    .form-floating > label {
+        padding-left: 3rem;
+        color: #6c757d;
+        font-weight: 500;
     }
 
     /* Enhanced Table */
@@ -648,9 +656,9 @@
             margin-top: 1rem;
         }
 
-        .filter-btn {
-            font-size: 0.875rem;
-            padding: 0.5rem 0.75rem;
+        .filter-dropdown {
+            min-width: 180px;
+            font-size: 0.9rem;
         }
 
         .stat-card {
@@ -702,9 +710,9 @@
             font-size: 1.5rem;
         }
 
-        .filter-btn {
-            font-size: 0.8rem;
-            padding: 0.4rem 0.6rem;
+        .filter-dropdown {
+            min-width: 150px;
+            font-size: 0.85rem;
         }
 
         .status-badge, .vote-badge {
@@ -730,7 +738,7 @@
 
     /* Focus Indicators */
     .search-input:focus,
-    .filter-btn:focus,
+    .filter-dropdown:focus,
     .sortable:focus {
         outline: 2px solid #007bff;
         outline-offset: 2px;

@@ -458,7 +458,6 @@
 </div>
 
 <script>
-console.log('🔍 Benchmark script loaded');
 
 // ✅ IMPROVED: More accurate progress tracking
 let benchmarkStartTime = 0;
@@ -469,9 +468,7 @@ function safeUpdateElement(elementId, value) {
     const element = document.getElementById(elementId);
     if (element) {
         element.textContent = value;
-        console.log(`✅ Updated ${elementId}: ${value}`);
     } else {
-        console.log(`❌ Element not found: ${elementId}`);
     }
 }
 
@@ -655,13 +652,11 @@ function displayVoteDistribution(voteCounts) {
     }
 
     voteDistribution.innerHTML = html;
-    console.log(`✅ Vote distribution displayed: ${totalVotes} total votes`);
 }
 
 // ✅ IMPROVED: Form submission with better validation
 document.getElementById('benchmarkForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    console.log('🚀 Benchmark form submitted');
 
     const votingIterations = parseInt(document.getElementById('votingIterations').value);
 
@@ -682,10 +677,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
 
     const csrfToken = getCSRFToken();
 
-    console.log('📊 Benchmark parameters:', {
-        votingIterations,
-        csrfToken: csrfToken ? 'Present' : 'Missing'
-    });
 
     // ✅ START IMPROVED PROGRESS TRACKING
     startProgressTracking(votingIterations);
@@ -731,7 +722,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
         const totalElapsed = (Date.now() - benchmarkStartTime) / 1000;
         safeUpdateElement('loadingText', `✅ Processing complete in ${totalElapsed.toFixed(1)}s - Loading results...`);
 
-        console.log('📡 Response received:', response.status);
 
         if (!response.ok) {
             return response.text().then(text => {
@@ -741,7 +731,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
         return response.json();
     })
     .then(data => {
-        console.log('✅ Benchmark data received:', data);
 
         // Debug vote distribution
         if (data.tabulation_results && data.tabulation_results.vote_counts) {
@@ -753,7 +742,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
         safeToggleClass('loadingIndicator', 'd-none', true);
         safeToggleClass('results', 'd-none', false);
 
-        console.log('📊 Populating results...');
 
         // Show completion time
         const totalElapsed = (Date.now() - benchmarkStartTime) / 1000;
@@ -836,7 +824,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
         }
 
         if (runBtn) runBtn.disabled = false;
-        console.log('✅ Benchmark results populated successfully');
 
         // Scroll to results
         setTimeout(() => {
@@ -871,7 +858,6 @@ document.getElementById('benchmarkForm').addEventListener('submit', function(e) 
     });
 });
 
-console.log('✅ Benchmark script initialized');
 </script>
 
 <style>

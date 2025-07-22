@@ -33,28 +33,12 @@ def print_database_contents():
     c = conn.cursor()
 
     # Print keys table
-    print("Keys Table:")
     c.execute("SELECT * FROM keys")
     keys = c.fetchall()
-    for key in keys:
-        print(key)
-    print()
-
-    # Print voters table
-    print("Voters Table:")
     c.execute("SELECT * FROM voters")
     voters = c.fetchall()
-    for voter in voters:
-        print(voter)
-    print()
-
-    # Print ballots table
-    print("Ballots Table:")
     c.execute("SELECT * FROM ballots")
     ballots = c.fetchall()
-    for ballot in ballots:
-        print(ballot)
-    print()
 
     conn.close()
 

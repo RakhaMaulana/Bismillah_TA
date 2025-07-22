@@ -150,14 +150,11 @@
 
     // ✅ NEW: Initialize UI event listeners
     document.addEventListener("DOMContentLoaded", function () {
-        console.log('🚀 DOM loaded, initializing UI...');
         initializeUI();
 
         // Preload default image
         getCandidateImage(defaultImage).then(() => {
-            console.log('✅ Default image preloaded');
         }).catch(() => {
-            console.log('⚠️ Default image failed to preload, continuing anyway');
         });
     });
 
@@ -188,7 +185,6 @@
         delaySlider.addEventListener('input', function() {
             voteDelay = parseInt(this.value);
             delayValue.textContent = (voteDelay / 1000).toFixed(1) + 's';
-            console.log('⏱️ Vote delay updated to:', voteDelay + 'ms');
 
             // Update status if live counting is active
             if (isLiveCountActive) {
@@ -223,7 +219,6 @@
     async function startLiveCount() {
         if (isLiveCountActive) return;
 
-        console.log('🚀 Starting live count for:', currentChart);
 
         isLiveCountActive = true;
         startTime = new Date();
@@ -251,7 +246,6 @@
     function stopLiveCount() {
         if (!isLiveCountActive) return;
 
-        console.log('🛑 Stopping live count');
 
         isLiveCountActive = false;
 
@@ -281,7 +275,6 @@
     }
 
     async function resetAndStartNewChart() {
-        console.log('🔄 Resetting and starting new chart type:', currentChart);
 
         // Reset chart
         resetChart();
@@ -368,7 +361,6 @@
     function addVoteToQueue(candidate) {
         if (!isLiveCountActive) return;
 
-        console.log('📥 Adding vote to queue:', candidate);
         voteQueue.push({
             candidate: candidate,
             timestamp: new Date()
@@ -387,18 +379,15 @@
         }
 
         isProcessingVotes = true;
-        console.log(`🚀 Starting vote queue processing with ${voteQueue.length} votes, delay: ${voteDelay}ms`);
 
         while (voteQueue.length > 0 && isLiveCountActive) {
             const voteItem = voteQueue.shift();
-            console.log(`⚡ Processing vote ${voteQueue.length + 1} for: ${voteItem.candidate}`);
 
             // Show processing animation
             showVoteProcessingAnimation(voteItem.candidate);
 
             // Apply delay BEFORE processing each vote for proper pacing
             if (voteQueue.length >= 0) { // Always apply delay
-                console.log(`⏱️ Applying ${voteDelay}ms delay before processing vote...`);
 
                 // Show countdown timer during delay
                 const startTime = Date.now();
@@ -442,7 +431,6 @@
         }
 
         isProcessingVotes = false;
-        console.log('✅ Vote queue processing completed');
     }
 
     function showVoteProcessingAnimation(candidate) {
@@ -461,16 +449,13 @@
 
     // ✅ PERBAIKAN: Improved image loading dengan proper fallback
     async function getCandidateImage(src) {
-        console.log('🖼️ Loading candidate image:', src);
 
         if (!src) {
-            console.log('❌ No image source provided, using default');
             src = defaultImage;
         }
 
         // Check cache first
         if (imageCache[src]) {
-            console.log('✅ Image found in cache:', src);
             return imageCache[src];
         }
 
@@ -479,7 +464,6 @@
             img.crossOrigin = "Anonymous";
 
             img.onload = function() {
-                console.log('✅ Image loaded successfully:', src);
                 imageCache[src] = img;
                 resolve(img);
             };
@@ -489,7 +473,6 @@
 
                 // If not already trying default image, try it
                 if (src !== defaultImage) {
-                    console.log('🔄 Trying default image...');
                     getCandidateImage(defaultImage).then(resolve);
                 } else {
                     console.error('❌ Even default image failed, creating placeholder');
@@ -520,7 +503,6 @@
 
     async function fetchCandidatePhotos(chartType) {
         try {
-            console.log('📸 Fetching candidate photos for:', chartType);
             const response = await fetch('/get_candidate_photos');
 
             if (!response.ok) {
@@ -528,7 +510,6 @@
             }
 
             const allCandidatePhotos = await response.json();
-            console.log('📸 All candidate photos:', allCandidatePhotos);
 
             candidatePhotos = {};
 
@@ -545,11 +526,9 @@
                     try {
                         const testResponse = await fetch(photoPath, { method: 'HEAD' });
                         if (!testResponse.ok) {
-                            console.log(`⚠️ Image not found: ${photoPath}, using default`);
                             photoPath = defaultImage;
                         }
                     } catch (error) {
-                        console.log(`⚠️ Error checking image: ${photoPath}, using default`);
                         photoPath = defaultImage;
                     }
 
@@ -557,11 +536,9 @@
                         ...candidate,
                         photo: photoPath
                     };
-                    console.log(`✅ Added candidate: ${name}, photo: ${photoPath}`);
                 }
             }
 
-            console.log('📸 Filtered candidate photos:', candidatePhotos);
             initializeVoteData(Object.keys(candidatePhotos));
         } catch (error) {
             console.error('❌ Error fetching candidate photos:', error);
@@ -573,12 +550,10 @@
     function initializeVoteData(candidates) {
         voteData = {};
         candidates.forEach(candidate => voteData[candidate] = 0);
-        console.log('🗳️ Initialized vote data:', voteData);
     }
 
     async function fetchVoteCounts(chartType) {
         if (!isLiveCountActive) {
-            console.log('⚠️ Live count not active, skipping fetch');
             return;
         }
 
@@ -586,17 +561,14 @@
 
         if (eventSource) {
             eventSource.close();
-            console.log('🔌 Closed previous SSE connection');
         }
 
         if (!window.EventSource) {
-            console.log('⚠️ SSE not supported, using polling...');
             startPolling(chartType);
             return;
         }
 
         try {
-            console.log(`🔌 Opening SSE connection for: ${chartType}`);
             eventSource = new EventSource(`/live_count?type=${chartType}`);
 
             eventSource.onmessage = function(event) {
@@ -607,7 +579,6 @@
 
                 try {
                     const data = JSON.parse(event.data);
-                    console.log('📨 SSE message received:', data);
                     if (data.type === currentChart) {
                         updateCount++;
                         // ✅ NEW: Add to queue instead of direct update
@@ -624,13 +595,11 @@
 
                 if (isLiveCountActive) {
                     // Fallback to polling after SSE error
-                    console.log('🔄 Falling back to polling...');
                     setTimeout(() => startPolling(chartType), 1000);
                 }
             };
 
             eventSource.onopen = function() {
-                console.log('✅ SSE connection opened successfully');
             };
         } catch (error) {
             console.error('❌ Error setting up SSE:', error);
@@ -667,7 +636,6 @@
         if (!isLiveCountActive) return;
 
         voteData[label] = (voteData[label] || 0) + 1;
-        console.log('🗳️ Vote updated:', label, 'Total votes:', voteData);
 
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
         const labels = Object.keys(voteData);
@@ -693,7 +661,6 @@
 
     // ✅ NEW: Smooth chart data update function
     async function updateChartData(labels, percentages) {
-        console.log('🔄 Updating chart data smoothly...');
 
         // Update chart data
         voteChart.data.labels = labels;
@@ -716,7 +683,6 @@
     }
 
     async function renderChart(labels, percentages) {
-        console.log('🎨 Rendering new chart...');
 
         if (voteChart) {
             voteChart.destroy();
@@ -788,7 +754,6 @@
                 imgSrc = candidatePhotos[label].photo;
             }
 
-            console.log(`🖼️ Drawing candidate image for ${label}:`, imgSrc);
 
             try {
                 // ✅ PERBAIKAN: Await untuk memastikan image loaded
@@ -796,7 +761,6 @@
 
                 // Double check image is valid
                 if (!img || img.width === 0 || img.height === 0) {
-                    console.log('⚠️ Invalid image, using default');
                     const defaultImg = await getCandidateImage(defaultImage);
                     if (defaultImg && defaultImg.width > 0) {
                         drawImageOnBar(ctx, defaultImg, bar);
@@ -834,7 +798,6 @@
             const x = bar.x - (candidateWidth / 2);
             const y = bar.base - candidateHeight;
 
-            console.log(`🎨 Drawing image at (${x}, ${y}) size: ${candidateWidth}x${candidateHeight}`);
             ctx.drawImage(img, x, y, candidateWidth, candidateHeight);
         } catch (error) {
             console.error('❌ Error in drawImageOnBar:', error);
@@ -862,7 +825,6 @@
         // ✅ FIXED: Hanya kandidat dengan vote count tertinggi yang mendapat fire.gif
         const topCandidates = Object.keys(voteData).filter(candidate => voteData[candidate] === maxVoteCount);
 
-        console.log('🔥 Showing fire overlay for top candidates:', topCandidates, 'with votes:', maxVoteCount);
 
         topCandidates.forEach(async candidate => {
             const index = labels.indexOf(candidate);
@@ -905,12 +867,10 @@
                 gifOverlay.style.zIndex = "10";
 
                 gifOverlay.onerror = function() {
-                    console.log('⚠️ Fire GIF not found, removing overlay');
                     this.remove();
                 };
 
                 container.appendChild(gifOverlay);
-                console.log(`🔥 Fire overlay added for ${candidate} at position (${gifX}, ${gifY})`);
             } catch (error) {
                 console.error('❌ Error creating winner overlay:', error);
             }
@@ -939,7 +899,6 @@
         // Reset vote count display
         document.getElementById('voteCount').textContent = 'Total Votes: 0';
 
-        console.log('🧹 Chart reset, queue cleared, and image cache cleared');
     }
 </script>
 
