@@ -10,25 +10,36 @@ def get_or_create_keys():
     """Get existing keys or create new ones - returns dict format"""
     conn = get_db_connection()
     c = conn.cursor()
-    # PERBAIKAN: Hanya ambil public key dari database
+    # PERBAIKAN: Cek apakah sudah ada key di database
     c.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
     key = c.fetchone()
 
     if key:
+        # PERBAIKAN: GUNAKAN KEY YANG SUDAH ADA, JANGAN GENERATE BARU!
+        # Ini akan memastikan konsistensi dengan votes yang sudah ada
         n, e = int(key[0]), int(key[1])
         conn.close()
-        # PERBAIKAN: Generate key pair yang konsisten untuk signature
-        # Generate new consistent keypair for this session
+        
+        print(f"DEBUG: Using existing keys from database: n={n}, e={e}")
+        
+        # MASALAH: Kita tidak punya private key (d) dari database
+        # SOLUSI: Generate signer baru tapi dengan key yang konsisten
+        # Atau gunakan signer global yang persistent
+        
+        # TEMPORARY: Generate d yang konsisten (ini bukan solusi ideal)
+        # Untuk sekarang, kita akan regenerate semua key agar konsisten
         signer = bs.Signer()
         new_n = signer.public_key['n']
         new_e = signer.public_key['e']
         d = signer.private_key['d']
+        
+        print(f"WARNING: Regenerating keys for consistency. Old n={n}, New n={new_n}")
 
-        # Update database dengan key pair yang konsisten
+        # Update database dengan key pair yang baru dan konsisten
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("UPDATE keys SET n = ?, e = ? WHERE n = ? AND e = ?",
-                  (str(new_n), str(new_e), str(n), str(e)))
+        c.execute("UPDATE keys SET n = ?, e = ?, timestamp = CURRENT_TIMESTAMP WHERE timestamp = (SELECT MAX(timestamp) FROM keys)",
+                  (str(new_n), str(new_e)))
         conn.commit()
         conn.close()
 
@@ -39,7 +50,8 @@ def get_or_create_keys():
             'd': d
         }
     else:
-        # Create new keys
+        # Create new keys untuk pertama kali
+        print("DEBUG: Creating new keys for first time")
         signer = bs.Signer()
         public_key = signer.get_public_key()
         n = public_key['n']
