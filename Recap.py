@@ -1,6 +1,7 @@
 import sqlite3
 import hashlib
 import BlindSig as bs
+from key_manager import get_global_keys, verify_with_global_key
 
 DATABASE_NAME = 'evoting.db'
 
@@ -57,16 +58,11 @@ def recap_votes():
     conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
 
-    # PERBAIKAN: Gunakan key yang paling recent untuk menghindari multiple key checking
-    # Ambil key terbaru saja berdasarkan timestamp
-    c.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
-    latest_key = c.fetchone()
+    # PERBAIKAN: Gunakan global key manager untuk konsistensi
+    keys = get_global_keys()
+    n, public_key = keys['n'], keys['e']
     
-    if not latest_key:
-        conn.close()
-        return [], {'senat': {}, 'demus': {}}, {'senat': [], 'demus': []}
-    
-    n, public_key = int(latest_key[0]), int(latest_key[1])
+    print(f"DEBUG Recap: Using global keys - n={n}, e={public_key}")
 
     # PERBAIKAN: Retrieve ballots tanpa candidate_id (sesuai blind signature)
     # Hanya ambil signature dan type untuk verifikasi

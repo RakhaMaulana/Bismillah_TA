@@ -13,6 +13,7 @@ from flask_wtf.csrf import CSRFProtect
 import uuid
 from dotenv import load_dotenv
 from Recap import recap_votes
+from key_manager import get_global_signer, get_global_keys, sign_with_global_key, verify_with_global_key
 from markupsafe import escape
 import time
 from flask import Response
@@ -772,101 +773,35 @@ def vote():
         # Commit validation checks and close first connection
         conn.commit()
 
-    # PERBAIKAN: Proses blind signature dengan session-based key management
+    # PERBAIKAN: Gunakan global key manager untuk konsistensi keys
     session_id = session.get('session_id', os.urandom(16).hex())
     session['session_id'] = session_id
 
-    # Ambil public key dari database (private key tidak disimpan permanent)
-    with get_db_connection() as conn_keys:
-        c_keys = conn_keys.cursor()
-        c_keys.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
-        key = c_keys.fetchone()
+    # Gunakan global key manager untuk memastikan konsistensi
+    keys = get_global_keys()
+    signer = get_global_signer()
+    
+    n = keys['n']
+    e = keys['e']
+    d = keys['d']
+    
+    print(f"DEBUG: Using global keys for vote:")
+    print(f"  - n: {n}")
+    print(f"  - e: {e}")
+    print(f"  - d: {d}")
 
-    if key:
-        # Gunakan existing public key
-        n, e = int(key[0]), int(key[1])
+    # Test key consistency
+    test_message = 12345
+    test_signed = pow(test_message, d, n)
+    test_verified = pow(test_signed, e, n)
+    key_test_passed = (test_verified == test_message)
+    print(f"  - key test: {test_message} -> {test_signed} -> {test_verified}")
+    print(f"  - key test passed: {key_test_passed}")
 
-        # Cek apakah sudah ada private key untuk session ini
-        from createdb import get_session_private_key
-        d = get_session_private_key(session_id)
-
-        if not d:
-            # PERBAIKAN: Generate complete key triplet that matches database
-            # Không bisa menggunakan database n,e với d yang berbeda
-            # Harus generate key baru yang lengkap atau gunakan keys yang sudah ada
-            signer = bs.Signer()
-
-            # Get the complete key triplet from the new signer
-            public_key = signer.get_public_key()
-            n = public_key['n']
-            e = public_key['e']
-            d = signer.private_key['d']
-
-            # PERBAIKAN: Verify key consistency before storing
-            phi_test = (e * d - 1) % n  # Should be 0 if keys are consistent
-            print(f"DEBUG: Key consistency check:")
-            print(f"  - n: {n}")
-            print(f"  - e: {e}")
-            print(f"  - d: {d}")
-            print(f"  - (e * d - 1) mod n = {phi_test}")
-
-            # Test key consistency with a simple message
-            test_message = 12345
-            test_signed = pow(test_message, d, n)
-            test_verified = pow(test_signed, e, n)
-            key_test_passed = (test_verified == test_message)
-            print(f"  - key test: {test_message} -> {test_signed} -> {test_verified}")
-            print(f"  - key test passed: {key_test_passed}")
-
-            if not key_test_passed:
-                print("ERROR: Generated keys are inconsistent!")
-                flash('System error: Key generation failed.')
-                return redirect(url_for('vote_page'))
-
-            # Update database dengan key baru yang lengkap dan terverifikasi
-            with get_db_connection() as conn_update_keys:
-                c_update_keys = conn_update_keys.cursor()
-                c_update_keys.execute("UPDATE keys SET n = ?, e = ? WHERE timestamp = (SELECT MAX(timestamp) FROM keys)",
-                               (str(n), str(e)))
-                conn_update_keys.commit()
-
-            # Simpan private key sementara untuk session
-            from createdb import save_session_private_key
-            save_session_private_key(d, session_id)
-
-        # Setup signer dengan key yang konsisten - JANGAN buat signer baru
-        class DummySigner:
-            def __init__(self, n, e, d):
-                self.public_key = {'n': n, 'e': e}
-                self.private_key = {'n': n, 'd': d}
-
-            def sign_message(self, message, eligible):
-                if eligible == "y":
-                    if message is None or message <= 0:
-                        return None
-                    if message >= self.public_key['n']:
-                        message = message % self.public_key['n']
-                    try:
-                        signed = pow(message, self.private_key['d'], self.public_key['n'])
-                        print(f"DEBUG DummySigner.sign_message:")
-                        print(f"  - input message: {message}")
-                        print(f"  - d: {self.private_key['d']}")
-                        print(f"  - n: {self.public_key['n']}")
-                        print(f"  - signed result: {signed}")
-                        return signed
-                    except Exception as e:
-                        print(f"DEBUG DummySigner.sign_message error: {e}")
-                        return None
-                return None
-
-        signer = DummySigner(n, e, d)
-    else:
-        # Generate new keys jika belum ada
-        signer = bs.Signer()
-        public_key = signer.get_public_key()
-        n = public_key['n']
-        e = public_key['e']
-        d = signer.private_key['d']
+    if not key_test_passed:
+        print("ERROR: Global keys are inconsistent!")
+        flash('System error: Key verification failed.')
+        return redirect(url_for('vote_page'))
 
         # Simpan public key ke database
         with get_db_connection() as conn_save_keys:

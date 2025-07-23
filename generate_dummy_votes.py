@@ -5,70 +5,14 @@ import statistics
 import threading
 from createdb import get_db_connection, save_ballot, save_candidate
 import BlindSig as bs
+from key_manager import get_global_signer, get_global_keys
 
 def get_or_create_keys():
-    """Get existing keys or create new ones - returns dict format"""
-    conn = get_db_connection()
-    c = conn.cursor()
-    # PERBAIKAN: Cek apakah sudah ada key di database
-    c.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
-    key = c.fetchone()
-
-    if key:
-        # PERBAIKAN: GUNAKAN KEY YANG SUDAH ADA, JANGAN GENERATE BARU!
-        # Ini akan memastikan konsistensi dengan votes yang sudah ada
-        n, e = int(key[0]), int(key[1])
-        conn.close()
-        
-        print(f"DEBUG: Using existing keys from database: n={n}, e={e}")
-        
-        # MASALAH: Kita tidak punya private key (d) dari database
-        # SOLUSI: Generate signer baru tapi dengan key yang konsisten
-        # Atau gunakan signer global yang persistent
-        
-        # TEMPORARY: Generate d yang konsisten (ini bukan solusi ideal)
-        # Untuk sekarang, kita akan regenerate semua key agar konsisten
-        signer = bs.Signer()
-        new_n = signer.public_key['n']
-        new_e = signer.public_key['e']
-        d = signer.private_key['d']
-        
-        print(f"WARNING: Regenerating keys for consistency. Old n={n}, New n={new_n}")
-
-        # Update database dengan key pair yang baru dan konsisten
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("UPDATE keys SET n = ?, e = ?, timestamp = CURRENT_TIMESTAMP WHERE timestamp = (SELECT MAX(timestamp) FROM keys)",
-                  (str(new_n), str(new_e)))
-        conn.commit()
-        conn.close()
-
-        # Return format untuk kompatibilitas
-        return {
-            'n': new_n,
-            'e': new_e,
-            'd': d
-        }
-    else:
-        # Create new keys untuk pertama kali
-        print("DEBUG: Creating new keys for first time")
-        signer = bs.Signer()
-        public_key = signer.get_public_key()
-        n = public_key['n']
-        e = public_key['e']
-        d = signer.private_key['d']
-
-        # PERBAIKAN: Simpan hanya public key ke database
-        c.execute("INSERT INTO keys (n, e, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)",
-                  (str(n), str(e)))
-        conn.commit()
-        conn.close()
-
-        return {
-            'n': n,
-            'e': e,
-            'd': d
-        }
+    """Get global keys yang konsisten di seluruh sistem"""
+    # PERBAIKAN: Gunakan global key manager untuk konsistensi
+    keys = get_global_keys()
+    print(f"DEBUG: Using global keys: n={keys['n']}, e={keys['e']}")
+    return keys
 
 def create_dummy_candidates():
     """Create 16 dummy candidates (8 senat + 8 demus) if none exist"""
@@ -161,13 +105,9 @@ def generate_dummy_votes_with_timing(num_votes, measure_individual=False):
     print(f"   - Senat: {distribution.get('senat', 0)}")
     print(f"   - Demus: {distribution.get('demus', 0)}")
 
-    # ✅ FIX: Get cryptographic keys as dict
+    # ✅ FIX: Get cryptographic keys dan signer yang konsisten
     keys = get_or_create_keys()
-
-    # Setup signer
-    signer = bs.Signer()
-    signer.public_key = {'n': keys['n'], 'e': keys['e']}
-    signer.private_key = {'d': keys['d']}
+    signer = get_global_signer()  # Gunakan global signer yang konsisten
 
     # Performance tracking
     start_time = time.time()
