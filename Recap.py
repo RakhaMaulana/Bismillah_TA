@@ -88,7 +88,7 @@ def recap_votes():
             return [], {'senat': {}, 'demus': {}}, {'senat': [], 'demus': []}
 
     # Retrieve candidate names and types
-    c.execute("SELECT id, name, type FROM candidates")
+    c.execute("SELECT id, name, type FROM candidates ORDER BY id")
     candidates = c.fetchall()
     candidate_dict = {candidate[0]: (candidate[1], candidate[2]) for candidate in candidates}
 
@@ -151,7 +151,11 @@ def recap_votes():
 
     # Ensure all candidates are included in the vote counts, even if they have 0 votes
     all_candidates = {'senat': [], 'demus': []}
-    for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
+
+    # ✅ PERBAIKAN: Urutkan kandidat berdasarkan ID
+    sorted_candidates = sorted(candidate_dict.items(), key=lambda x: x[0])  # Sort by candidate_id
+
+    for candidate_id, (candidate_name, candidate_type) in sorted_candidates:
         all_candidates[candidate_type].append({'id': candidate_id, 'name': candidate_name})
         if candidate_name not in vote_counts[candidate_type]:
             vote_counts[candidate_type][candidate_name] = 0

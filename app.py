@@ -635,7 +635,7 @@ def vote_page():
 
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, photo, class, type FROM candidates")
+    c.execute("SELECT id, name, photo, class, type FROM candidates ORDER BY id")
     candidates = c.fetchall()
 
     # Pisahkan kandidat berdasarkan jenis pemilihan
@@ -1062,6 +1062,7 @@ def get_candidate_photos():
     candidates = [dict(c) for c in candidates]
     photos = {
         c['name']: {
+            'id': c['id'],  # ✅ PERBAIKAN: Tambahkan ID untuk pengurutan
             'photo': url_for('static', filename=c['photo']),
             'type': c.get('candidate_type', '')
         }

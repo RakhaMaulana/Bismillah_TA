@@ -294,7 +294,13 @@
         if (!isLiveCountActive) return;
 
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
-        const candidates = Object.keys(voteData);
+
+        // ✅ PERBAIKAN: Urutkan kandidat berdasarkan ID untuk konsistensi
+        const candidates = Object.keys(voteData).sort((a, b) => {
+            const idA = candidatePhotos[a]?.id || 0;
+            const idB = candidatePhotos[b]?.id || 0;
+            return idA - idB;
+        });
 
         // ✅ IMPROVED: Better leader calculation with vote count
         let leader = 'None';
@@ -513,6 +519,9 @@
 
             candidatePhotos = {};
 
+            // ✅ PERBAIKAN: Kumpulkan kandidat dengan ID untuk pengurutan
+            const candidatesWithId = [];
+
             for (const [name, candidate] of Object.entries(allCandidatePhotos)) {
                 if (candidate.type.toLowerCase() === chartType.toLowerCase()) {
                     // ✅ PERBAIKAN: Better image path validation
@@ -532,14 +541,31 @@
                         photoPath = defaultImage;
                     }
 
-                    candidatePhotos[name] = {
-                        ...candidate,
-                        photo: photoPath
-                    };
+                    candidatesWithId.push({
+                        id: candidate.id || 0,  // Default ID jika tidak ada
+                        name: name,
+                        data: {
+                            ...candidate,
+                            photo: photoPath
+                        }
+                    });
                 }
             }
 
-            initializeVoteData(Object.keys(candidatePhotos));
+            // ✅ PERBAIKAN: Urutkan berdasarkan ID kandidat
+            candidatesWithId.sort((a, b) => a.id - b.id);
+
+            // ✅ PERBAIKAN: Rebuild candidatePhotos dengan urutan yang benar
+            candidatePhotos = {};
+            const sortedCandidateNames = [];
+
+            candidatesWithId.forEach(item => {
+                candidatePhotos[item.name] = item.data;
+                sortedCandidateNames.push(item.name);
+            });
+
+            console.log('📊 Candidates sorted by ID:', sortedCandidateNames);
+            initializeVoteData(sortedCandidateNames);
         } catch (error) {
             console.error('❌ Error fetching candidate photos:', error);
             candidatePhotos = {};
@@ -638,8 +664,17 @@
         voteData[label] = (voteData[label] || 0) + 1;
 
         const totalVotes = Object.values(voteData).reduce((a, b) => a + b, 0);
-        const labels = Object.keys(voteData);
+
+        // ✅ PERBAIKAN: Urutkan labels berdasarkan ID kandidat, bukan alfabet
+        const labels = Object.keys(voteData).sort((a, b) => {
+            const idA = candidatePhotos[a]?.id || 0;
+            const idB = candidatePhotos[b]?.id || 0;
+            return idA - idB;
+        });
+
         const percentages = labels.map(key => totalVotes > 0 ? Math.round((voteData[key] / totalVotes) * 100) : 0);
+
+        console.log('📊 Chart labels ordered by ID:', labels.map(name => `${candidatePhotos[name]?.id || 0}: ${name}`));
 
         // Update vote count display with animation
         const voteCountElement = document.getElementById('voteCount');

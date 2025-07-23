@@ -305,9 +305,9 @@ create_admin()
 
 def get_all_candidates():
     conn = get_db_connection()
-    # Gunakan alias "candidate_type" untuk kolom "type"
+    # Gunakan alias "candidate_type" untuk kolom "type" dan urutkan berdasarkan id
     candidates = conn.execute(
-        'SELECT id, name, photo, class, type AS candidate_type FROM candidates'
+        'SELECT id, name, photo, class, type AS candidate_type FROM candidates ORDER BY id'
     ).fetchall()
     conn.close()
     return candidates
