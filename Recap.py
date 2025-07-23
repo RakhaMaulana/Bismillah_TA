@@ -61,7 +61,7 @@ def recap_votes():
     # PERBAIKAN: Gunakan global key manager untuk konsistensi
     keys = get_global_keys()
     n, public_key = keys['n'], keys['e']
-    
+
     print(f"DEBUG Recap: Using global keys - n={n}, e={public_key}")
 
     # PERBAIKAN: Retrieve ballots tanpa candidate_id (sesuai blind signature)
@@ -97,19 +97,19 @@ def recap_votes():
     for ballot in ballots:
         signature, ballot_type = ballot
         processed_ballots += 1
-        
+
         if processed_ballots % 10 == 0:  # Progress indicator
             print(f"DEBUG Recap: Processed {processed_ballots}/{len(ballots)} ballots")
 
         try:
             # Pre-calculate signature decryption hanya sekali
             decrypted_signature = pow(int(signature), public_key, n)
-            
+
             # PERBAIKAN: Coba cocokkan dengan hash kandidat yang sudah di-precompute
             for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
                 if candidate_type == ballot_type:  # Hanya cek kandidat dengan tipe yang sesuai
                     expected_hash = candidate_hashes[candidate_id]
-                    
+
                     if decrypted_signature == expected_hash:
                         verified_ballots.append((candidate_name, candidate_type))
 

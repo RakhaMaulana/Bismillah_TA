@@ -780,11 +780,11 @@ def vote():
     # Gunakan global key manager untuk memastikan konsistensi
     keys = get_global_keys()
     signer = get_global_signer()
-    
+
     n = keys['n']
     e = keys['e']
     d = keys['d']
-    
+
     print(f"DEBUG: Using global keys for vote:")
     print(f"  - n: {n}")
     print(f"  - e: {e}")
