@@ -5,7 +5,7 @@ import statistics
 import threading
 from createdb import get_db_connection, save_ballot, save_candidate
 import BlindSig as bs
-from key_manager import get_global_signer, get_global_keys
+from key_manager import get_global_signer, get_global_keys, key_manager
 
 def get_or_create_keys():
     """Get global keys yang konsisten di seluruh sistem"""
@@ -143,16 +143,7 @@ def generate_dummy_votes_with_timing(num_votes, measure_individual=False):
 
             # ✅ CRITICAL: Database transaction dengan lock
             with db_lock:  # Ensure atomic database operations
-                conn = get_db_connection()
                 try:
-                    c = conn.cursor()
-
-                    # BEGIN TRANSACTION
-                    conn.execute("BEGIN IMMEDIATE;")
-
-                    # ✅ FIX: No need to check current count - just generate as requested
-                    # The constraint is removed from database, so duplicates are now allowed
-
                     # ✅ FIX: Create blind signature with correct keys and unique entropy
                     message = str(candidate_id)
                     message_hash = hashlib.sha256(message.encode()).hexdigest()
@@ -165,12 +156,11 @@ def generate_dummy_votes_with_timing(num_votes, measure_individual=False):
                     signed_blind_message = signer.sign_message(blind_message, voter.get_eligibility())
                     signature = voter.unwrap_signature(signed_blind_message, keys['n'])
 
-                    # PERBAIKAN: Simpan hanya signature tanpa candidate_id (blind signature compliance)
-                    c.execute("INSERT INTO ballots (signature, type) VALUES (?, ?)",
-                             (str(signature), vote_type))
+                    # PERBAIKAN: Gunakan save_ballot function dengan key_id reference
+                    active_key_id = key_manager.get_active_key_id()
+                    voter_hash = hashlib.sha256(unique_entropy.encode()).hexdigest()
 
-                    # COMMIT TRANSACTION
-                    conn.commit()
+                    ballot_id = save_ballot(signature, vote_type, active_key_id, voter_hash)
 
                     # Update counters
                     vote_distribution[vote_type][candidate_name] += 1
@@ -182,12 +172,8 @@ def generate_dummy_votes_with_timing(num_votes, measure_individual=False):
                         individual_times.append(vote_time)
 
                 except Exception as e:
-                    conn.rollback()
                     failed_votes += 1
                     print(f"   ❌ Vote {i+1} failed: {str(e)}")
-
-                finally:
-                    conn.close()
 
         except Exception as e:
             failed_votes += 1

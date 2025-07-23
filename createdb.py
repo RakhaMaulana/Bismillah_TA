@@ -30,19 +30,22 @@ c = conn.cursor()
 
 
 # Create tables
-# PERBAIKAN: Struktur tabel keys yang aman - TIDAK menyimpan private key
+# PERBAIKAN: Struktur tabel keys dengan key management yang proper
 c.execute('''CREATE TABLE IF NOT EXISTS keys (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 n TEXT NOT NULL,
                 e TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT 1,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
 
 # PERBAIKAN: Tabel untuk menyimpan private key sementara di memory (akan dihapus)
 c.execute('''CREATE TABLE IF NOT EXISTS temp_private_keys (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 d TEXT NOT NULL,
                 session_id TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+                key_id INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (key_id) REFERENCES keys(id))''')
 
 c.execute('''CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
@@ -77,16 +80,33 @@ c.execute('''CREATE TABLE IF NOT EXISTS voting_sessions (
                 used INTEGER DEFAULT 0)''')
 
 # PERBAIKAN: Struktur tabel ballots yang memenuhi kaidah blind signature
-# Hanya menyimpan signature tanpa mengungkap candidate choice
+# Menyimpan signature dengan reference ke key yang digunakan untuk verifikasi
 c.execute('''CREATE TABLE IF NOT EXISTS ballots (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 signature TEXT NOT NULL,
                 type TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+                key_id INTEGER NOT NULL,
+                voter_hash TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (key_id) REFERENCES keys(id))''')
+
+# PERBAIKAN: Tabel untuk vote counting dengan blind signature verification
+c.execute('''CREATE TABLE IF NOT EXISTS votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                voter_npm_encrypted TEXT NOT NULL,
+                candidate_id INTEGER NOT NULL,
+                voting_stage TEXT NOT NULL,
+                signature TEXT NOT NULL,
+                key_id INTEGER NOT NULL,
+                ballot_id INTEGER,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (candidate_id) REFERENCES candidates(id),
+                FOREIGN KEY (key_id) REFERENCES keys(id),
+                FOREIGN KEY (ballot_id) REFERENCES ballots(id))''')
 
 # PERBAIKAN: Tabel terpisah untuk public verification tanpa linking
 c.execute('''CREATE TABLE IF NOT EXISTS verified_votes (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 vote_hash TEXT NOT NULL,
                 is_valid INTEGER NOT NULL,
                 type TEXT NOT NULL,
@@ -109,27 +129,40 @@ def generate_token(length=6):
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 
-# PERBAIKAN: Fungsi save_keys yang aman - hanya simpan public key
-def save_keys(n, e, d=None):
+# PERBAIKAN: Fungsi save_keys yang aman dengan proper key management
+def save_keys(n, e, d=None, is_active=True):
     """
-    Simpan public key (n, e) ke database
-    Private key (d) TIDAK disimpan untuk keamanan blind signature
+    Simpan public key (n, e) ke database dengan key management
+    Private key (d) hanya disimpan sementara untuk session
     """
     with get_db_connection() as conn:
         c = conn.cursor()
-        params = (str(n), str(e))
-        c.execute("INSERT INTO keys (n, e, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)", params)
+
+        # Deaktifkan key lama jika ada key baru yang aktif
+        if is_active:
+            c.execute("UPDATE keys SET is_active = 0 WHERE is_active = 1")
+
+        # Simpan public key baru
+        c.execute("INSERT INTO keys (n, e, is_active, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+                 (str(n), str(e), is_active))
+        key_id = c.lastrowid
         conn.commit()
 
         # OPTIONAL: Simpan private key sementara untuk session aktif saja
         if d is not None:
             import uuid
             session_id = str(uuid.uuid4())
-            c.execute("INSERT INTO temp_private_keys (d, session_id) VALUES (?, ?)",
-                     (str(d), session_id))
+        # OPTIONAL: Simpan private key sementara untuk session aktif saja
+        if d is not None:
+            import uuid
+            session_id = str(uuid.uuid4())
+            c.execute("INSERT INTO temp_private_keys (d, session_id, key_id) VALUES (?, ?, ?)",
+                     (str(d), session_id, key_id))
             conn.commit()
+            print(f"Keys generated - Public key saved, Private key in session: {session_id}")
             return session_id
-    return None
+
+        return key_id
 
 
 # PERBAIKAN: Fungsi save_voter dengan enhanced privacy
@@ -167,19 +200,68 @@ def save_candidate(name, photo_filename, candidate_class, candidate_type):
     print(f"Saved candidate: {name}")
 
 
-# PERBAIKAN: Fungsi save_ballot yang memenuhi kaidah blind signature
-def save_ballot(signature, voting_type):
+# PERBAIKAN: Fungsi save_ballot yang memenuhi kaidah blind signature dengan key reference
+def save_ballot(signature, voting_type, key_id=None, voter_hash=None):
     """
-    Simpan hanya signature tanpa candidate_id untuk mempertahankan vote privacy
-    Candidate choice akan diextract saat verification/tallying
+    Simpan ballot dengan signature dan key reference untuk verifikasi
     """
-    params = (str(signature), voting_type)
     with get_db_connection() as conn:
         c = conn.cursor()
-        # Hanya simpan signature dan type - TIDAK ada candidate_id
-        c.execute('''INSERT INTO ballots (signature, type)
-                     VALUES (?, ?)''', params)
+
+        # Dapatkan key_id aktif jika tidak disediakan
+        if key_id is None:
+            c.execute("SELECT id FROM keys WHERE is_active = 1 ORDER BY id DESC LIMIT 1")
+            key_row = c.fetchone()
+            if key_row:
+                key_id = key_row[0]
+            else:
+                raise ValueError("No active key found for ballot storage")
+
+        # Simpan ballot dengan key reference
+        c.execute('''INSERT INTO ballots (signature, type, key_id, voter_hash, timestamp)
+                     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+                 (str(signature), voting_type, key_id, voter_hash))
+
+        ballot_id = c.lastrowid
         conn.commit()
+        return ballot_id
+
+
+# PERBAIKAN: Fungsi untuk menyimpan vote dengan proper blind signature support
+def save_vote_with_signature(voter_npm_encrypted, candidate_id, voting_stage, signature, ballot_id=None):
+    """
+    Simpan vote dengan signature dan referensi ke ballot
+    """
+    with get_db_connection() as conn:
+        c = conn.cursor()
+
+        # Dapatkan key_id aktif
+        c.execute("SELECT id FROM keys WHERE is_active = 1 ORDER BY id DESC LIMIT 1")
+        key_row = c.fetchone()
+        if not key_row:
+            raise ValueError("No active key found for vote storage")
+
+        key_id = key_row[0]
+
+        # Simpan vote dengan key reference
+        c.execute('''INSERT INTO votes (voter_npm_encrypted, candidate_id, voting_stage, signature, key_id, ballot_id, timestamp)
+                     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+                 (voter_npm_encrypted, candidate_id, voting_stage, str(signature), key_id, ballot_id))
+
+        vote_id = c.lastrowid
+        conn.commit()
+        return vote_id
+
+
+# PERBAIKAN: Fungsi untuk mendapatkan key aktif
+def get_active_key():
+    """
+    Mendapatkan key pair yang sedang aktif
+    """
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, n, e FROM keys WHERE is_active = 1 ORDER BY id DESC LIMIT 1")
+        return c.fetchone()
 
 
 # PERBAIKAN: Fungsi untuk vote tallying dengan signature verification

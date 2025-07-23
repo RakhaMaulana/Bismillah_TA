@@ -6,7 +6,7 @@ import hashlib
 import BlindSig as bs
 import secrets
 import base64
-from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates
+from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates, save_vote_with_signature, get_active_key
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_wtf.csrf import CSRFProtect
@@ -654,8 +654,11 @@ def vote_page():
 
         if voter:
             token_used_senat, token_used_dewan = voter
+            print(f"DEBUG vote_page: token_used_senat={token_used_senat}, token_used_dewan={token_used_dewan}")
+
             if token_used_senat == 0:
                 # Belum vote senat: tampilkan halaman vote untuk senat
+                print("DEBUG vote_page: Showing SENAT voting page")
                 return render_template(
                     'vote.html',
                     candidates=senat_candidates,
@@ -664,6 +667,7 @@ def vote_page():
                 )
             elif token_used_dewan == 0:
                 # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
+                print("DEBUG vote_page: Showing DEMUS voting page")
                 return render_template(
                     'vote.html',
                     candidates=demus_candidates,
@@ -672,6 +676,7 @@ def vote_page():
                 )
             else:
                 # Token sudah digunakan untuk kedua vote
+                print("DEBUG vote_page: Both votes completed, redirecting to index")
                 flash('Token sudah digunakan untuk kedua pemilihan.')
                 session.pop('voting_token', None)
                 session.pop('voting_id_number', None)
@@ -893,36 +898,75 @@ def vote():
             flash('Error in vote verification.')
             return redirect(url_for('vote_page'))
 
-        # 6. Store vote with new database connection
-        with get_db_connection() as conn_vote:
-            c_vote = conn_vote.cursor()
-            conn_vote.execute("BEGIN IMMEDIATE;")
-            print("DEBUG: Database transaction started")
+        # 6. Store vote dengan proper blind signature support dalam satu transaksi
+        from key_manager import key_manager
+        active_key_id = key_manager.get_active_key_id()
 
-            # PERBAIKAN: Simpan hanya signature tanpa candidate_id (blind signature principle)
-            # Store only signature - candidate choice hidden until tallying
-            c_vote.execute("INSERT INTO ballots (signature, type) VALUES (?, ?)",
-                    (str(signature), voting_stage))
-            print(f"DEBUG: Vote inserted into ballots table for stage {voting_stage}")
+        try:
+            with get_db_connection() as conn_vote:
+                c_vote = conn_vote.cursor()
+                conn_vote.execute("BEGIN IMMEDIATE;")
+                print("DEBUG: Database transaction started")
 
-            # Update status token berdasarkan stage voting
-            if voting_stage == 'senat':
-                c_vote.execute("UPDATE voters SET token_used_senat = 1 WHERE token_hash = ?", (encoded_token,))
-                print("DEBUG: Updated token_used_senat to 1")
-                flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
-                conn_vote.commit()
-                print("DEBUG: Database committed successfully for senat")
-                return redirect(url_for('vote_page'))
-            elif voting_stage == 'demus':
-                c_vote.execute("UPDATE voters SET token_used_dewan = 1 WHERE token_hash = ?", (encoded_token,))
-                print("DEBUG: Updated token_used_dewan to 1")
-                flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
-                conn_vote.commit()
-                print("DEBUG: Database committed successfully for demus")
-                # Clear voting session after completed both votes
-                session.pop('voting_token', None)
-                session.pop('voting_id_number', None)
-                return redirect(url_for('index'))
+                # PERBAIKAN: Simpan ballot dengan key reference untuk verifikasi dalam transaksi yang sama
+                voter_hash = hashlib.sha256(encoded_token.encode()).hexdigest()
+
+                # Save ballot dalam transaksi yang sama
+                c_vote.execute('''INSERT INTO ballots (signature, type, key_id, voter_hash, timestamp)
+                                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+                             (str(signature), voting_stage, active_key_id, voter_hash))
+                ballot_id = c_vote.lastrowid
+                print(f"DEBUG: Ballot saved with ID {ballot_id} for stage {voting_stage}")
+
+                # Save vote record dalam transaksi yang sama
+                c_vote.execute('''INSERT INTO votes (voter_npm_encrypted, candidate_id, voting_stage, signature, key_id, ballot_id, timestamp)
+                                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+                             (encoded_token, candidate_id, voting_stage, str(signature), active_key_id, ballot_id))
+                vote_id = c_vote.lastrowid
+                print(f"DEBUG: Vote record saved with ID {vote_id}")
+
+                # Update status token berdasarkan stage voting dalam transaksi yang sama
+                if voting_stage == 'senat':
+                    c_vote.execute("UPDATE voters SET token_used_senat = 1 WHERE token_hash = ?", (encoded_token,))
+                    rows_affected = c_vote.rowcount
+                    print(f"DEBUG: Updated token_used_senat to 1, rows affected: {rows_affected}")
+
+                    # Verify update berhasil
+                    c_vote.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (encoded_token,))
+                    verify_result = c_vote.fetchone()
+                    print(f"DEBUG: After update - token_used_senat={verify_result[0]}, token_used_dewan={verify_result[1]}")
+
+                    # Commit seluruh transaksi
+                    conn_vote.commit()
+                    print("DEBUG: Database committed successfully for senat")
+
+                    flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
+                    return redirect(url_for('vote_page'))
+
+                elif voting_stage == 'demus':
+                    c_vote.execute("UPDATE voters SET token_used_dewan = 1 WHERE token_hash = ?", (encoded_token,))
+                    rows_affected = c_vote.rowcount
+                    print(f"DEBUG: Updated token_used_dewan to 1, rows affected: {rows_affected}")
+
+                    # Verify update berhasil
+                    c_vote.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (encoded_token,))
+                    verify_result = c_vote.fetchone()
+                    print(f"DEBUG: After update - token_used_senat={verify_result[0]}, token_used_dewan={verify_result[1]}")
+
+                    # Commit seluruh transaksi
+                    conn_vote.commit()
+                    print("DEBUG: Database committed successfully for demus")
+
+                    flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
+                    # Clear voting session after completed both votes
+                    session.pop('voting_token', None)
+                    session.pop('voting_id_number', None)
+                    return redirect(url_for('index'))
+
+        except Exception as vote_error:
+            print(f"ERROR: Vote storage failed: {vote_error}")
+            flash('Error storing vote. Please try again.')
+            return redirect(url_for('vote_page'))
 
     except Exception as e:
         flash(f'Error processing vote: {str(e)}')
