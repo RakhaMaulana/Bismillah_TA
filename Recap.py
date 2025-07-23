@@ -57,8 +57,16 @@ def recap_votes():
     conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
 
-    # Retrieve all keys from the database
-    keys = fetch_all_keys()
+    # PERBAIKAN: Gunakan key yang paling recent untuk menghindari multiple key checking
+    # Ambil key terbaru saja berdasarkan timestamp
+    c.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
+    latest_key = c.fetchone()
+    
+    if not latest_key:
+        conn.close()
+        return [], {'senat': {}, 'demus': {}}, {'senat': [], 'demus': []}
+    
+    n, public_key = int(latest_key[0]), int(latest_key[1])
 
     # PERBAIKAN: Retrieve ballots tanpa candidate_id (sesuai blind signature)
     # Hanya ambil signature dan type untuk verifikasi
@@ -73,21 +81,40 @@ def recap_votes():
     # Close the database connection
     conn.close()
 
+    # PERBAIKAN: Pre-calculate message hashes untuk semua kandidat untuk menghindari kalkulasi berulang
+    candidate_hashes = {}
+    for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
+        message_hash = hashlib.sha256(str(candidate_id).encode()).hexdigest()
+        message_hash_int = int(message_hash, 16)
+        if message_hash_int >= n:
+            message_hash_int = message_hash_int % n
+        candidate_hashes[candidate_id] = message_hash_int
+
     # Initialize vote counts for senat and demus
     vote_counts = {'senat': {}, 'demus': {}}
     verified_ballots = []
 
-    # PERBAIKAN: Verify each ballot dengan pendekatan blind signature yang benar
-    # Karena candidate_id tidak disimpan, kita perlu mencoba verifikasi terhadap setiap kandidat
+    print(f"DEBUG Recap: Processing {len(ballots)} ballots with {len(candidates)} candidates")
+    processed_ballots = 0
+
+    # PERBAIKAN: Verify each ballot dengan pendekatan yang lebih efisien
     for ballot in ballots:
         signature, ballot_type = ballot
+        processed_ballots += 1
+        
+        if processed_ballots % 10 == 0:  # Progress indicator
+            print(f"DEBUG Recap: Processed {processed_ballots}/{len(ballots)} ballots")
 
-        # Coba verifikasi signature terhadap setiap kandidat dengan tipe yang sesuai
-        for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
-            if candidate_type == ballot_type:  # Hanya cek kandidat dengan tipe yang sesuai
-                for n, public_key in keys:
-                    # PERBAIKAN: Gunakan fungsi verify_signature dari BlindSig.py
-                    if bs.verify_signature(str(candidate_id), signature, public_key, n):
+        try:
+            # Pre-calculate signature decryption hanya sekali
+            decrypted_signature = pow(int(signature), public_key, n)
+            
+            # PERBAIKAN: Coba cocokkan dengan hash kandidat yang sudah di-precompute
+            for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
+                if candidate_type == ballot_type:  # Hanya cek kandidat dengan tipe yang sesuai
+                    expected_hash = candidate_hashes[candidate_id]
+                    
+                    if decrypted_signature == expected_hash:
                         verified_ballots.append((candidate_name, candidate_type))
 
                         if candidate_name in vote_counts[candidate_type]:
@@ -95,11 +122,11 @@ def recap_votes():
                         else:
                             vote_counts[candidate_type][candidate_name] = 1
 
-                        # Break kedua loop karena signature sudah terverifikasi
+                        # Break karena signature sudah terverifikasi untuk kandidat ini
                         break
-                else:
-                    continue  # Continue outer loop jika tidak ada key yang cocok
-                break  # Break jika signature sudah terverifikasi untuk kandidat ini
+        except (ValueError, TypeError, OverflowError) as e:
+            print(f"DEBUG Recap: Error processing ballot signature {signature}: {e}")
+            continue
 
     # Ensure all candidates are included in the vote counts, even if they have 0 votes
     all_candidates = {'senat': [], 'demus': []}
@@ -108,6 +135,7 @@ def recap_votes():
         if candidate_name not in vote_counts[candidate_type]:
             vote_counts[candidate_type][candidate_name] = 0
 
+    print(f"DEBUG Recap: Completed processing. Verified {len(verified_ballots)} ballots")
     return verified_ballots, vote_counts, all_candidates
 
 
