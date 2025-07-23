@@ -50,10 +50,10 @@
                                                     required>
                                                 <option value="">-- Choose a voter --</option>
                                                 {% for voter in voters %}
-                                                    <option value="{{ voter[0] }}"
-                                                            data-photo="{{ url_for('static', filename='uploads/' ~ voter[1] ~ '.jpg') }}"
-                                                            data-npm="{{ voter[1] }}">
-                                                        NPM: {{ voter[1] }}
+                                                    <option value="{{ voter.id }}"
+                                                            data-photo="{{ url_for('static', filename='uploads/' ~ voter.photo) }}"
+                                                            data-npm="{{ voter.id_number }}">
+                                                        NPM: {{ voter.id_number }}
                                                     </option>
                                                 {% endfor %}
                                             </select>

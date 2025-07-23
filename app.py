@@ -403,7 +403,10 @@ def register_voter():
 
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM voters WHERE id_number = ?", (id_number,))
+
+    # PERBAIKAN: Hash ID number untuk query (sesuai dengan schema database)
+    id_hash = hashlib.sha256(id_number.encode()).hexdigest()
+    c.execute("SELECT * FROM voters WHERE id_number_hash = ?", (id_hash,))
     existing_voter = c.fetchone()
     if existing_voter:
         if existing_voter['approved'] == 0:
@@ -464,9 +467,21 @@ def approve_voter_page():
         return redirect(url_for('login_page'))
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id, id_number, photo FROM voters WHERE approved = 0")
-    voters = c.fetchall()
+    c.execute("SELECT id, id_number_encrypted, photo FROM voters WHERE approved = 0")
+    voters_raw = c.fetchall()
     conn.close()
+
+    # Decrypt NPM untuk display
+    from createdb import decrypt_npm
+    voters = []
+    for voter in voters_raw:
+        voter_dict = {
+            'id': voter[0],
+            'id_number': decrypt_npm(voter[1]),  # Decrypt untuk display
+            'photo': voter[2]
+        }
+        voters.append(voter_dict)
+
     return render_template('approve_voter.html', voters=voters)
 
 
@@ -580,7 +595,7 @@ def process_token():
 
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?",
+    c.execute("SELECT id_number_hash, approved, token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?",
               (encoded_token,))
     voter = c.fetchone()
     conn.close()
@@ -600,7 +615,7 @@ def process_token():
 
     # Store token and voter info in session
     session['voting_token'] = token
-    session['voting_id_number'] = voter['id_number']
+    session['voting_id_number_hash'] = voter['id_number_hash']  # Store hash instead of original
     session['token_validated_at'] = time.time()
 
     return redirect(url_for('vote_page'))
@@ -632,7 +647,7 @@ def vote_page():
         hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
         encoded_token = base64.b64encode(hashed_token.encode()).decode()
 
-        c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
+        c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (encoded_token,))
         voter = c.fetchone()
         conn.close()
 
@@ -720,7 +735,7 @@ def vote():
         c = conn.cursor()
         # Mulai transaksi untuk memastikan operasi validasi dan update atomik
         conn.execute("BEGIN IMMEDIATE;")
-        c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters WHERE token = ?", (encoded_token,))
+        c.execute("SELECT id_number_hash, approved, token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (encoded_token,))
         voter = c.fetchone()
         if not voter:
             conn.rollback()
@@ -729,7 +744,7 @@ def vote():
             session.pop('voting_id_number', None)
             return redirect(url_for('submit_token_page'))
 
-        id_number, approved, token_used_senat, token_used_dewan = voter
+        id_number_hash, approved, token_used_senat, token_used_dewan = voter
         if approved == 0:
             conn.rollback()
             flash('Voter not approved')
@@ -754,76 +769,229 @@ def vote():
             session.pop('voting_id_number', None)
             return redirect(url_for('index'))
 
-        # Proses blind signature dan simpan ballot
-        with get_db_connection() as conn_keys:
-            c_keys = conn_keys.cursor()
-            c_keys.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
-            key = c_keys.fetchone()
-        if key:
-            n, e, d = int(key[0]), int(key[1]), int(key[2])
+        # Commit validation checks and close first connection
+        conn.commit()
+
+    # PERBAIKAN: Proses blind signature dengan session-based key management
+    session_id = session.get('session_id', os.urandom(16).hex())
+    session['session_id'] = session_id
+
+    # Ambil public key dari database (private key tidak disimpan permanent)
+    with get_db_connection() as conn_keys:
+        c_keys = conn_keys.cursor()
+        c_keys.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
+        key = c_keys.fetchone()
+
+    if key:
+        # Gunakan existing public key
+        n, e = int(key[0]), int(key[1])
+
+        # Cek apakah sudah ada private key untuk session ini
+        from createdb import get_session_private_key
+        d = get_session_private_key(session_id)
+
+        if not d:
+            # PERBAIKAN: Generate complete key triplet that matches database
+            # Không bisa menggunakan database n,e với d yang berbeda
+            # Harus generate key baru yang lengkap atau gunakan keys yang sudah ada
             signer = bs.Signer()
-            signer.public_key = {'n': n, 'e': e}
-            signer.private_key = {'d': d}
-        else:
-            signer = bs.Signer()
+
+            # Get the complete key triplet from the new signer
             public_key = signer.get_public_key()
             n = public_key['n']
             e = public_key['e']
             d = signer.private_key['d']
-            with get_db_connection() as conn_keys:
-                c_keys = conn_keys.cursor()
-                c_keys.execute("INSERT INTO keys (n, e, d, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
-                               (str(n), str(e), str(d)))
-                conn_keys.commit()
 
-        try:
-            # PERBAIKAN: Implementasi blind signature yang benar
-            # 1. Pesan adalah candidate_id saja
-            message = str(candidate_id)
-            message_hash = hashlib.sha256(message.encode()).hexdigest()
-            message_hash_int = int(message_hash, 16)
+            # PERBAIKAN: Verify key consistency before storing
+            phi_test = (e * d - 1) % n  # Should be 0 if keys are consistent
+            print(f"DEBUG: Key consistency check:")
+            print(f"  - n: {n}")
+            print(f"  - e: {e}")
+            print(f"  - d: {d}")
+            print(f"  - (e * d - 1) mod n = {phi_test}")
 
-            # 2. Buat objek Voter dan blinding factor yang tepat
-            voter_obj = bs.Voter(n, "y")
-            blind_message = voter_obj.blind_message(message_hash_int, n, e)
+            # Test key consistency with a simple message
+            test_message = 12345
+            test_signed = pow(test_message, d, n)
+            test_verified = pow(test_signed, e, n)
+            key_test_passed = (test_verified == test_message)
+            print(f"  - key test: {test_message} -> {test_signed} -> {test_verified}")
+            print(f"  - key test passed: {key_test_passed}")
 
-            # 3. Sign the blinded message
-            signed_blind_message = signer.sign_message(blind_message, voter_obj.get_eligibility())
-
-            # 4. Unwrap the signature
-            signature = voter_obj.unwrap_signature(signed_blind_message, n)
-
-            # 5. Verify the signature (optional, for double-checking)
-            is_valid = bs.verify_signature(candidate_id, signature, e, n)
-            if not is_valid:
-                conn.rollback()
-                flash('Error in vote verification.')
+            if not key_test_passed:
+                print("ERROR: Generated keys are inconsistent!")
+                flash('System error: Key generation failed.')
                 return redirect(url_for('vote_page'))
 
-            # PERBAIKAN: Simpan hanya data minimal yang diperlukan
-            # 6. Store minimal ballot information
-            c.execute("INSERT INTO ballots (candidate_id, signature, type) VALUES (?, ?, ?)",
-                    (candidate_id, str(signature), voting_stage))
+            # Update database dengan key baru yang lengkap dan terverifikasi
+            with get_db_connection() as conn_update_keys:
+                c_update_keys = conn_update_keys.cursor()
+                c_update_keys.execute("UPDATE keys SET n = ?, e = ? WHERE timestamp = (SELECT MAX(timestamp) FROM keys)",
+                               (str(n), str(e)))
+                conn_update_keys.commit()
+
+            # Simpan private key sementara untuk session
+            from createdb import save_session_private_key
+            save_session_private_key(d, session_id)
+
+        # Setup signer dengan key yang konsisten - JANGAN buat signer baru
+        class DummySigner:
+            def __init__(self, n, e, d):
+                self.public_key = {'n': n, 'e': e}
+                self.private_key = {'n': n, 'd': d}
+
+            def sign_message(self, message, eligible):
+                if eligible == "y":
+                    if message is None or message <= 0:
+                        return None
+                    if message >= self.public_key['n']:
+                        message = message % self.public_key['n']
+                    try:
+                        signed = pow(message, self.private_key['d'], self.public_key['n'])
+                        print(f"DEBUG DummySigner.sign_message:")
+                        print(f"  - input message: {message}")
+                        print(f"  - d: {self.private_key['d']}")
+                        print(f"  - n: {self.public_key['n']}")
+                        print(f"  - signed result: {signed}")
+                        return signed
+                    except Exception as e:
+                        print(f"DEBUG DummySigner.sign_message error: {e}")
+                        return None
+                return None
+
+        signer = DummySigner(n, e, d)
+    else:
+        # Generate new keys jika belum ada
+        signer = bs.Signer()
+        public_key = signer.get_public_key()
+        n = public_key['n']
+        e = public_key['e']
+        d = signer.private_key['d']
+
+        # Simpan public key ke database
+        with get_db_connection() as conn_save_keys:
+            c_save_keys = conn_save_keys.cursor()
+            c_save_keys.execute("INSERT INTO keys (n, e, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)",
+                           (str(n), str(e)))
+            conn_save_keys.commit()
+
+        # Simpan private key sementara untuk session
+        from createdb import save_session_private_key
+        save_session_private_key(d, session_id)
+
+    try:
+        # PERBAIKAN: Implementasi blind signature yang benar dan aman
+        # 1. Pesan adalah candidate_id saja
+        message = str(candidate_id)
+        message_hash = hashlib.sha256(message.encode()).hexdigest()
+        message_hash_int = int(message_hash, 16)
+        print(f"DEBUG: Processing vote for candidate {candidate_id}, stage {voting_stage}")
+
+        # PERBAIKAN: Pastikan hash tidak lebih besar dari modulus
+        if message_hash_int >= n:
+            message_hash_int = message_hash_int % n
+
+        # 2. Buat objek Voter dan blinding factor yang tepat dengan entropy unik
+        try:
+            # Generate unique entropy untuk setiap vote
+            unique_entropy = f"{candidate_id}_{voting_stage}_{session_id}_{time.time_ns()}_{os.urandom(8).hex()}"
+            voter_obj = bs.Voter(n, "y", unique_entropy)
+            print("DEBUG: Voter object created successfully")
+        except ValueError as e:
+            print(f"DEBUG: Error creating voter object: {e}")
+            flash('Error: Unable to create secure voting session.')
+            return redirect(url_for('vote_page'))
+
+        blind_message = voter_obj.blind_message(message_hash_int, n, e)
+        print("DEBUG: Message blinded successfully")
+
+        # 3. Sign the blinded message
+        signed_blind_message = signer.sign_message(blind_message, voter_obj.get_eligibility())
+        print("DEBUG: Message signed successfully")
+
+        # PERBAIKAN: Validasi signed_blind_message
+        if signed_blind_message is None:
+            print("DEBUG: Signed blind message is None")
+            flash('Error: Unable to sign the vote.')
+            return redirect(url_for('vote_page'))
+
+        # 4. Unwrap the signature
+        signature = voter_obj.unwrap_signature(signed_blind_message, n)
+        print("DEBUG: Signature unwrapped successfully")
+
+        # PERBAIKAN: Validasi signature hasil unwrap
+        if signature is None:
+            print("DEBUG: Unwrapped signature is None")
+            flash('Error: Unable to unwrap vote signature.')
+            return redirect(url_for('vote_page'))
+
+        # 5. Verify the signature (mandatory security check)
+        # PERBAIKAN: Gunakan key yang sama dengan DummySigner untuk verifikasi
+        signer_e = signer.public_key['e']
+        signer_n = signer.public_key['n']
+
+        # DEBUGGING: Manual verification to check mathematical correctness
+        print(f"DEBUG: Manual verification check:")
+        manual_verification = pow(int(signature), signer_e, signer_n)
+        print(f"  - signature^e mod n = {manual_verification}")
+        print(f"  - original message_hash_int = {message_hash_int}")
+        print(f"  - manual verification match = {manual_verification == message_hash_int}")
+
+        # Let's also test if we can sign the original message directly (without blinding)
+        direct_signature = pow(message_hash_int, signer.private_key['d'], signer_n)
+        direct_verification = pow(direct_signature, signer_e, signer_n)
+        print(f"  - direct_signature = {direct_signature}")
+        print(f"  - direct_verification = {direct_verification}")
+        print(f"  - direct verification match = {direct_verification == message_hash_int}")
+
+        is_valid = bs.verify_signature(candidate_id, signature, signer_e, signer_n)
+        print(f"DEBUG: Signature verification details:")
+        print(f"  - candidate_id: {candidate_id}")
+        print(f"  - signature: {signature}")
+        print(f"  - signer_e: {signer_e}")
+        print(f"  - signer_n: {signer_n}")
+        print(f"  - database_e: {e}")
+        print(f"  - database_n: {n}")
+        print(f"  - message_hash_int: {message_hash_int}")
+        print(f"  - verification result: {is_valid}")
+        if not is_valid:
+            flash('Error in vote verification.')
+            return redirect(url_for('vote_page'))
+
+        # 6. Store vote with new database connection
+        with get_db_connection() as conn_vote:
+            c_vote = conn_vote.cursor()
+            conn_vote.execute("BEGIN IMMEDIATE;")
+            print("DEBUG: Database transaction started")
+
+            # PERBAIKAN: Simpan hanya signature tanpa candidate_id (blind signature principle)
+            # Store only signature - candidate choice hidden until tallying
+            c_vote.execute("INSERT INTO ballots (signature, type) VALUES (?, ?)",
+                    (str(signature), voting_stage))
+            print(f"DEBUG: Vote inserted into ballots table for stage {voting_stage}")
 
             # Update status token berdasarkan stage voting
             if voting_stage == 'senat':
-                c.execute("UPDATE voters SET token_used_senat = 1 WHERE token = ?", (encoded_token,))
+                c_vote.execute("UPDATE voters SET token_used_senat = 1 WHERE token_hash = ?", (encoded_token,))
+                print("DEBUG: Updated token_used_senat to 1")
                 flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
-                conn.commit()
+                conn_vote.commit()
+                print("DEBUG: Database committed successfully for senat")
                 return redirect(url_for('vote_page'))
             elif voting_stage == 'demus':
-                c.execute("UPDATE voters SET token_used_dewan = 1 WHERE token = ?", (encoded_token,))
+                c_vote.execute("UPDATE voters SET token_used_dewan = 1 WHERE token_hash = ?", (encoded_token,))
+                print("DEBUG: Updated token_used_dewan to 1")
                 flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
-                conn.commit()
+                conn_vote.commit()
+                print("DEBUG: Database committed successfully for demus")
                 # Clear voting session after completed both votes
                 session.pop('voting_token', None)
                 session.pop('voting_id_number', None)
                 return redirect(url_for('index'))
 
-        except Exception as e:
-            conn.rollback()
-            flash(f'Error processing vote: {str(e)}')
-            return redirect(url_for('vote_page'))
+    except Exception as e:
+        flash(f'Error processing vote: {str(e)}')
+        return redirect(url_for('vote_page'))
 
     return redirect(url_for('vote_page'))
 
@@ -878,9 +1046,21 @@ def voter_status():
 
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT id_number, approved, token_used_senat, token_used_dewan FROM voters")
-    voters = c.fetchall()
+    c.execute("SELECT id_number_encrypted, approved, token_used_senat, token_used_dewan FROM voters")
+    voters_raw = c.fetchall()
     conn.close()
+
+    # Decrypt NPM untuk display
+    from createdb import decrypt_npm
+    voters = []
+    for voter in voters_raw:
+        voter_dict = {
+            'id_number': decrypt_npm(voter[0]),  # Decrypt untuk display
+            'approved': voter[1],
+            'token_used_senat': voter[2],
+            'token_used_dewan': voter[3]
+        }
+        voters.append(voter_dict)
 
     return render_template('voter_status.html', voters=voters)
 
@@ -1279,24 +1459,15 @@ def run_complete_benchmark():
             c = conn.cursor()
 
             # Get vote counts per candidate
-            c.execute("""
-                SELECT c.name, c.type, COUNT(b.id) as vote_count
-                FROM candidates c
-                LEFT JOIN ballots b ON c.id = b.candidate_id
-                GROUP BY c.id, c.name, c.type
-                ORDER BY c.type, c.name
-            """)
-
-            vote_data = c.fetchall()
-            conn.close()
-
-            # Format vote counts for frontend
-            formatted_vote_counts = {}
-            for candidate_name, candidate_type, vote_count in vote_data:
-                if vote_count > 0:  # Only include candidates with votes
-                    formatted_vote_counts[candidate_name] = vote_count
-
-            print(f"🔍 Formatted vote counts: {formatted_vote_counts}")
+            # PERBAIKAN: Karena ballots tidak menyimpan candidate_id,
+            # kita perlu menggunakan Recap function untuk mendapatkan vote counts
+            from Recap import recap_votes
+            try:
+                verified_ballots, formatted_vote_counts, candidates_list = recap_votes()
+                print(f"🔍 Vote counts from recap: {formatted_vote_counts}")
+            except Exception as recap_error:
+                print(f"❌ Error getting vote counts: {recap_error}")
+                formatted_vote_counts = {}
 
             # Update tabulation_data with formatted counts
             tabulation_data['vote_counts'] = formatted_vote_counts
@@ -1419,7 +1590,8 @@ def benchmark_vote_decryption(vote_count=100, iterations=1):
             # Get ballots from database using raw SQL
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute("SELECT candidate_id, signature, type FROM ballots LIMIT ?", (vote_count,))
+            # PERBAIKAN: Ambil ballots tanpa candidate_id
+            c.execute("SELECT signature, type FROM ballots LIMIT ?", (vote_count,))
             ballots = c.fetchall()
             conn.close()
 
@@ -1428,12 +1600,12 @@ def benchmark_vote_decryption(vote_count=100, iterations=1):
             for ballot in ballots:
                 try:
                     # Simulate decryption and verification
-                    candidate_id = ballot[0]
-                    signature = ballot[1]
-                    vote_type = ballot[2]
+                    signature = ballot[0]
+                    vote_type = ballot[1]
 
-                    # Simulate decryption process (replace with actual implementation)
-                    decrypted_vote = str(candidate_id)
+                    # PERBAIKAN: Simulasi decryption tanpa candidate_id spesifik
+                    test_candidate_id = "1"  # Simulasi untuk benchmark
+                    decrypted_vote = test_candidate_id
 
                     # Simulate signature verification (replace with actual implementation)
                     if verify_vote_signature(signature, decrypted_vote):

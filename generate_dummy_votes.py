@@ -10,16 +10,32 @@ def get_or_create_keys():
     """Get existing keys or create new ones - returns dict format"""
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT n, e, d FROM keys ORDER BY timestamp DESC LIMIT 1")
+    # PERBAIKAN: Hanya ambil public key dari database
+    c.execute("SELECT n, e FROM keys ORDER BY timestamp DESC LIMIT 1")
     key = c.fetchone()
 
     if key:
-        n, e, d = int(key[0]), int(key[1]), int(key[2])
+        n, e = int(key[0]), int(key[1])
         conn.close()
-        # Return as dict format for consistency
+        # PERBAIKAN: Generate key pair yang konsisten untuk signature
+        # Generate new consistent keypair for this session
+        signer = bs.Signer()
+        new_n = signer.public_key['n']
+        new_e = signer.public_key['e']
+        d = signer.private_key['d']
+
+        # Update database dengan key pair yang konsisten
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("UPDATE keys SET n = ?, e = ? WHERE n = ? AND e = ?",
+                  (str(new_n), str(new_e), str(n), str(e)))
+        conn.commit()
+        conn.close()
+
+        # Return format untuk kompatibilitas
         return {
-            'n': n,
-            'e': e,
+            'n': new_n,
+            'e': new_e,
             'd': d
         }
     else:
@@ -30,8 +46,9 @@ def get_or_create_keys():
         e = public_key['e']
         d = signer.private_key['d']
 
-        c.execute("INSERT INTO keys (n, e, d, timestamp) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
-                  (str(n), str(e), str(d)))
+        # PERBAIKAN: Simpan hanya public key ke database
+        c.execute("INSERT INTO keys (n, e, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)",
+                  (str(n), str(e)))
         conn.commit()
         conn.close()
 
@@ -181,30 +198,24 @@ def generate_dummy_votes_with_timing(num_votes, measure_individual=False):
                     # BEGIN TRANSACTION
                     conn.execute("BEGIN IMMEDIATE;")
 
-                    # Check current vote count to prevent overflow
-                    c.execute("SELECT COUNT(*) FROM ballots WHERE type = ?", (vote_type,))
-                    current_count = c.fetchone()[0]
+                    # ✅ FIX: No need to check current count - just generate as requested
+                    # The constraint is removed from database, so duplicates are now allowed
 
-                    # ✅ PREVENT OVERFLOW: Stop if we've reached the target for this type
-                    target_per_type = num_votes // 2
-                    if current_count >= target_per_type:
-                        conn.rollback()
-                        continue
-
-                    # ✅ FIX: Create blind signature with correct keys
+                    # ✅ FIX: Create blind signature with correct keys and unique entropy
                     message = str(candidate_id)
                     message_hash = hashlib.sha256(message.encode()).hexdigest()
                     message_hash_int = int(message_hash, 16)
 
-                    # Create voter object
-                    voter = bs.Voter(keys['n'], "y")
+                    # Create voter object with unique entropy for each vote
+                    unique_entropy = f"{candidate_id}_{vote_type}_{i}_{time.time_ns()}"
+                    voter = bs.Voter(keys['n'], "y", unique_entropy)
                     blind_message = voter.blind_message(message_hash_int, keys['n'], keys['e'])
                     signed_blind_message = signer.sign_message(blind_message, voter.get_eligibility())
                     signature = voter.unwrap_signature(signed_blind_message, keys['n'])
 
-                    # ✅ ATOMIC INSERT
-                    c.execute("INSERT INTO ballots (candidate_id, signature, type) VALUES (?, ?, ?)",
-                             (candidate_id, str(signature), vote_type))
+                    # PERBAIKAN: Simpan hanya signature tanpa candidate_id (blind signature compliance)
+                    c.execute("INSERT INTO ballots (signature, type) VALUES (?, ?)",
+                             (str(signature), vote_type))
 
                     # COMMIT TRANSACTION
                     conn.commit()

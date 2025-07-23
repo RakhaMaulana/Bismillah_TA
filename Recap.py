@@ -1,5 +1,6 @@
 import sqlite3
 import hashlib
+import BlindSig as bs
 
 DATABASE_NAME = 'evoting.db'
 
@@ -18,14 +19,22 @@ def verify_signature(candidate_id, signature, public_key, n):
     Verifikasi tanda tangan sesuai protokol blind signature standar
     σ^e mod n = H(m)
     """
-    # Decrypt the signature using the public key
-    decrypted = pow(int(signature), public_key, n)
+    try:
+        # Decrypt the signature using the public key
+        decrypted = pow(int(signature), public_key, n)
 
-    # Calculate the hash of the candidate_id
-    calculated_hash = int(hashlib.sha256(str(candidate_id).encode()).hexdigest(), 16)
+        # Calculate the hash of the candidate_id (same as in app.py)
+        message_hash = hashlib.sha256(str(candidate_id).encode()).hexdigest()
+        calculated_hash = int(message_hash, 16)
 
-    # Compare the decrypted signature with the calculated hash
-    return decrypted == calculated_hash
+        # PERBAIKAN: Pastikan hash tidak lebih besar dari modulus (sama seperti di app.py)
+        if calculated_hash >= n:
+            calculated_hash = calculated_hash % n
+
+        # Compare the decrypted signature with the calculated hash
+        return decrypted == calculated_hash
+    except (ValueError, TypeError, OverflowError):
+        return False
 
 
 def print_database_contents():
@@ -51,9 +60,9 @@ def recap_votes():
     # Retrieve all keys from the database
     keys = fetch_all_keys()
 
-    # Retrieve all ballots from the database
-    # PERUBAHAN: Menggunakan candidate_id dan signature langsung
-    c.execute("SELECT candidate_id, signature, type FROM ballots")
+    # PERBAIKAN: Retrieve ballots tanpa candidate_id (sesuai blind signature)
+    # Hanya ambil signature dan type untuk verifikasi
+    c.execute("SELECT signature, type FROM ballots")
     ballots = c.fetchall()
 
     # Retrieve candidate names and types
@@ -68,22 +77,29 @@ def recap_votes():
     vote_counts = {'senat': {}, 'demus': {}}
     verified_ballots = []
 
-    # Verify each ballot and count the votes
+    # PERBAIKAN: Verify each ballot dengan pendekatan blind signature yang benar
+    # Karena candidate_id tidak disimpan, kita perlu mencoba verifikasi terhadap setiap kandidat
     for ballot in ballots:
-        candidate_id, signature, ballot_type = ballot
+        signature, ballot_type = ballot
 
-        for n, public_key in keys:
-            # PERUBAHAN: Verifikasi tanda tangan sesuai protokol standar
-            if verify_signature(candidate_id, signature, public_key, n):
-                if candidate_id in candidate_dict:
-                    candidate_name, candidate_type = candidate_dict[candidate_id]
-                    verified_ballots.append((candidate_name, candidate_type))
+        # Coba verifikasi signature terhadap setiap kandidat dengan tipe yang sesuai
+        for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
+            if candidate_type == ballot_type:  # Hanya cek kandidat dengan tipe yang sesuai
+                for n, public_key in keys:
+                    # PERBAIKAN: Gunakan fungsi verify_signature dari BlindSig.py
+                    if bs.verify_signature(str(candidate_id), signature, public_key, n):
+                        verified_ballots.append((candidate_name, candidate_type))
 
-                    if candidate_name in vote_counts[candidate_type]:
-                        vote_counts[candidate_type][candidate_name] += 1
-                    else:
-                        vote_counts[candidate_type][candidate_name] = 1
-                break  # Stop checking other keys if the vote is verified
+                        if candidate_name in vote_counts[candidate_type]:
+                            vote_counts[candidate_type][candidate_name] += 1
+                        else:
+                            vote_counts[candidate_type][candidate_name] = 1
+
+                        # Break kedua loop karena signature sudah terverifikasi
+                        break
+                else:
+                    continue  # Continue outer loop jika tidak ada key yang cocok
+                break  # Break jika signature sudah terverifikasi untuk kandidat ini
 
     # Ensure all candidates are included in the vote counts, even if they have 0 votes
     all_candidates = {'senat': [], 'demus': []}
