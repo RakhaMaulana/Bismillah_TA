@@ -13,6 +13,7 @@ from flask_wtf.csrf import CSRFProtect
 import uuid
 from dotenv import load_dotenv
 from Recap import recap_votes
+from ultra_fast_recap import UltraOptimizedTabulator
 from key_manager import get_global_signer, get_global_keys, sign_with_global_key, verify_with_global_key
 from markupsafe import escape
 import time
@@ -980,8 +981,121 @@ def vote():
 def recap():
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
+
+    # Use ultra-fast tabulation for maximum performance
+    tabulator = UltraOptimizedTabulator(use_parallel=True)
+    verified_ballots, vote_counts, candidates = tabulator.ultra_fast_tabulation()
+    return render_template('recap.html', vote_counts=vote_counts, candidates=candidates)
+
+
+@app.route('/recap/legacy', methods=['GET'])
+@limiter.limit("5 per minute")
+def recap_legacy():
+    """Legacy recap using original algorithm for comparison"""
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
     verified_ballots, vote_counts, candidates = recap_votes()
     return render_template('recap.html', vote_counts=vote_counts, candidates=candidates)
+
+
+@app.route('/api/tabulation/benchmark', methods=['GET'])
+@limiter.limit("2 per minute")
+def tabulation_benchmark():
+    """Benchmark tabulation performance with all implementations"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        import time
+
+        # Test all implementations
+        results = {}
+
+        # 1. Ultra-fast implementation
+        ultra_tabulator = UltraOptimizedTabulator(use_parallel=True)
+        ultra_results = ultra_tabulator.benchmark_ultra_fast(iterations=3)
+        results['ultra_fast'] = ultra_results
+
+        # 2. Ultra-fast sequential implementation for comparison
+        sequential_tabulator = UltraOptimizedTabulator(use_parallel=False)
+        seq_results = sequential_tabulator.benchmark_ultra_fast(iterations=3)
+        results['ultra_fast_sequential'] = seq_results
+
+        # 3. Original implementation (quick test)
+        start = time.perf_counter()
+        verified_ballots, _, _ = recap_votes()
+        original_time = (time.perf_counter() - start) * 1000
+        ballot_count = len(verified_ballots)
+        original_per_ballot = original_time / ballot_count if ballot_count > 0 else 0
+
+        results['original'] = {
+            'average_total_ms': original_time,
+            'average_per_ballot_ms': original_per_ballot,
+            'total_ballots': ballot_count
+        }
+
+        # Compare with targets
+        target_ms = 3.9
+        baseline_ms = 23.3  # Current baseline from benchmark
+
+        best_implementation = min(results.keys(),
+                                key=lambda k: results[k]['average_per_ballot_ms'])
+        best_time = results[best_implementation]['average_per_ballot_ms']
+
+        summary = {
+            'target_ms': target_ms,
+            'baseline_ms': baseline_ms,
+            'best_implementation': best_implementation,
+            'best_time_ms': best_time,
+            'target_achieved': best_time < target_ms,
+            'improvement_factor': baseline_ms / best_time if best_time > 0 else 0,
+            'vs_zkvoting': best_time / target_ms
+        }
+
+        return jsonify({
+            'status': 'success',
+            'results': results,
+            'summary': summary,
+            'message': f"Best: {best_implementation} at {best_time:.2f}ms per ballot"
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/tabulation/ultra-benchmark', methods=['GET'])
+@limiter.limit("3 per minute")
+def ultra_tabulation_benchmark():
+    """Focused benchmark for ultra-fast tabulation"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        tabulator = UltraOptimizedTabulator(use_parallel=True)
+        results = tabulator.benchmark_ultra_fast(iterations=5)
+
+        # Add detailed comparison
+        results['target_ms'] = 3.9
+        results['baseline_ms'] = 23.3
+        results['zkvoting_target'] = 3.9
+        results['performance_rating'] = 'EXCELLENT' if results['average_per_ballot_ms'] < 2.0 else \
+                                      'GOOD' if results['average_per_ballot_ms'] < 3.9 else \
+                                      'NEEDS_IMPROVEMENT'
+
+        return jsonify({
+            'status': 'success',
+            'benchmark': results,
+            'message': f"Ultra-fast tabulation: {results['average_per_ballot_ms']:.2f}ms per ballot"
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 
 @app.route('/uploads/<filename>')
@@ -1303,11 +1417,13 @@ def run_complete_benchmark():
         random_voting_time = random_voting_end - random_voting_start
 
 
-        # === STEP 3: TABULATION BENCHMARK ===
+        # === STEP 3: TABULATION BENCHMARK (ULTRA-FAST VERSION) ===
         tabulation_start = time.time()
 
         try:
-            tabulation_data = measure_recap_performance(iterations)
+            # Use ultra-fast tabulation implementation
+            tabulator = UltraOptimizedTabulator(use_parallel=True)
+            tabulation_data = tabulator.measure_performance(iterations)
         except Exception as e:
             return jsonify({'error': f'Failed to run tabulation benchmark: {str(e)}'}), 500
 
