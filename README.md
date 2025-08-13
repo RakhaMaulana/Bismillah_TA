@@ -5,14 +5,28 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 ## 📋 Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Security](#security)
-- [Performance](#performance)
-- [Contributing](#contributing)
+- [🎯 Overview](#-overview)
+  - [🔐 Key Cryptographic Concepts](#-key-cryptographic-concepts)
+- [✨ Features](#-features)
+  - [🛡️ Security Features](#️-security-features)
+  - [🎨 User Experience](#-user-experience)
+- [🏗️ Architecture](#️-architecture)
+  - [📁 Project Structure](#-project-structure)
+- [📦 Installation](#-installation)
+  - [Prerequisites](#prerequisites)
+  - [Option 1: Local Development Setup](#option-1-local-development-setup)
+  - [Option 2: Docker Deployment](#option-2-docker-deployment)
+  - [Option 3: Production Deployment](#option-3-production-deployment)
+  - [Key URLs and Endpoints](#key-urls-and-endpoints)
+- [🔒 Security](#-security)
+  - [Penetration Testing Results](#penetration-testing-results)
+  - [Code Quality Analysis](#code-quality-analysis)
+  - [Security Measures Implemented](#security-measures-implemented)
+- [⚡ Performance Benchmarks](#-performance-benchmarks)
+  - [vs zkVoting Research Baseline](#vs-zkvoting-research-baseline)
+  - [Performance Features](#performance-features)
+- [📄 License](#-license)
+- [🙏 Acknowledgments](#-acknowledgments)
 
 ## 🎯 Overview
 
@@ -265,49 +279,6 @@ server {
 }
 ```
 
-## 🚀 Usage
-
-### For Voters
-1. **Access the system** at `https://localhost:5001`
-2. **Register as voter** by clicking "Register Now"
-   - Upload your photo
-   - Provide your student ID (NPM)
-   - Submit digital signature
-3. **Wait for approval** from election authority
-4. **Receive voting token** after approval
-5. **Cast your vote** using the token
-   - Choose candidates for Senate (Senat) and Student Representative (Dewan Mahasiswa)
-   - Submit encrypted ballot with blind signature
-6. **Verify submission** and receive confirmation
-
-### For Administrators
-1. **Access admin panel** at `https://localhost:5001/login`
-   - Username: `AdminKitaBersama`
-   - Password: `AdminKitaBersama`
-2. **Manage the election**:
-   - **Approve voters**: Review and approve eligible voters
-   - **Register candidates**: Add candidates for different positions
-   - **Monitor votes**: View real-time voting statistics
-   - **Generate reports**: Access tabulation and audit reports
-3. **Election management**:
-   - **View voter status**: Check approved/pending voters
-   - **Tabulation results**: Real-time vote counting
-   - **System benchmarks**: Performance monitoring
-
-### For Election Authorities
-1. **System setup**:
-   - Configure election parameters in `config/.env`
-   - Generate RSA key pairs (automatically handled)
-   - Set up candidate information
-2. **Election monitoring**:
-   - **Real-time dashboard**: `https://localhost:5001/recap`
-   - **Performance metrics**: `https://localhost:5001/benchmark`
-   - **Voter management**: `https://localhost:5001/voter_status`
-3. **Post-election**:
-   - Generate final reports
-   - Export results for verification
-   - Audit trail analysis
-
 ### Key URLs and Endpoints
 - **Main page**: `https://localhost:5001/`
 - **Voter registration**: `https://localhost:5001/register_voter`
@@ -322,16 +293,16 @@ server {
 ### Penetration Testing Results
 - **Invicti Security Scanner**:
 [View Report](https://s.id/InvictiScanReport)
-  ![Invicti Results](image.png)
+  ![Invicti Results](Pengujian/Hasil%20Pengujian%20Keamanan/Bukti%20Invicti.png)
 
 - **Burp Suite Professional**:
 [View Report](https://s.id/DeepScanBurpSuite)
-  ![Burp Suite Results](image-1.png)
+  ![Burp Suite Results](Pengujian/Hasil%20Pengujian%20Keamanan/Bukti%20Burpsuite.png)
 
 ### Code Quality Analysis
 - **DeepSource Static Analysis**:
 [View Report](https://s.id/DeepSourceScanResult)
-  ![DeepSource Results](image-2.png)
+  ![DeepSource Results](Pengujian/Hasil%20Pengujian%20Keamanan/Bukti%20Deepsource.png)
 
 ### Security Measures Implemented
 - ✅ **OWASP Top 10** compliance verified
@@ -375,3 +346,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **⚠️ Security Notice**: This system is designed for educational and research purposes. For production elections, please conduct thorough security audits and compliance reviews.
 
 **🚀 Performance Note**: Benchmark results may vary based on hardware specifications and network conditions. Test in your target environment for accurate measurements. Our test was using i7-10750H with 16GB RAM
+
