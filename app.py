@@ -666,7 +666,7 @@ def vote_page():
                     no_candidates=(len(senat_candidates) == 0),
                     voting_stage='senat'
                 )
-            elif token_used_dewan == 0:
+            if token_used_dewan == 0:
                 # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
                 print("DEBUG vote_page: Showing DEMUS voting page")
                 return render_template(
@@ -675,13 +675,12 @@ def vote_page():
                     no_candidates=(len(demus_candidates) == 0),
                     voting_stage='demus'
                 )
-            else:
-                # Token sudah digunakan untuk kedua vote
-                print("DEBUG vote_page: Both votes completed, redirecting to index")
-                flash('Token sudah digunakan untuk kedua pemilihan.')
-                session.pop('voting_token', None)
-                session.pop('voting_id_number', None)
-                return redirect(url_for('index'))
+            # Token sudah digunakan untuk kedua vote
+            print("DEBUG vote_page: Both votes completed, redirecting to index")
+            flash('Token sudah digunakan untuk kedua pemilihan.')
+            session.pop('voting_token', None)
+            session.pop('voting_id_number', None)
+            return redirect(url_for('index'))
         else:
             flash('Invalid token.')
             session.pop('voting_token', None)
@@ -944,7 +943,7 @@ def vote():
                     flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
                     return redirect(url_for('vote_page'))
 
-                elif voting_stage == 'demus':
+                if voting_stage == 'demus':
                     c_vote.execute("UPDATE voters SET token_used_dewan = 1 WHERE token_hash = ?", (encoded_token,))
                     rows_affected = c_vote.rowcount
                     print(f"DEBUG: Updated token_used_dewan to 1, rows affected: {rows_affected}")
@@ -1006,7 +1005,6 @@ def tabulation_benchmark():
         return jsonify({'error': 'Authentication required'}), 401
 
     try:
-        import time
 
         # Test all implementations
         results = {}
@@ -1553,11 +1551,6 @@ def run_complete_benchmark():
             # Get actual vote counts from tabulation
             conn = get_db_connection()
             c = conn.cursor()
-
-            # Get vote counts per candidate
-            # PERBAIKAN: Karena ballots tidak menyimpan candidate_id,
-            # kita perlu menggunakan Recap function untuk mendapatkan vote counts
-            from core.Recap import recap_votes
             try:
                 verified_ballots, formatted_vote_counts, candidates_list = recap_votes()
                 print(f"🔍 Vote counts from recap: {formatted_vote_counts}")
@@ -1660,14 +1653,13 @@ def get_performance_tier(generation_results, tabulation_data, decryption_results
 
         if votes_per_second > 10 and tabulation_speed > 1000 and success_rate > 95:
             return "🚀 ENTERPRISE (1000+ votes/hour)"
-        elif votes_per_second > 5 and tabulation_speed > 500 and success_rate > 90:
+        if votes_per_second > 5 and tabulation_speed > 500 and success_rate > 90:
             return "⭐ PROFESSIONAL (500+ votes/hour)"
-        elif votes_per_second > 2 and tabulation_speed > 200 and success_rate > 85:
+        if votes_per_second > 2 and tabulation_speed > 200 and success_rate > 85:
             return "✅ STANDARD (200+ votes/hour)"
-        elif votes_per_second > 1 and tabulation_speed > 100 and success_rate > 75:
+        if votes_per_second > 1 and tabulation_speed > 100 and success_rate > 75:
             return "📊 BASIC (100+ votes/hour)"
-        else:
-            return "⚠️ DEVELOPMENT (Optimization needed)"
+        return "⚠️ DEVELOPMENT (Optimization needed)"
     except:
         return "❓ UNKNOWN (Error in calculation)"
 
@@ -1753,10 +1745,8 @@ def generate_complete_benchmark_charts(generation_results, tabulation_results, d
     Generate comprehensive benchmark charts
     """
     try:
-        import matplotlib.pyplot as plt
         import numpy as np
         from io import BytesIO
-        import base64
 
         print("📈 Generating comprehensive benchmark charts...")
 

@@ -293,7 +293,7 @@ server {
 ### Penetration Testing Results
 - **Invicti Security Scanner**:
 [View Report](https://s.id/InvictiScanReport)
-  ![Invicti Results](Pengujian/Hasil%20Pengujian%20Keamanan/Bukti%20Invicti.png)
+  ![Invicti Results](Pengujian/Hasil%20Pengujian%20Keamanan/Bukti%20INvicti.png)
 
 - **Burp Suite Professional**:
 [View Report](https://s.id/DeepScanBurpSuite)
@@ -346,4 +346,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **⚠️ Security Notice**: This system is designed for educational and research purposes. For production elections, please conduct thorough security audits and compliance reviews.
 
 **🚀 Performance Note**: Benchmark results may vary based on hardware specifications and network conditions. Test in your target environment for accurate measurements. Our test was using i7-10750H with 16GB RAM
+
 
