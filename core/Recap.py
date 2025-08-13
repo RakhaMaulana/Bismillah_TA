@@ -1,8 +1,6 @@
 import sqlite3
 import hashlib
-import core.BlindSig as bs
-from core.key_manager import get_global_keys, verify_with_global_key
-from core.createdb import get_active_key
+from core.key_manager import get_global_keys
 
 DATABASE_NAME = 'evoting.db'
 

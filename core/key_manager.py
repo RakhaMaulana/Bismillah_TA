@@ -2,7 +2,6 @@
 Global Key Manager untuk E-Voting System
 Memastikan konsistensi key pair RSA di seluruh sistem
 """
-import sqlite3
 import core.BlindSig as bs
 from core.createdb import get_db_connection
 
