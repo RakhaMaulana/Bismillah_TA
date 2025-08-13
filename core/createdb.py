@@ -356,8 +356,6 @@ def get_session_private_key(session_id):
                 time.sleep(0.1 * (attempt + 1))
                 continue
             raise
-        except Exception as e:
-            raise
 
 
 def save_session_private_key(d, session_id):
@@ -383,8 +381,6 @@ def save_session_private_key(d, session_id):
                 time.sleep(0.1 * (attempt + 1))  # Exponential backoff
                 continue
             raise  # Re-raise if not a lock error or if max retries reached
-        except Exception as e:
-            raise  # Re-raise other exceptions
 
 
 def cleanup_expired_private_keys():
