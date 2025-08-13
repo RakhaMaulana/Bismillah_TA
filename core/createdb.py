@@ -355,8 +355,7 @@ def get_session_private_key(session_id):
                 import time
                 time.sleep(0.1 * (attempt + 1))
                 continue
-            else:
-                raise
+            raise
         except Exception as e:
             raise
 
@@ -383,8 +382,7 @@ def save_session_private_key(d, session_id):
                 import time
                 time.sleep(0.1 * (attempt + 1))  # Exponential backoff
                 continue
-            else:
-                raise  # Re-raise if not a lock error or if max retries reached
+            raise  # Re-raise if not a lock error or if max retries reached
         except Exception as e:
             raise  # Re-raise other exceptions
 
