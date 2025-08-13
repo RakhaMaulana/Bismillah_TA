@@ -1006,7 +1006,6 @@ def tabulation_benchmark():
         return jsonify({'error': 'Authentication required'}), 401
 
     try:
-        import time
 
         # Test all implementations
         results = {}
@@ -1553,11 +1552,6 @@ def run_complete_benchmark():
             # Get actual vote counts from tabulation
             conn = get_db_connection()
             c = conn.cursor()
-
-            # Get vote counts per candidate
-            # PERBAIKAN: Karena ballots tidak menyimpan candidate_id,
-            # kita perlu menggunakan Recap function untuk mendapatkan vote counts
-            from core.Recap import recap_votes
             try:
                 verified_ballots, formatted_vote_counts, candidates_list = recap_votes()
                 print(f"🔍 Vote counts from recap: {formatted_vote_counts}")
@@ -1753,10 +1747,8 @@ def generate_complete_benchmark_charts(generation_results, tabulation_results, d
     Generate comprehensive benchmark charts
     """
     try:
-        import matplotlib.pyplot as plt
         import numpy as np
         from io import BytesIO
-        import base64
 
         print("📈 Generating comprehensive benchmark charts...")
 
