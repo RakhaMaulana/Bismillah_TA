@@ -809,17 +809,6 @@ def vote():
         flash('System error: Key verification failed.')
         return redirect(url_for('vote_page'))
 
-        # Simpan public key ke database
-        with get_db_connection() as conn_save_keys:
-            c_save_keys = conn_save_keys.cursor()
-            c_save_keys.execute("INSERT INTO keys (n, e, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)",
-                           (str(n), str(e)))
-            conn_save_keys.commit()
-
-        # Simpan private key sementara untuk session
-        from core.createdb import save_session_private_key
-        save_session_private_key(d, session_id)
-
     try:
         # PERBAIKAN: Implementasi blind signature yang benar dan aman
         # 1. Pesan adalah candidate_id saja
