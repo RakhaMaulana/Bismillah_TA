@@ -158,10 +158,7 @@ def print_comparison_table(results: List[Dict]):
 
 def generate_performance_report(results: List[Dict]) -> str:
     """Generate detailed performance report"""
-    report = []
-    report.append("ULTRA-FAST TABULATION PERFORMANCE ANALYSIS REPORT")
-    report.append("=" * 60)
-    report.append("")
+    report = ["ULTRA-FAST TABULATION PERFORMANCE ANALYSIS REPORT", "=" * 60, ""]
 
     zkvoting_target = 3.9  # zkVoting research target
     report.append(f"zkVoting Research Target: {zkvoting_target}ms per ballot")
