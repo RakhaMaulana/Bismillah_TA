@@ -672,11 +672,10 @@ def vote_page():
             session.pop('voting_token', None)
             session.pop('voting_id_number', None)
             return redirect(url_for('index'))
-        else:
-            flash('Invalid token.')
-            session.pop('voting_token', None)
-            session.pop('voting_id_number', None)
-            return redirect(url_for('submit_token_page'))
+        flash('Invalid token.')
+        session.pop('voting_token', None)
+        session.pop('voting_id_number', None)
+        return redirect(url_for('submit_token_page'))
 
     except Exception as e:
         conn.close()
