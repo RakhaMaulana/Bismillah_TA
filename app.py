@@ -4,9 +4,8 @@ import re
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
 import hashlib
 import core.BlindSig as bs
-import secrets
 import base64
-from core.createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates, save_vote_with_signature, get_active_key
+from core.createdb import save_voter, save_candidate, get_db_connection, get_all_candidates
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_wtf.csrf import CSRFProtect
@@ -14,25 +13,17 @@ import uuid
 from dotenv import load_dotenv
 from core.Recap import recap_votes
 from core.ultra_fast_recap import UltraOptimizedTabulator
-from core.key_manager import get_global_signer, get_global_keys, sign_with_global_key, verify_with_global_key
+from core.key_manager import get_global_signer, get_global_keys
 from markupsafe import escape
 import time
 from flask import Response
 import json
 import ssl
-import math
 import statistics
-import io
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend untuk server
 import matplotlib.pyplot as plt
 import random
-from tqdm import tqdm
-import sys
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String
 
 
 # Import modules untuk benchmark
