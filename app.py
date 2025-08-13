@@ -3,18 +3,18 @@ import os
 import re
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, jsonify
 import hashlib
-import BlindSig as bs
+import core.BlindSig as bs
 import secrets
 import base64
-from createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates, save_vote_with_signature, get_active_key
+from core.createdb import save_keys, save_voter, save_ballot, save_candidate, get_db_connection, get_existing_keys, get_all_candidates, save_vote_with_signature, get_active_key
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_wtf.csrf import CSRFProtect
 import uuid
 from dotenv import load_dotenv
-from Recap import recap_votes
-from ultra_fast_recap import UltraOptimizedTabulator
-from key_manager import get_global_signer, get_global_keys, sign_with_global_key, verify_with_global_key
+from core.Recap import recap_votes
+from core.ultra_fast_recap import UltraOptimizedTabulator
+from core.key_manager import get_global_signer, get_global_keys, sign_with_global_key, verify_with_global_key
 from markupsafe import escape
 import time
 from flask import Response
@@ -37,18 +37,18 @@ from sqlalchemy import Column, Integer, String
 
 # Import modules untuk benchmark
 try:
-    from generate_dummy_votes import generate_dummy_votes_with_timing, create_dummy_candidates, get_or_create_keys
-    from benchmark_tabulasi import measure_recap_performance
+    from core.generate_dummy_votes import generate_dummy_votes_with_timing, create_dummy_candidates, get_or_create_keys
+    from core.benchmark_tabulation import measure_recap_performance
     BENCHMARK_MODULES_AVAILABLE = True
 except ImportError as e:
     BENCHMARK_MODULES_AVAILABLE = False
 
 
-load_dotenv()
+load_dotenv('config/.env')
 
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY')
-UPLOAD_FOLDER = 'static/uploads'
+app = Flask(__name__, template_folder='core/templates', static_folder='core/static')
+app.secret_key = os.getenv('SECRET_KEY') or 'fallback-secret-key-for-development'
+UPLOAD_FOLDER = 'core/static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 8 MB max file size
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -474,7 +474,7 @@ def approve_voter_page():
     conn.close()
 
     # Decrypt NPM untuk display
-    from createdb import decrypt_npm
+    from core.createdb import decrypt_npm
     voters = []
     for voter in voters_raw:
         voter_dict = {
@@ -817,7 +817,7 @@ def vote():
             conn_save_keys.commit()
 
         # Simpan private key sementara untuk session
-        from createdb import save_session_private_key
+        from core.createdb import save_session_private_key
         save_session_private_key(d, session_id)
 
     try:
@@ -900,7 +900,7 @@ def vote():
             return redirect(url_for('vote_page'))
 
         # 6. Store vote dengan proper blind signature support dalam satu transaksi
-        from key_manager import key_manager
+        from core.key_manager import key_manager
         active_key_id = key_manager.get_active_key_id()
 
         try:
@@ -1144,7 +1144,7 @@ def voter_status():
     conn.close()
 
     # Decrypt NPM untuk display
-    from createdb import decrypt_npm
+    from core.createdb import decrypt_npm
     voters = []
     for voter in voters_raw:
         voter_dict = {
@@ -1557,7 +1557,7 @@ def run_complete_benchmark():
             # Get vote counts per candidate
             # PERBAIKAN: Karena ballots tidak menyimpan candidate_id,
             # kita perlu menggunakan Recap function untuk mendapatkan vote counts
-            from Recap import recap_votes
+            from core.Recap import recap_votes
             try:
                 verified_ballots, formatted_vote_counts, candidates_list = recap_votes()
                 print(f"🔍 Vote counts from recap: {formatted_vote_counts}")
@@ -2019,8 +2019,8 @@ if __name__ == '__main__':
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
 
-    cert_path = "dev.certificate.crt"
-    key_path = "dev.private.key"
+    cert_path = "config/dev.certificate.crt"
+    key_path = "config/dev.private.key"
 
     local_ip = get_local_ip()
     print(f"Running Flask app on IP: {local_ip}")

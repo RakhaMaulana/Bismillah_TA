@@ -12,7 +12,6 @@
 - [Usage](#usage)
 - [Security](#security)
 - [Performance](#performance)
-- [Testing](#testing)
 - [Contributing](#contributing)
 
 ## 🎯 Overview
@@ -57,103 +56,280 @@ A secure electronic voting system implementing **RSA-based Blind Signature** sch
                    └─────────────────┘
 ```
 
+### 📁 Project Structure
+
+```
+secure-evoting-system/
+├── 📄 app.py                    # Main Flask application
+├── 📊 benchmark_tabulation.py   # Performance benchmarking script
+├── 🐳 docker-compose.yml        # Docker configuration
+├── 🐳 Dockerfile               # Docker build configuration
+├── 📋 requirements.txt          # Python dependencies
+├── 🔒 dev.certificate.crt       # SSL certificate
+├── 🔑 dev.private.key          # SSL private key
+├── 📚 README.md                # This documentation
+├── 📁 core/                    # Core modules
+│   ├── 🔐 BlindSig.py          # Blind signature implementation
+│   ├── 🗄️ createdb.py          # Database initialization
+│   ├── 📊 benchmark_tabulasi.py # Legacy benchmark module
+│   ├── ⚡ ultra_fast_recap.py   # Ultra-optimized tabulation
+│   ├── 📊 Recap.py             # Standard vote tabulation
+│   ├── 🔑 key_manager.py       # RSA key management
+│   ├── 🔢 cryptomath.py        # Cryptographic utilities
+│   ├── 🌐 templates/           # HTML templates
+│   │   ├── base.html
+│   │   ├── index.html
+│   │   ├── vote.html
+│   │   ├── login.html
+│   │   ├── benchmark.html
+│   │   └── recap.html
+│   └── 🎨 static/              # CSS, JS, images
+│       ├── style.css
+│       ├── voting_process.png
+│       └── uploads/            # User uploaded files
+├── 📁 config/                  # Configuration files
+│   └── .env                    # Environment variables
+├── 📁 tests/                   # Test modules (if available)
+└── 📁 static/                  # Legacy static files
+```
+
 ## 📦 Installation
+
+### Prerequisites
+- **Python 3.8+** (Recommended: Python 3.11 or newer)
+- **pip** package manager
+- **Git** for cloning repository
+- **OpenSSL** (for SSL certificates)
+- **Docker & Docker Compose** (optional, for containerized deployment)
 
 ### Option 1: Local Development Setup
 
-#### Prerequisites
-- Python 3.8+
-- pip package manager
-- OpenSSL (for SSL certificates)
-
 #### Step 1: Clone Repository
 ```bash
-git clone https://github.com/RakhaMaulana/Bismillah_TA
+git clone https://github.com/RakhaMaulana/Bismillah_TA.git
 cd Bismillah_TA
 ```
 
-#### Step 2: Install Dependencies
+#### Step 2: Create Virtual Environment (Recommended)
 ```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+```
+
+#### Step 3: Install Dependencies
+```bash
+# Upgrade pip first
+pip install --upgrade pip
+
+# Install all required packages
 pip install -r requirements.txt
 ```
 
-#### Step 3: Generate SSL Certificates
+#### Step 4: Set Up Environment Configuration
 ```bash
+# Environment variables are already configured in config/.env
+# You can modify config/.env if needed
+echo "Configuration file located at: config/.env"
+```
+
+#### Step 5: Generate SSL Certificates
+```bash
+# Generate self-signed SSL certificate for HTTPS
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
   -nodes -keyout dev.private.key -out dev.certificate.crt \
   -subj "/CN=Pemilihan Umum Taruna" \
-  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:0.0.0.0"
+
+# On Windows PowerShell, use:
+openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout dev.private.key -out dev.certificate.crt -subj "/CN=Pemilihan Umum Taruna"
 ```
 
-#### Step 4: Initialize Database
+#### Step 6: Run Application
 ```bash
-python createdb.py
-```
-
-#### Step 5: Run Application
-```bash
+# Start the Flask application
 python app.py
+
+# Or for development with auto-reload:
+python -m flask run --host=0.0.0.0 --port=5001 --cert=dev.certificate.crt --key=dev.private.key
 ```
 
-The application will be available at `https://localhost:5000`
+**🌐 Access the application:**
+- Main application: `https://localhost:5001` or `https://[your-ip]:5001`
+- Admin login: `https://localhost:5001/login`
+  - Username: `AdminKitaBersama`
+  - Password: `AdminKitaBersama`
 
 ### Option 2: Docker Deployment
 
-#### Prerequisites
-- Docker
-- Docker Compose
-
-#### Step 1: Build and Run
+#### Prerequisites for Docker
 ```bash
-# Generate SSL certificates first
+# Verify Docker installation
+docker --version
+docker-compose --version
+
+# If not installed, download from: https://www.docker.com/
+```
+
+#### Step 1: Clone and Prepare
+```bash
+git clone https://github.com/RakhaMaulana/Bismillah_TA.git
+cd Bismillah_TA
+```
+
+#### Step 2: Generate SSL Certificates
+```bash
+# Generate SSL certificates for Docker
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
   -nodes -keyout dev.private.key -out dev.certificate.crt \
   -subj "/CN=Pemilihan Umum Taruna" \
-  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
-
-# Build and run Docker containers
-docker-compose build
-docker-compose up
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:0.0.0.0"
 ```
 
-#### Step 2: Access Application
-- Main application: `https://localhost:5000`
-- Admin panel: `https://localhost:5000/admin`
+#### Step 3: Build and Run with Docker Compose
+```bash
+# Build the Docker images
+docker-compose build
+
+# Start the services
+docker-compose up -d
+
+# View logs (optional)
+docker-compose logs -f
+
+# Stop the services
+docker-compose down
+```
+
+#### Step 4: Access Dockerized Application
+- **Main application**: `https://localhost:5001`
+- **Admin panel**: `https://localhost:5001/login`
+- **Benchmark interface**: `https://localhost:5001/benchmark`
+
+#### Docker Management Commands
+```bash
+# View running containers
+docker-compose ps
+
+# Restart services
+docker-compose restart
+
+# View logs
+docker-compose logs app
+
+# Access container shell
+docker-compose exec app bash
+
+# Clean up everything
+docker-compose down --volumes --remove-orphans
+docker system prune -a
+```
+
+### Option 3: Production Deployment
+
+#### Using Gunicorn (Recommended for Production)
+```bash
+# Install Gunicorn
+pip install gunicorn
+
+# Run with Gunicorn
+gunicorn --bind 0.0.0.0:5001 \
+         --workers 4 \
+         --timeout 120 \
+         --certfile=dev.certificate.crt \
+         --keyfile=dev.private.key \
+         app:app
+```
+
+#### Using Nginx + Gunicorn
+```bash
+# Install and configure Nginx as reverse proxy
+# Create /etc/nginx/sites-available/evoting
+server {
+    listen 443 ssl;
+    server_name your-domain.com;
+
+    ssl_certificate /path/to/dev.certificate.crt;
+    ssl_certificate_key /path/to/dev.private.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
 
 ## 🚀 Usage
 
 ### For Voters
-1. **Register/Login** to the system
-2. **Receive voting token** from election authority
-3. **Cast vote** anonymously using blind signature
-4. **Verify submission** confirmation
+1. **Access the system** at `https://localhost:5001`
+2. **Register as voter** by clicking "Register Now"
+   - Upload your photo
+   - Provide your student ID (NPM)
+   - Submit digital signature
+3. **Wait for approval** from election authority
+4. **Receive voting token** after approval
+5. **Cast your vote** using the token
+   - Choose candidates for Senate (Senat) and Student Representative (Dewan Mahasiswa)
+   - Submit encrypted ballot with blind signature
+6. **Verify submission** and receive confirmation
 
 ### For Administrators
-1. **Access admin panel** with administrator credentials
-2. **Manage candidates** and election settings
-3. **Approve eligible voters**
-4. **Monitor real-time results**
-5. **Generate election reports**
+1. **Access admin panel** at `https://localhost:5001/login`
+   - Username: `AdminKitaBersama`
+   - Password: `AdminKitaBersama`
+2. **Manage the election**:
+   - **Approve voters**: Review and approve eligible voters
+   - **Register candidates**: Add candidates for different positions
+   - **Monitor votes**: View real-time voting statistics
+   - **Generate reports**: Access tabulation and audit reports
+3. **Election management**:
+   - **View voter status**: Check approved/pending voters
+   - **Tabulation results**: Real-time vote counting
+   - **System benchmarks**: Performance monitoring
 
 ### For Election Authorities
-1. **Setup election** parameters and candidates
-2. **Generate RSA key pairs** for blind signatures
-3. **Issue voting tokens** to eligible voters
-4. **Publish election results** after completion
+1. **System setup**:
+   - Configure election parameters in `config/.env`
+   - Generate RSA key pairs (automatically handled)
+   - Set up candidate information
+2. **Election monitoring**:
+   - **Real-time dashboard**: `https://localhost:5001/recap`
+   - **Performance metrics**: `https://localhost:5001/benchmark`
+   - **Voter management**: `https://localhost:5001/voter_status`
+3. **Post-election**:
+   - Generate final reports
+   - Export results for verification
+   - Audit trail analysis
+
+### Key URLs and Endpoints
+- **Main page**: `https://localhost:5001/`
+- **Voter registration**: `https://localhost:5001/register_voter`
+- **Vote submission**: `https://localhost:5001/submit_token`
+- **Admin login**: `https://localhost:5001/login`
+- **Results tabulation**: `https://localhost:5001/recap`
+- **Performance benchmark**: `https://localhost:5001/benchmark`
+- **Voter status**: `https://localhost:5001/voter_status`
 
 ## 🔒 Security
 
 ### Penetration Testing Results
-- **Invicti Security Scanner**: 
+- **Invicti Security Scanner**:
 [View Report](https://s.id/InvictiScanReport)
   ![Invicti Results](image.png)
 
-- **Burp Suite Professional**: 
+- **Burp Suite Professional**:
 [View Report](https://s.id/DeepScanBurpSuite)
   ![Burp Suite Results](image-1.png)
 
 ### Code Quality Analysis
-- **DeepSource Static Analysis**: 
+- **DeepSource Static Analysis**:
 [View Report](https://s.id/DeepSourceScanResult)
   ![DeepSource Results](image-2.png)
 
@@ -183,85 +359,6 @@ docker-compose up
 - 🔄 **Concurrent** vote handling
 - 💾 **Optimized** database queries
 - ⚡ **Scalable** architecture
-
-## 🧪 Testing
-
-### Running Performance Benchmarks
-```bash
-# Access benchmark interface
-https://localhost:5000/benchmark
-
-# Or run via command line
-python benchmark_complete.py --votes 1000
-```
-
-### Security Testing
-```bash
-# Run security tests
-python security_tests.py
-
-# Static code analysis
-deepsource --check
-
-# Penetration testing with Burp Suite
-# Load project configuration from burp-config.json
-```
-
-### Unit Tests
-```bash
-# Run all tests
-python -m pytest tests/
-
-# Run specific test categories
-python -m pytest tests/test_blind_signature.py
-python -m pytest tests/test_voting_flow.py
-python -m pytest tests/test_security.py
-```
-
-## 📁 Project Structure
-
-```
-secure-evoting-system/
-├── 📄 app.py                 # Main Flask application
-├── 🔐 BlindSig.py           # Blind signature implementation
-├── 🗄️ createdb.py           # Database initialization
-├── 📊 benchmark_complete.py  # Performance benchmarking
-├── 🌐 templates/            # HTML templates
-│   ├── base.html
-│   ├── vote.html
-│   ├── admin.html
-│   └── benchmark.html
-├── 🎨 static/               # CSS, JS, images
-├── 🐳 docker-compose.yml    # Docker configuration
-├── 📋 requirements.txt      # Python dependencies
-├── 🔒 dev.certificate.crt   # SSL certificate
-├── 🔑 dev.private.key       # SSL private key
-└── 📚 README.md            # This file
-```
-
-## 🛠️ Configuration
-### Application Settings
-```python
-# app.py configuration
-DEBUG = False
-SSL_CONTEXT = ('dev.certificate.crt', 'dev.private.key')
-RATE_LIMIT = "100 per hour"
-```
-
-## 🤝 Contributing
-
-1. **Fork** the repository
-2. **Create** feature branch (`git checkout -b feature/AmazingFeature`)
-3. **Commit** changes (`git commit -m 'Add AmazingFeature'`)
-4. **Push** to branch (`git push origin feature/AmazingFeature`)
-5. **Open** Pull Request
-
-### Development Guidelines
-- Follow **PEP 8** Python style guide
-- Add **unit tests** for new features
-- Update **documentation** as needed
-- Run **security tests** before submitting
-- Ensure **performance** benchmarks pass
 
 ## 📄 License
 

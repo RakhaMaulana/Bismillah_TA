@@ -15,7 +15,70 @@ import json
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ultra_fast_recap import UltraOptimizedTabulator
+from core.ultra_fast_recap import UltraOptimizedTabulator
+
+def measure_recap_performance(iterations=5):
+    """
+    ULTRA-FAST implementation of measure_recap_performance
+    Compatible with app.py but using UltraOptimizedTabulator
+    Target: <3.9ms per ballot
+    """
+    tabulator = UltraOptimizedTabulator(use_parallel=True)
+
+    # Get ballot count first
+    import sqlite3
+    conn = sqlite3.connect('evoting.db')
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM ballots")
+    total_ballots = c.fetchone()[0]
+    conn.close()
+
+    if total_ballots == 0:
+        raise Exception("No ballots found in database. Generate some votes first.")
+
+    execution_times = []
+
+    for i in range(iterations):
+        start_time = time.perf_counter()
+        try:
+            verified_ballots, vote_counts, candidates = tabulator.ultra_fast_tabulation()
+            end_time = time.perf_counter()
+            iteration_time = end_time - start_time
+            execution_times.append(iteration_time)
+        except Exception as e:
+            print(f"Iteration {i} failed: {e}")
+            continue
+
+    if not execution_times:
+        raise Exception("All tabulation iterations failed")
+
+    # Calculate statistics (compatible with app.py expectations)
+    avg_time = statistics.mean(execution_times)
+    median_time = statistics.median(execution_times)
+    min_time = min(execution_times)
+    max_time = max(execution_times)
+    std_dev = statistics.stdev(execution_times) if len(execution_times) > 1 else 0
+
+    # Calculate per-ballot metrics
+    avg_time_per_ballot = avg_time / total_ballots if total_ballots > 0 else 0
+    ballots_per_second = total_ballots / avg_time if avg_time > 0 else 0
+
+    results = {
+        'total_ballots': total_ballots,
+        'iterations': len(execution_times),
+        'execution_times': execution_times,
+        'avg_time': avg_time,
+        'median_time': median_time,
+        'min_time': min_time,
+        'max_time': max_time,
+        'std_dev': std_dev,
+        'avg_time_per_ballot': avg_time_per_ballot,
+        'ballots_per_second': ballots_per_second
+    }
+
+    print(f"🚀 ULTRA-FAST Results: {avg_time_per_ballot*1000:.2f}ms per ballot (target: <3.9ms)")
+
+    return results
 
 def run_ultra_fast_benchmark(iterations: int = 5) -> Dict:
     """Benchmark ultra-fast implementation"""

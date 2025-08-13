@@ -1,4 +1,4 @@
-import cryptomath
+import core.cryptomath as cryptomath
 import random
 import hashlib
 import math

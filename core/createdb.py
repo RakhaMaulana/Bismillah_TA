@@ -2,14 +2,21 @@ import sqlite3
 import hashlib
 import secrets
 import string
-import cryptomath
+import core.cryptomath as cryptomath
 import base64
 from cryptography.fernet import Fernet
+import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv('config/.env')
 
-# Simple encryption key for NPM (in production, this should be in environment variable)
-# Using fixed key to ensure consistency across imports
-ENCRYPTION_KEY = b'ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg='
+# Get encryption key from environment variable (no fallback for security)
+npm_key = os.getenv('NPM_ENCRYPTION_KEY')
+if not npm_key:
+    raise ValueError("NPM_ENCRYPTION_KEY not found in environment variables. Please check config/.env file.")
+
+ENCRYPTION_KEY = npm_key.encode()
 cipher_suite = Fernet(ENCRYPTION_KEY)
 
 def encrypt_npm(npm):
@@ -270,7 +277,7 @@ def tally_votes_from_signatures():
     Menghitung suara dari signature yang tersimpan
     Mengembalikan kandidat berdasarkan verifikasi signature
     """
-    from Recap import decrypt_and_verify_votes
+    from core.Recap import decrypt_and_verify_votes
     return decrypt_and_verify_votes()
 
 
