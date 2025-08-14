@@ -2,8 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Crypvote{% endblock %}</title>
+
+    <!-- Enhanced Mobile Meta Tags -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#04305e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Crypvote">
+    <meta name="msapplication-TileColor" content="#04305e">
+    <meta name="application-name" content="Crypvote">
+    <meta name="msapplication-navbutton-color" content="#04305e">
+    <meta name="apple-mobile-web-app-orientation" content="portrait">
+
+    <!-- Touch Icons with multiple sizes -->
+    <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="60x60" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="72x72" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="76x76" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="114x114" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icon.ico') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icon.ico') }}">
 
     <!-- Security Meta Tags - PERBAIKAN: Perbaiki CSP untuk mengizinkan cdnjs dan jquery -->
     <meta http-equiv="Feature-Policy" content="camera 'none'; microphone 'none'; geolocation 'none'">
@@ -16,6 +46,9 @@
 
     <link rel="icon" href="{{ url_for('static', filename='icon.ico') }}" type="image/x-icon">
 
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
     <!-- Bootstrap & Font Awesome with SRI -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
           rel="stylesheet"
@@ -26,6 +59,16 @@
           integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
           crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Enhanced Preload Resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
+    <link rel="preload" href="{{ url_for('static', filename='style.css') }}" as="style">
+    <link rel="preload" href="{{ url_for('static', filename='manifest.json') }}" as="fetch" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://code.jquery.com">
 
     <style>
         .navbar-nav .nav-link.active {
@@ -196,6 +239,107 @@
                     setTimeout(() => flash.remove(), 350);
                 }, 4000);
             });
+
+            // Image lazy loading
+            const images = document.querySelectorAll('img[loading="lazy"]');
+            images.forEach(img => {
+                img.addEventListener('load', function() {
+                    this.classList.add('loaded');
+                });
+            });
+
+            // Touch feedback for mobile
+            if ('ontouchstart' in window) {
+                document.body.classList.add('touch-device');
+
+                // Add touch feedback to buttons
+                const touchElements = document.querySelectorAll('button, .btn, .candidate-item');
+                touchElements.forEach(element => {
+                    element.addEventListener('touchstart', function() {
+                        this.style.transform = 'scale(0.98)';
+                    });
+                    element.addEventListener('touchend', function() {
+                        setTimeout(() => {
+                            this.style.transform = '';
+                        }, 150);
+                    });
+                });
+            }
+
+            // Lazy loading implementation for images
+            const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src || img.src;
+                            img.classList.add('loaded');
+                            observer.unobserve(img);
+                        }
+                    });
+                });
+
+                lazyImages.forEach(img => imageObserver.observe(img));
+            } else {
+                // Fallback for browsers without IntersectionObserver
+                lazyImages.forEach(img => {
+                    img.src = img.dataset.src || img.src;
+                    img.classList.add('loaded');
+                });
+            }
+
+            // Preload critical resources
+            const criticalImages = document.querySelectorAll('img[data-critical="true"]');
+            criticalImages.forEach(img => {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.href = img.src;
+                document.head.appendChild(link);
+            });
+        });
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show install button if needed
+            const installBtn = document.createElement('button');
+            installBtn.classList.add('btn', 'btn-success', 'position-fixed');
+            installBtn.style.cssText = 'bottom: 20px; right: 20px; z-index: 1000; border-radius: 25px;';
+            installBtn.innerHTML = '<i class="fas fa-download"></i> Install App';
+            installBtn.addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    deferredPrompt = null;
+                    installBtn.remove();
+                });
+            });
+
+            // Show install button only on mobile
+            if (window.innerWidth <= 768) {
+                document.body.appendChild(installBtn);
+                setTimeout(() => installBtn.remove(), 10000); // Auto-hide after 10s
+            }
         });
     </script>
 </body>

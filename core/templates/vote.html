@@ -106,7 +106,9 @@
                                                      src="{{ url_for('static', filename=candidates[0].photo) }}"
                                                      class="candidate-photo"
                                                      alt="Candidate Photo"
-                                                     onerror="this.src='{{ url_for('static', filename='Unknown.png') }}'">
+                                                     loading="lazy"
+                                                     decoding="async"
+                                                     onerror="this.src='{{ url_for(&quot;static&quot;, filename=&quot;Unknown.png&quot;) }}'">
                                                 <div class="photo-overlay">
                                                     <i class="fas fa-eye fa-2x"></i>
                                                 </div>

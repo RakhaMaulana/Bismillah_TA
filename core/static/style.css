@@ -325,24 +325,567 @@ button:hover {
     margin-left: 10px;
 }
 
-button.btn {
-    width: 100%;
-    padding: 10px;
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
+/* =================================
+   TOUCH-FRIENDLY INTERACTIONS
+   ================================= */
+
+/* Increase touch target sizes for mobile */
+button, .btn, input[type="submit"], input[type="button"] {
+    min-height: 44px; /* Apple's recommended minimum touch target */
+    min-width: 44px;
+    touch-action: manipulation; /* Prevent double-tap zoom */
+}
+
+/* Better touch interaction for links */
+a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+}
+
+.nav-link {
+    padding: 12px 16px !important; /* Larger touch targets */
+}
+
+/* Improve form controls for touch */
+input, select, textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevent zoom on iOS */
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+/* Better checkbox and radio button sizes */
+input[type="checkbox"], input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+/* Improve candidate selection on mobile */
+.candidate-item {
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
 }
 
-button.btn:hover {
-    background-color: #0056b3;
+.candidate-item:hover, .candidate-item:focus {
+    border-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Touch feedback for buttons */
+button:active, .btn:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+}
+
+/* =================================
+   ACCESSIBILITY IMPROVEMENTS
+   ================================= */
+
+/* Focus styles for keyboard navigation */
+button:focus, .btn:focus, input:focus, select:focus, textarea:focus, a:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .candidate-item, .voter-item, .feature {
+        border-width: 2px;
+        border-color: #000;
+    }
+
+    button, .btn {
+        border: 2px solid #000;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =================================
+   PERFORMANCE & ACCESSIBILITY
+   ================================= */
+
+/* Content Visibility Optimization */
+.candidate-item, .voter-item {
+    content-visibility: auto;
+    contain-intrinsic-size: 300px;
+}
+
+/* Intersection Observer Loading */
+.lazy-load {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.lazy-load.loaded {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Critical Resource Hints */
+.preload-critical {
+    font-display: swap;
+}
+
+/* Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .candidate-item, .voter-item, .feature {
+        border: 2px solid;
+        background: Window;
+        color: WindowText;
+    }
+
+    .btn {
+        border: 2px solid ButtonText;
+        background: ButtonFace;
+        color: ButtonText;
+    }
+}
+
+/* Color Scheme Adaptation */
+@media (prefers-color-scheme: dark) {
+    .candidate-item, .voter-item, .feature {
+        background-color: #2d3748;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+
+    .form-control, .form-select {
+        background-color: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+}
+
+/* Focus Management */
+.focus-trap {
+    position: relative;
+}
+
+.focus-trap:focus-within {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Print Optimization */
+@media print {
+    .navbar, .btn, .flashes {
+        display: none !important;
+    }
+
+    .candidate-item, .voter-item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .container {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+
+/* GPU acceleration for animations */
+.candidate-item, .voter-item, .feature, .hero-buttons .btn {
+    will-change: transform;
+    backface-visibility: hidden;
+}
+
+/* Optimize images */
+img {
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+/* Enhanced image loading */
+.candidate-item img, .voter-item img {
+    width: 100%;
+    max-width: 200px;
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.candidate-item img:hover, .voter-item img:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+/* Loading states */
+.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Skeleton loading for cards */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Lazy loading support */
+img[loading="lazy"] {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+img[loading="lazy"].loaded {
+    opacity: 1;
+}
+
+/* =================================
+   ADVANCED RESPONSIVE FEATURES
+   ================================= */
+
+/* Enhanced Flexbox Grid System */
+.responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    width: 100%;
+}
+
+/* Fluid Typography */
+.hero h1 {
+    font-size: clamp(2rem, 5vw, 4rem);
+}
+
+.hero p {
+    font-size: clamp(1.1rem, 2.5vw, 1.8rem);
+}
+
+/* Container Queries Support */
+@container (max-width: 400px) {
+    .feature {
+        padding: 1rem;
+    }
+}
+
+/* Better Button Scaling */
+.btn, button {
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    padding: clamp(8px, 2vw, 12px) clamp(16px, 4vw, 24px);
+    min-height: 44px; /* Touch-friendly minimum */
+    touch-action: manipulation; /* Prevent zoom on tap */
+}
+
+/* Enhanced Touch Targets */
+a, button, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+}
+
+/* Responsive Images with Lazy Loading */
+img {
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+/* Picture element support for responsive images */
+picture {
+    display: block;
+    width: 100%;
+}
+
+/* Lazy loading placeholder */
+img[loading="lazy"] {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+img[loading="lazy"].loaded {
+    opacity: 1;
+}
+
+/* Responsive image containers */
+.responsive-image {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.responsive-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.responsive-image:hover img {
+    transform: scale(1.05);
+}
+
+/* Srcset support for different screen densities */
+.retina-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .retina-image {
+        background-image: url('image@2x.jpg');
+    }
+}
+
+/* Enhanced Mobile Navigation */
+@media (max-width: 576px) {
+    .navbar-collapse {
+        background-color: rgba(0, 0, 0, 0.95);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .navbar-nav .nav-link {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .navbar-nav .nav-link:last-child {
+        border-bottom: none;
+    }
+}
+
+/* Mobile First Approach - Small Devices (576px and down) */
+@media (max-width: 576px) {
+    .container {
+        padding: 8px;
+    }
+
+    .hero h1 {
+        font-size: 2em;
+        line-height: 1.2;
+    }
+
+    .hero p {
+        font-size: 1.2em;
+        line-height: 1.4;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .hero-buttons .btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 1em;
+        min-height: 48px;
+    }
+
+    .features {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .feature {
+        margin: 0;
+        padding: 1rem;
+    }
+
+    form {
+        padding: 15px;
+        margin: 0 10px;
+    }
+
+    .candidate-list {
+        flex-direction: column;
+        padding: 0 5px;
+    }
+
+    .candidate-item {
+        margin-bottom: 10px;
+        padding: 15px;
+    }
+
+    /* Enhanced form controls for mobile */
+    input, select, textarea {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    /* Mobile-optimized tables */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Tablet Portrait (768px and down) */
 @media (max-width: 768px) {
     .container {
+        padding: 16px;
+    }
+
+    .hero {
+        padding: 60px 20px;
+    }
+
+    .hero h1 {
+        font-size: 2.5em;
+    }
+
+    .hero p {
+        font-size: 1.3em;
+    }
+
+    /* Two-column layout for tablets */
+    .responsive-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+/* Small Tablets and Large Phones (992px and down) */
+@media (max-width: 992px) {
+    .container {
+        padding: 20px;
+    }
+
+    .hero {
+        padding: 80px 20px;
+    }
+
+    /* Three-column layout for larger screens */
+    .responsive-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Large screens optimization */
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1140px;
+        margin: 0 auto;
+    }
+
+    .responsive-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+    }
+}
+
+/* Ultra-wide screens */
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1400px;
+    }
+
+    .responsive-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+/* Additional Mobile Optimizations */
+@media (max-width: 576px) {
+    .candidate-item {
+        width: 100%;
+        margin: 5px 0;
+        padding: 15px;
+    }
+
+    .voter-list {
+        flex-direction: column;
+    }
+
+    .voter-item {
+        width: 100%;
+        margin: 5px 0;
+    }
+
+    .flashes {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .navbar-nav {
+        text-align: center;
+    }
+
+    .navbar-nav .nav-item {
+        margin: 5px 0;
+    }
+}
+
+/* Tablet Portrait */
+@media (min-width: 577px) and (max-width: 768px) {
+    .container {
         padding: 10px;
+    }
+
+    .hero h1 {
+        font-size: 2.5em;
+    }
+
+    .hero p {
+        font-size: 1.3em;
+    }
+
+    .features {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .feature {
+        flex: 1 1 calc(50% - 15px);
+        min-width: 250px;
     }
 
     form {
@@ -350,8 +893,39 @@ button.btn:hover {
     }
 
     .candidate-item {
-        width: 100%;
-        margin: 10px 0;
+        flex: 1 1 calc(50% - 20px);
+        margin: 10px;
+    }
+}
+
+/* Tablet Landscape */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .hero h1 {
+        font-size: 2.8em;
+    }
+
+    .candidate-item {
+        flex: 1 1 calc(33.333% - 20px);
+    }
+
+    .feature {
+        flex: 1;
+    }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+    .container {
+        max-width: 1200px;
+    }
+
+    .candidate-list {
+        justify-content: flex-start;
+    }
+
+    .candidate-item {
+        flex: 1 1 calc(25% - 20px);
+        max-width: 280px;
     }
 }
 

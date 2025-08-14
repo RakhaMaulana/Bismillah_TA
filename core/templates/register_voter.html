@@ -34,7 +34,8 @@
                           onsubmit="return validateForm()"
                           autocomplete="off"
                           novalidate
-                          class="needs-validation">
+                          class="needs-validation"
+                          data-validation="true">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <!-- Rate Limiting Protection -->
@@ -54,51 +55,62 @@
                                    autocomplete="off"
                                    spellcheck="false"
                                    data-bs-toggle="tooltip"
-                                   title="NPM must be 8-12 digits">
-                            <label for="id_number"><i class="fas fa-id-card me-2"></i>NPM (Student ID)</label>
-                            <div class="invalid-feedback">
-                                NPM must be 8-12 digits
+                                   title="NPM must be 8-12 digits"
+                                   aria-describedby="npm-help npm-error"
+                                   aria-required="true"
+                                   role="textbox">
+                            <label for="id_number" class="required">
+                                <i class="fas fa-id-card me-2" aria-hidden="true"></i>NPM (Student ID)
+                            </label>
+                            <div id="npm-help" class="form-text">Enter your 8-12 digit student identification number</div>
+                            <div id="npm-error" class="invalid-feedback" role="alert">
+                                <i class="fas fa-exclamation-circle me-1" aria-hidden="true"></i>NPM must be 8-12 digits
                             </div>
                             <div class="valid-feedback">
-                                NPM format is valid
+                                <i class="fas fa-check-circle me-1" aria-hidden="true"></i>NPM format is valid
                             </div>
                         </div>
 
                         <!-- Photo Capture Section -->
                         <div class="photo-section mb-4">
-                            <label class="form-label fw-semibold mb-3">
-                                <i class="fas fa-camera me-2"></i>Identity Photo
+                            <label class="form-label fw-semibold mb-3 required" for="photo">
+                                <i class="fas fa-camera me-2"></i>Identity Photo *
                             </label>
+                            <div class="form-text mb-3">Take a clear photo of your face for identity verification</div>
 
                             <!-- Camera Container -->
-                            <div class="camera-container text-center">
+                            <div class="camera-container text-center" role="region" aria-label="Photo capture area">
                                 <div class="video-wrapper border rounded-3 shadow-sm overflow-hidden mx-auto position-relative">
-                                    <video id="video" width="100%" height="100%" autoplay muted playsinline></video>
+                                    <video id="video" width="100%" height="100%" autoplay muted playsinline aria-label="Camera preview"></video>
                                     <div class="camera-overlay">
                                         <div class="camera-frame"></div>
                                     </div>
-                                    <div id="camera-status" class="camera-status">
+                                    <div id="camera-status" class="camera-status" role="status" aria-live="polite">
                                         <i class="fas fa-spinner fa-spin"></i>
                                         <span>Initializing camera...</span>
                                     </div>
                                 </div>
 
                                 <!-- Camera Controls -->
-                                <div class="camera-controls mt-3">
+                                <div class="camera-controls mt-3" role="toolbar" aria-label="Camera controls">
                                     <button type="button"
                                             class="btn btn-primary"
                                             id="take-photo"
                                             onclick="takePhoto()"
-                                            disabled>
-                                        <i class="fas fa-camera"></i> Take Photo
+                                            disabled
+                                            aria-describedby="take-photo-help">
+                                        <i class="fas fa-camera" aria-hidden="true"></i> Take Photo
                                     </button>
+                                    <div id="take-photo-help" class="visually-hidden">Click to capture your photo</div>
                                     <button type="button"
                                             class="btn btn-outline-secondary ms-2"
                                             id="retake-photo"
                                             onclick="retakePhoto()"
-                                            style="display: none;">
-                                        <i class="fas fa-redo"></i> Retake
+                                            style="display: none;"
+                                            aria-describedby="retake-photo-help">
+                                        <i class="fas fa-redo" aria-hidden="true"></i> Retake
                                     </button>
+                                    <div id="retake-photo-help" class="visually-hidden">Click to take a new photo</div>
                                 </div>
                             </div>
 
@@ -607,6 +619,8 @@
         border-color: #007bff;
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
         transform: translateY(-1px);
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
     }
 
     .form-floating > label {
@@ -617,6 +631,20 @@
     .form-floating > .form-control:focus ~ label,
     .form-floating > .form-control:not(:placeholder-shown) ~ label {
         color: #007bff;
+    }
+
+    /* Required field indicators */
+    .required::after {
+        content: "";
+        color: #dc3545;
+        font-weight: bold;
+        margin-left: 3px;
+    }
+
+    .form-text {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
     }
 
     /* Photo Section */

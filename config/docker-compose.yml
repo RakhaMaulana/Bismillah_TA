@@ -2,11 +2,63 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    build:
+      context: ..
+      dockerfile: config/Dockerfile
     ports:
       - "5001:5001"
-    volumes:
-      - .:/app
     environment:
-      - FLASK_ENV=development
-      - SECRET_KEY=AdminKitaBersama
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-AdminKitaBersama}
+      - NPM_ENCRYPTION_KEY=${NPM_ENCRYPTION_KEY:-ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=}
+      - DATABASE_URL=sqlite:///./instance/evoting.db
+    volumes:
+      - ../instance:/app/instance
+      - ../static/uploads:/app/static/uploads
+      - ./dev.certificate.crt:/app/dev.certificate.crt:ro
+      - ./dev.private.key:/app/dev.private.key:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('https://localhost:5001/', verify=False)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - evoting-network
+
+  # Optional: Add Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    networks:
+      - evoting-network
+
+  # Optional: Add Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./dev.certificate.crt:/etc/ssl/certs/dev.certificate.crt:ro
+      - ./dev.private.key:/etc/ssl/private/dev.private.key:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - evoting-network
+
+networks:
+  evoting-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  evoting_data:

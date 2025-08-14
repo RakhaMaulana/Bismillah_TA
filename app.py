@@ -9,6 +9,13 @@ from core.createdb import save_voter, save_candidate, get_db_connection, get_all
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_wtf.csrf import CSRFProtect
+
+# Version information
+try:
+    with open('VERSION', 'r') as f:
+        __version__ = f.read().strip()
+except FileNotFoundError:
+    __version__ = '1.0.0'
 import uuid
 from dotenv import load_dotenv
 from core.Recap import recap_votes
@@ -24,9 +31,13 @@ import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend untuk server
 import matplotlib.pyplot as plt
 import random
+import sqlite3
+import threading
+from functools import lru_cache
+import concurrent.futures
 
 
-# Import modules untuk benchmark
+# Enhanced imports untuk performance optimization
 try:
     from core.generate_dummy_votes import generate_dummy_votes_with_timing, create_dummy_candidates, get_or_create_keys
     from core.benchmark_tabulation import measure_recap_performance
@@ -36,6 +47,109 @@ except ImportError as e:
 
 
 load_dotenv('config/.env')
+
+# =================================
+# PERFORMANCE OPTIMIZATIONS
+# =================================
+
+# Connection pool untuk database
+class DatabasePool:
+    def __init__(self, db_path, max_connections=20):
+        self.db_path = db_path
+        self.max_connections = max_connections
+        self._pool = []
+        self._lock = threading.Lock()
+
+    def get_connection(self):
+        with self._lock:
+            if self._pool:
+                return self._pool.pop()
+            else:
+                conn = sqlite3.connect(self.db_path, timeout=30.0)
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA synchronous=NORMAL")
+                conn.execute("PRAGMA cache_size=10000")
+                conn.execute("PRAGMA temp_store=MEMORY")
+                return conn
+
+    def return_connection(self, conn):
+        with self._lock:
+            if len(self._pool) < self.max_connections:
+                self._pool.append(conn)
+            else:
+                conn.close()
+
+# Initialize database pool
+db_pool = DatabasePool("evoting.db")
+
+# Enhanced get_db_connection with pooling
+def get_optimized_db_connection():
+    """Get database connection with optimization"""
+    return db_pool.get_connection()
+
+def return_db_connection(conn):
+    """Return connection to pool"""
+    db_pool.return_connection(conn)
+
+# Cache untuk candidates (mengurangi database queries)
+@lru_cache(maxsize=128)
+def get_cached_candidates(stage=None):
+    """Cache candidates untuk mengurangi database load"""
+    with get_optimized_db_connection() as conn:
+        c = conn.cursor()
+        if stage:
+            c.execute("SELECT * FROM candidates WHERE type = ?", (stage,))
+        else:
+            c.execute("SELECT * FROM candidates")
+
+        candidates = []
+        for row in c.fetchall():
+            candidates.append({
+                'id': row[0],
+                'name': row[1],
+                'type': row[2],
+                'class': row[3],
+                'photo': row[4]
+            })
+        return_db_connection(conn)
+        return candidates
+
+# Cache untuk voter status
+voter_cache = {}
+cache_lock = threading.Lock()
+
+def get_cached_voter_status(token_hash):
+    """Cache voter status untuk performance"""
+    with cache_lock:
+        if token_hash in voter_cache:
+            # Cache hit - check if still valid (5 minutes)
+            cached_time, data = voter_cache[token_hash]
+            if time.time() - cached_time < 300:  # 5 minutes
+                return data
+            else:
+                del voter_cache[token_hash]
+
+    # Cache miss - fetch from database
+    with get_optimized_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT approved, token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (token_hash,))
+        result = c.fetchone()
+        return_db_connection(conn)
+
+        if result:
+            data = {
+                'approved': result[0],
+                'token_used_senat': result[1],
+                'token_used_dewan': result[2]
+            }
+
+            # Update cache
+            with cache_lock:
+                voter_cache[token_hash] = (time.time(), data)
+
+            return data
+
+    return None
 
 app = Flask(__name__, template_folder='core/templates', static_folder='core/static')
 app.secret_key = os.getenv('SECRET_KEY') or 'fallback-secret-key-for-development'
@@ -49,12 +163,19 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Mencegah CSRF attacks
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
-# Initialize Flask-Limiter for rate limiting
+# Enhanced performance configurations
+app.config['COMPRESS_MIMETYPES'] = [
+    'text/html', 'text/css', 'text/xml', 'application/json',
+    'application/javascript', 'text/javascript', 'application/xml'
+]
+
+# Initialize Flask-Limiter with enhanced configuration for scalability
 limiter = Limiter(
     key_func=lambda: request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr),
     app=app,
-    default_limits=["10000 per hour"],
-    storage_uri="memory://"
+    default_limits=["20000 per hour", "500 per minute"],  # Increased limits
+    storage_uri="memory://",
+    strategy="fixed-window"  # Valid strategy for better performance
 )
 
 # Security helper functions
@@ -89,6 +210,38 @@ def sanitize_error_message(error_msg):
         if pattern in safe_msg.lower():
             return "System error occurred"
     return escape(safe_msg)
+
+# =================================
+# PERFORMANCE MIDDLEWARE
+# =================================
+
+@app.before_request
+def optimize_request():
+    """Performance optimizations before each request"""
+    # Enable keep-alive connections
+    request.environ['HTTP_CONNECTION'] = 'keep-alive'
+
+@app.after_request
+def optimize_response(response):
+    """Performance optimizations after each request"""
+    # Add compression headers
+    if response.content_length and response.content_length > 1024:
+        response.headers['Vary'] = 'Accept-Encoding'
+
+    # Add caching headers for static resources
+    if request.endpoint == 'static':
+        response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year
+        response.headers['Expires'] = 'Thu, 31 Dec 2037 23:55:55 GMT'
+
+    # Add performance headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-DNS-Prefetch-Control'] = 'on'
+
+    # Enable server push for HTTP/2 (if supported)
+    if request.is_secure and 'text/html' in response.content_type:
+        response.headers['Link'] = '</static/style.css>; rel=preload; as=style'
+
+    return response
 
 
 def allowed_file(filename):
@@ -625,61 +778,58 @@ def vote_page():
         flash('Please submit your voting token first.')
         return redirect(url_for('submit_token_page'))
 
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT id, name, photo, class, type FROM candidates ORDER BY id")
-    candidates = c.fetchall()
+    # Use optimized connection and cached voter status
+    salted_token = token + "PoltekSSN"
+    hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
+    encoded_token = base64.b64encode(hashed_token.encode()).decode()
 
-    # Pisahkan kandidat berdasarkan jenis pemilihan
-    senat_candidates = [candidate for candidate in candidates if candidate['type'] == 'senat']
-    demus_candidates = [candidate for candidate in candidates if candidate['type'] == 'demus']
-
-    try:
-        # Process token from session
-        salted_token = token + "PoltekSSN"
-        hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
-        encoded_token = base64.b64encode(hashed_token.encode()).decode()
-
-        c.execute("SELECT token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (encoded_token,))
-        voter = c.fetchone()
-        conn.close()
-
-        if voter:
-            token_used_senat, token_used_dewan = voter
-            print(f"DEBUG vote_page: token_used_senat={token_used_senat}, token_used_dewan={token_used_dewan}")
-
-            if token_used_senat == 0:
-                # Belum vote senat: tampilkan halaman vote untuk senat
-                print("DEBUG vote_page: Showing SENAT voting page")
-                return render_template(
-                    'vote.html',
-                    candidates=senat_candidates,
-                    no_candidates=(len(senat_candidates) == 0),
-                    voting_stage='senat'
-                )
-            if token_used_dewan == 0:
-                # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
-                print("DEBUG vote_page: Showing DEMUS voting page")
-                return render_template(
-                    'vote.html',
-                    candidates=demus_candidates,
-                    no_candidates=(len(demus_candidates) == 0),
-                    voting_stage='demus'
-                )
-            # Token sudah digunakan untuk kedua vote
-            print("DEBUG vote_page: Both votes completed, redirecting to index")
-            flash('Token sudah digunakan untuk kedua pemilihan.')
-            session.pop('voting_token', None)
-            session.pop('voting_id_number', None)
-            return redirect(url_for('index'))
-        flash('Invalid token.')
-        session.pop('voting_token', None)
-        session.pop('voting_id_number', None)
+    # Use cached voter status
+    voter_status = get_cached_voter_status(encoded_token)
+    if not voter_status:
+        flash('Invalid token or voter not found')
         return redirect(url_for('submit_token_page'))
 
+    # Use cached candidates
+    all_candidates = get_cached_candidates()
+
+    # Pisahkan kandidat berdasarkan jenis pemilihan
+    senat_candidates = [candidate for candidate in all_candidates if candidate['type'] == 'senat']
+    demus_candidates = [candidate for candidate in all_candidates if candidate['type'] == 'demus']
+
+    try:
+        # Get token usage status from cached data
+        token_used_senat = voter_status['token_used_senat']
+        token_used_dewan = voter_status['token_used_dewan']
+
+        print(f"DEBUG vote_page: token_used_senat={token_used_senat}, token_used_dewan={token_used_dewan}")
+
+        if token_used_senat == 0:
+            # Belum vote senat: tampilkan halaman vote untuk senat
+            print("DEBUG vote_page: Showing SENAT voting page")
+            return render_template(
+                'vote.html',
+                candidates=senat_candidates,
+                no_candidates=(len(senat_candidates) == 0),
+                voting_stage='senat'
+            )
+        if token_used_dewan == 0:
+            # Sudah vote senat tapi belum vote demus: langsung tampilkan halaman vote untuk demus
+            print("DEBUG vote_page: Showing DEMUS voting page")
+            return render_template(
+                'vote.html',
+                candidates=demus_candidates,
+                no_candidates=(len(demus_candidates) == 0),
+                voting_stage='demus'
+            )
+        # Token sudah digunakan untuk kedua vote
+        print("DEBUG vote_page: Both votes completed, redirecting to index")
+        flash('Token sudah digunakan untuk kedua pemilihan.')
+        session.pop('voting_token', None)
+        session.pop('voting_id_number', None)
+        return redirect(url_for('index'))
+
     except Exception as e:
-        conn.close()
-        flash(f'Error processing token: {str(e)}')
+        flash(f'Error processing token: {sanitize_error_message(str(e))}')
         session.pop('voting_token', None)
         session.pop('voting_id_number', None)
         return redirect(url_for('submit_token_page'))
@@ -727,7 +877,9 @@ def vote():
     hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
     encoded_token = base64.b64encode(hashed_token.encode()).decode()
 
-    with get_db_connection() as conn:
+    # Use optimized database connection
+    conn = get_optimized_db_connection()
+    try:
         c = conn.cursor()
         # Mulai transaksi untuk memastikan operasi validasi dan update atomik
         conn.execute("BEGIN IMMEDIATE;")
@@ -767,6 +919,15 @@ def vote():
 
         # Commit validation checks and close first connection
         conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        flash('Database error occurred')
+        session.pop('voting_token', None)
+        session.pop('voting_id_number', None)
+        return redirect(url_for('submit_token_page'))
+    finally:
+        return_db_connection(conn)
 
     # PERBAIKAN: Gunakan global key manager untuk konsistensi keys
     session_id = session.get('session_id', os.urandom(16).hex())

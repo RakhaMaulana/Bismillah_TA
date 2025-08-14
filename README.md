@@ -116,7 +116,57 @@ secure-evoting-system/
 - **OpenSSL** (for SSL certificates)
 - **Docker & Docker Compose** (optional, for containerized deployment)
 
-### Option 1: Local Development Setup
+### 🚀 Quick Start (Recommended)
+
+The easiest way to get started is using our automated deployment scripts:
+
+#### For Windows Users:
+```batch
+# Clone the repository
+git clone https://github.com/RakhaMaulana/Bismillah_TA.git
+cd Bismillah_TA
+
+# Run the automated setup script
+start.bat
+
+# For Docker deployment:
+start.bat docker
+```
+
+#### For Linux/macOS Users:
+```bash
+# Clone the repository
+git clone https://github.com/RakhaMaulana/Bismillah_TA.git
+cd Bismillah_TA
+
+# Make script executable
+chmod +x start.sh
+
+# Run the automated setup script
+./start.sh
+
+# For Docker deployment:
+./start.sh docker
+```
+
+**What the startup scripts do:**
+- ✅ Check for Python and pip installation
+- ✅ Create and activate virtual environment
+- ✅ Install all dependencies automatically
+- ✅ Setup environment variables
+- ✅ Initialize database if needed
+- ✅ Copy SSL certificates
+- ✅ Start the application
+
+**🌐 After running the script, access:**
+- Main application: `https://localhost:5001`
+- Admin login: `https://localhost:5001/login`
+  - Username: `AdminKitaBersama`
+  - Password: `AdminKitaBersama`
+
+### Option 2: Manual Local Development Setup
+
+*Use this option if you prefer manual setup or the automated scripts don't work in your environment.*
 
 #### Step 1: Clone Repository
 ```bash
@@ -179,7 +229,7 @@ python -m flask run --host=0.0.0.0 --port=5001 --cert=dev.certificate.crt --key=
   - Username: `AdminKitaBersama`
   - Password: `AdminKitaBersama`
 
-### Option 2: Docker Deployment
+### Option 3: Docker Deployment
 
 #### Prerequisites for Docker
 ```bash
@@ -244,7 +294,7 @@ docker-compose down --volumes --remove-orphans
 docker system prune -a
 ```
 
-### Option 3: Production Deployment
+### Option 4: Production Deployment
 
 #### Using Gunicorn (Recommended for Production)
 ```bash
@@ -287,6 +337,107 @@ server {
 - **Results tabulation**: `https://localhost:5001/recap`
 - **Performance benchmark**: `https://localhost:5001/benchmark`
 - **Voter status**: `https://localhost:5001/voter_status`
+
+### Development Setup
+
+```bash
+# For development with auto-reload
+python app.py
+
+# Or with Flask CLI
+export FLASK_APP=app.py          # Linux/macOS
+set FLASK_APP=app.py             # Windows
+export FLASK_ENV=development     # Linux/macOS
+set FLASK_ENV=development        # Windows
+flask run --cert=dev.certificate.crt --key=dev.private.key --port=5001
+```
+
+### Test Data Generation
+
+```bash
+# Generate sample voters and votes
+python generate_dummy_votes.py
+
+# Create initial database structure
+python createdb.py
+```
+
+### 🔧 Troubleshooting
+
+#### Common Issues and Solutions
+
+**1. Script Permission Issues (Linux/macOS)**
+```bash
+# Make scripts executable
+chmod +x start.sh
+sudo chmod +x start.sh  # If permission denied
+```
+
+**2. Python Version Issues**
+```bash
+# Check Python version
+python --version
+python3 --version
+
+# Use specific Python version
+python3.11 -m venv venv  # Replace with your Python version
+```
+
+**3. SSL Certificate Issues**
+```bash
+# Generate new SSL certificates
+openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
+  -nodes -keyout dev.private.key -out dev.certificate.crt \
+  -subj "/CN=localhost"
+```
+
+**4. Port Already in Use**
+```bash
+# Check what's using port 5001
+netstat -an | grep :5001  # Linux/macOS
+netstat -an | findstr :5001  # Windows
+
+# Kill process using the port
+sudo kill -9 $(lsof -t -i:5001)  # Linux/macOS
+# Or change port in app.py: app.run(port=5002)
+```
+
+**5. Database Issues**
+```bash
+# Reset database
+rm -f evoting.db instance/evoting.db  # Linux/macOS
+del evoting.db instance\evoting.db  # Windows
+
+# Reinitialize database
+python createdb.py
+```
+
+**6. Virtual Environment Issues**
+```bash
+# Remove and recreate virtual environment
+rm -rf venv  # Linux/macOS
+rmdir /s venv  # Windows
+
+python -m venv venv
+# Then run start script again
+```
+
+#### Script Arguments
+
+**Windows (start.bat):**
+```batch
+start.bat          # Local deployment (default)
+start.bat local    # Local deployment (explicit)
+start.bat docker   # Docker deployment
+```
+
+**Linux/macOS (start.sh):**
+```bash
+./start.sh          # Local deployment (default)
+./start.sh local    # Local deployment (explicit)
+./start.sh docker   # Docker deployment
+./start.sh --help   # Show help information
+```
 
 ## 🔒 Security
 

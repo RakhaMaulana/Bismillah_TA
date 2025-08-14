@@ -20,7 +20,8 @@
                           onsubmit="return validateForm()"
                           autocomplete="off"
                           novalidate
-                          class="needs-validation">
+                          class="needs-validation"
+                          data-validation="true">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <!-- Rate Limiting Protection -->

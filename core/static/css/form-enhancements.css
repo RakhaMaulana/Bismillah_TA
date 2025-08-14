@@ -1,0 +1,348 @@
+/**
+ * Enhanced Form Styles and Accessibility
+ * Provides better visual feedback, focus indicators, and accessibility features
+ */
+
+/* Enhanced Focus Indicators */
+.form-control:focus,
+.form-select:focus,
+.btn:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Focus within form groups */
+.form-floating.focused {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+/* Enhanced validation states */
+.form-control.is-valid {
+    border-color: #28a745;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.9-.83L7.39 1.54 8 2.17l-4.59 4.59L1.74 5.09l.56-.36z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 2.4 2.4m0-2.4L5.8 7'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+/* Enhanced feedback messages */
+.invalid-feedback,
+.valid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.invalid-feedback {
+    color: #dc3545;
+    animation: fadeInShake 0.5s ease-out;
+}
+
+.valid-feedback {
+    color: #28a745;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Form message container */
+.form-message {
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    animation: slideInDown 0.3s ease-out;
+}
+
+/* Required field indicators */
+.form-label.required::after,
+.required::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Enhanced form floating labels */
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    opacity: 0.85;
+    transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+    color: #007bff;
+}
+
+/* Loading states */
+.btn .spinner-border-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Accessibility improvements */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .form-control {
+        border: 2px solid;
+    }
+
+    .form-control:focus {
+        outline: 3px solid;
+        outline-offset: 1px;
+    }
+
+    .btn:focus {
+        outline: 3px solid;
+        outline-offset: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .form-floating.focused,
+    .form-control,
+    .btn {
+        transition: none;
+        animation: none;
+    }
+
+    .invalid-feedback,
+    .valid-feedback,
+    .form-message {
+        animation: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .form-control {
+        background-color: #2d2d2d;
+        border-color: #404040;
+        color: #ffffff;
+    }
+
+    .form-control:focus {
+        background-color: #2d2d2d;
+        border-color: #66afe9;
+        color: #ffffff;
+    }
+
+    .form-label {
+        color: #e9ecef;
+    }
+}
+
+/* Mobile optimizations */
+@media (max-width: 576px) {
+    .form-control {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    .form-floating > .form-control {
+        font-size: 16px;
+    }
+
+    .btn {
+        font-size: 16px;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Keyboard navigation indicators */
+.form-control:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .form-control {
+        min-height: 44px; /* Touch target size */
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeInShake {
+    0% {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    50% {
+        opacity: 0.5;
+        transform: translateX(5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Custom validation tooltip (optional) */
+.validation-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 5;
+    display: none;
+    max-width: 200px;
+    padding: 0.25rem 0.5rem;
+    margin-top: 0.125rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #fff;
+    background-color: rgba(220, 53, 69, 0.9);
+    border-radius: 0.25rem;
+}
+
+.form-control.is-invalid ~ .validation-tooltip {
+    display: block;
+}
+
+/* Progress indicator for multi-step forms */
+.form-progress {
+    display: flex;
+    margin-bottom: 2rem;
+}
+
+.form-progress-step {
+    flex: 1;
+    padding: 0.5rem;
+    text-align: center;
+    background-color: #e9ecef;
+    border-right: 1px solid #fff;
+    position: relative;
+}
+
+.form-progress-step:last-child {
+    border-right: none;
+}
+
+.form-progress-step.active {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.form-progress-step.completed {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.form-progress-step::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -1px;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+}
+
+.form-progress-step.active::after {
+    border-left-color: #007bff;
+}
+
+.form-progress-step.completed::after {
+    border-left-color: #28a745;
+}
+
+/* Character counter */
+.char-counter {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-align: right;
+    margin-top: 0.25rem;
+}
+
+.char-counter.over-limit {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Password strength indicator */
+.password-strength {
+    height: 4px;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.password-strength-fill {
+    height: 100%;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.password-strength-weak .password-strength-fill {
+    width: 25%;
+    background-color: #dc3545;
+}
+
+.password-strength-fair .password-strength-fill {
+    width: 50%;
+    background-color: #ffc107;
+}
+
+.password-strength-good .password-strength-fill {
+    width: 75%;
+    background-color: #20c997;
+}
+
+.password-strength-strong .password-strength-fill {
+    width: 100%;
+    background-color: #28a745;
+}
