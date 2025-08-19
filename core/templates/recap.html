@@ -146,7 +146,8 @@
 
     // Cache untuk gambar kandidat
     const imageCache = {};
-    const defaultImage = "/static/Unknown.png";
+    const defaultImage = "/static/Unknown.png"; // ✅ PERBAIKAN: Path yang benar (tanpa /core)
+    const fireGifPath = "/static/fire.gif"; // ✅ NEW: Path fire gif
 
     // ✅ NEW: Initialize UI event listeners
     document.addEventListener("DOMContentLoaded", function () {
@@ -290,6 +291,67 @@
         document.getElementById('lastUpdate').textContent = `Last Update: ${timeString}`;
     }
 
+    // ✅ NEW: Update stats from SSE data
+    function updateStatsFromSSE(candidatesData, totalVotes, currentLeader, maxVotes) {
+        if (!isLiveCountActive) return;
+
+        const candidates = candidatesData || [];
+        const leader = currentLeader || 'None';
+        const leaderVotes = maxVotes || 0;
+
+        const elapsedTime = startTime ?
+            Math.floor((new Date() - startTime) / 1000) : 0;
+
+        const statsHtml = `
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary">
+                        <i class="fas fa-vote-yea"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>${totalVotes}</h4>
+                        <p>Total Votes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card ${leaderVotes > 0 ? 'leader-highlight' : ''}">
+                    <div class="stat-icon bg-success">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4 title="${leader} has ${leaderVotes} votes">${leader}</h4>
+                        <p>Current Leader (${leaderVotes} votes)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-info">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>${candidates.length}</h4>
+                        <p>Candidates</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h4>${Math.floor(elapsedTime / 60)}:${(elapsedTime % 60).toString().padStart(2, '0')}</h4>
+                        <p>Elapsed Time</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('statsCards').innerHTML = statsHtml;
+    }
+
     function updateStats() {
         if (!isLiveCountActive) return;
 
@@ -372,6 +434,8 @@
             timestamp: new Date()
         });
 
+        console.log(`🗳️ Vote added to queue for: ${candidate} (Queue length: ${voteQueue.length})`);
+
         // Start processing if not already running
         if (!isProcessingVotes) {
             processVoteQueue();
@@ -453,6 +517,19 @@
         }
     }
 
+    // ✅ PERBAIKAN: Fungsi untuk mendapatkan foto kandidat berdasarkan nama
+    function getCandidatePhotoPath(candidateName) {
+        if (candidatePhotos && candidatePhotos[candidateName] && candidatePhotos[candidateName].photo) {
+            const photoPath = candidatePhotos[candidateName].photo;
+            console.log(`📸 Getting photo for "${candidateName}": ${photoPath}`);
+            return photoPath;
+        }
+
+        console.warn(`⚠️ No photo found for candidate "${candidateName}", using default`);
+        console.log('📋 Available candidates:', Object.keys(candidatePhotos || {}));
+        return defaultImage;
+    }
+
     // ✅ PERBAIKAN: Improved image loading dengan proper fallback
     async function getCandidateImage(src) {
 
@@ -522,8 +599,11 @@
             // ✅ PERBAIKAN: Kumpulkan kandidat dengan ID untuk pengurutan
             const candidatesWithId = [];
 
-            for (const [name, candidate] of Object.entries(allCandidatePhotos)) {
+            for (const [combinedKey, candidate] of Object.entries(allCandidatePhotos)) {
                 if (candidate.type.toLowerCase() === chartType.toLowerCase()) {
+                    // ✅ PERBAIKAN: Gunakan nama asli kandidat, bukan combined key
+                    const candidateName = candidate.name;
+
                     // ✅ PERBAIKAN: Better image path validation
                     let photoPath = candidate.photo;
 
@@ -543,7 +623,7 @@
 
                     candidatesWithId.push({
                         id: candidate.id || 0,  // Default ID jika tidak ada
-                        name: name,
+                        name: candidateName,    // ✅ Gunakan nama asli, bukan combined key
                         data: {
                             ...candidate,
                             photo: photoPath
@@ -560,11 +640,15 @@
             const sortedCandidateNames = [];
 
             candidatesWithId.forEach(item => {
-                candidatePhotos[item.name] = item.data;
+                candidatePhotos[item.name] = item.data;  // ✅ Gunakan nama asli sebagai key
                 sortedCandidateNames.push(item.name);
             });
 
             console.log('📊 Candidates sorted by ID:', sortedCandidateNames);
+            console.log('📸 Photo paths:', Object.keys(candidatePhotos).map(name => ({
+                name,
+                photo: candidatePhotos[name].photo
+            })));
             initializeVoteData(sortedCandidateNames);
         } catch (error) {
             console.error('❌ Error fetching candidate photos:', error);
@@ -605,10 +689,26 @@
 
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === currentChart) {
+                    if (data.error) {
+                        console.error('❌ SSE Error:', data.error);
+                        return;
+                    }
+
+                    if (data.type === currentChart && data.candidates) {
+                        // Update statistics using new function
+                        updateStatsFromSSE(
+                            data.candidates,
+                            data.total_votes || 0,
+                            data.current_leader || 'No votes yet',
+                            data.max_votes || 0
+                        );
+
+                        // Update last update time
+                        updateLastUpdateTime();
+
+                        // Update chart with new data
+                        updateChartWithCompleteData(data.candidates);
                         updateCount++;
-                        // ✅ NEW: Add to queue instead of direct update
-                        addVoteToQueue(data.candidate);
                     }
                 } catch (error) {
                     console.error('❌ Error parsing SSE data:', error);
@@ -692,6 +792,68 @@
         } else {
             await renderChart(labels, percentages);
         }
+
+        // ✅ PERBAIKAN: Panggil showOverlayForWinners setelah chart update
+        setTimeout(() => {
+            showOverlayForWinners(voteChart, labels, percentages);
+        }, 300); // Delay 300ms agar chart selesai update dulu
+    }
+
+    // ✅ NEW: Update chart with complete SSE data - PERBAIKAN untuk delay per vote
+    async function updateChartWithCompleteData(candidatesData) {
+        if (!candidatesData || candidatesData.length === 0) {
+            console.log('No candidates data to update');
+            return;
+        }
+
+        // Extract current and previous vote counts
+        const currentVotes = {};
+        candidatesData.forEach(candidate => {
+            currentVotes[candidate.name] = candidate.votes;
+        });
+
+        // Calculate new votes that need to be added with delay
+        const newVotes = [];
+        for (const [candidateName, currentCount] of Object.entries(currentVotes)) {
+            const previousCount = voteData[candidateName] || 0;
+            const newVoteCount = currentCount - previousCount;
+
+            // Add each new vote to queue for delayed processing
+            for (let i = 0; i < newVoteCount; i++) {
+                newVotes.push(candidateName);
+            }
+        }
+
+        // ✅ NEW: Process new votes with delay
+        if (newVotes.length > 0) {
+            console.log(`🎯 Processing ${newVotes.length} new votes with delay`);
+
+            // Add all new votes to queue
+            newVotes.forEach(candidateName => {
+                addVoteToQueue(candidateName);
+            });
+        } else {
+            // No new votes, just update display if needed
+            const labels = candidatesData.map(candidate => candidate.name);
+            const voteCounts = candidatesData.map(candidate => candidate.votes);
+            const totalVotes = voteCounts.reduce((sum, votes) => sum + votes, 0);
+            const percentages = voteCounts.map(votes =>
+                totalVotes > 0 ? ((votes / totalVotes) * 100).toFixed(1) : 0
+            );
+
+            // Update vote count display
+            const voteCountElement = document.getElementById('voteCount');
+            if (voteCountElement) {
+                voteCountElement.textContent = `Total Votes: ${totalVotes}`;
+            }
+
+            // Update chart if needed
+            if (isChartInitialized && voteChart) {
+                await updateChartData(labels, percentages);
+            } else {
+                await renderChart(labels, percentages);
+            }
+        }
     }
 
     // ✅ NEW: Smooth chart data update function
@@ -713,7 +875,7 @@
         // Update candidate images and overlays after animation
         setTimeout(async () => {
             await drawAllCandidates(voteChart, labels, percentages);
-            showOverlayForWinners(voteChart, labels, percentages);
+            showOverlayForWinners(voteChart, labels, percentages); // ✅ PERBAIKAN: Selalu update overlay
         }, 200); // Small delay to let chart animation start
     }
 
@@ -784,11 +946,8 @@
             const label = chart.data.labels[index];
             const bar = datasetMeta.data[index];
 
-            let imgSrc = defaultImage;
-            if (candidatePhotos[label] && candidatePhotos[label].photo) {
-                imgSrc = candidatePhotos[label].photo;
-            }
-
+            // ✅ PERBAIKAN: Gunakan fungsi getCandidatePhotoPath
+            const imgSrc = getCandidatePhotoPath(label);
 
             try {
                 // ✅ PERBAIKAN: Await untuk memastikan image loaded
@@ -822,18 +981,57 @@
     }
 
     /**
-     * ✅ PERBAIKAN: Helper function untuk menggambar image di bar
+     * ✅ PERBAIKAN: Helper function untuk menggambar image di bar dengan ratio 1:1 (square)
      */
     function drawImageOnBar(ctx, img, bar) {
         try {
             const barWidth = bar.width;
-            const aspectRatio = img.height === 0 ? 1 : (img.width / img.height);
-            const candidateWidth = barWidth * 0.5;
-            const candidateHeight = candidateWidth / aspectRatio;
-            const x = bar.x - (candidateWidth / 2);
-            const y = bar.base - candidateHeight;
 
-            ctx.drawImage(img, x, y, candidateWidth, candidateHeight);
+            // ✅ PERBAIKAN: Paksa ukuran 1:1 (square) untuk semua foto kandidat
+            const candidateSize = Math.min(barWidth * 0.6, 80); // Max 80px untuk konsistensi
+            const x = bar.x - (candidateSize / 2);
+            const y = bar.base - candidateSize - 5; // Tambah margin 5px dari base
+
+            // ✅ PERBAIKAN: Gambar foto dalam bentuk persegi dengan crop center
+            ctx.save();
+
+            // Buat clipping path berbentuk persegi dengan border radius
+            const radius = candidateSize * 0.1; // 10% radius untuk rounded corners
+            ctx.beginPath();
+            ctx.roundRect(x, y, candidateSize, candidateSize, radius);
+            ctx.clip();
+
+            // Hitung dimensi crop untuk mengambil bagian center dari gambar asli
+            const imgAspectRatio = img.width / img.height;
+            let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
+
+            if (imgAspectRatio > 1) {
+                // Gambar landscape - crop horizontal center
+                sourceWidth = img.height; // Ambil width sama dengan height
+                sourceX = (img.width - sourceWidth) / 2; // Center horizontally
+            } else if (imgAspectRatio < 1) {
+                // Gambar portrait - crop vertical center
+                sourceHeight = img.width; // Ambil height sama dengan width
+                sourceY = (img.height - sourceHeight) / 2; // Center vertically
+            }
+            // Jika sudah square (ratio = 1), tidak perlu crop
+
+            // Gambar foto dengan crop center dan ukuran square
+            ctx.drawImage(
+                img,
+                sourceX, sourceY, sourceWidth, sourceHeight, // Source (cropped)
+                x, y, candidateSize, candidateSize // Destination (square)
+            );
+
+            ctx.restore();
+
+            // ✅ OPTIONAL: Tambah border tipis untuk foto
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x, y, candidateSize, candidateSize, radius);
+            ctx.stroke();
+
         } catch (error) {
             console.error('❌ Error in drawImageOnBar:', error);
         }
@@ -868,31 +1066,30 @@
             const bar = datasetMeta.data[index];
             if (!bar) return; // Skip if bar doesn't exist
 
-            let imgSrc = defaultImage;
-            if (candidatePhotos[candidate] && candidatePhotos[candidate].photo) {
-                imgSrc = candidatePhotos[candidate].photo;
-            }
+            // ✅ PERBAIKAN: Gunakan fungsi getCandidatePhotoPath
+            const imgSrc = getCandidatePhotoPath(candidate);
 
             try {
                 const img = await getCandidateImage(imgSrc);
 
                 const barWidth = bar.width;
-                const aspectRatio = (img.height === 0) ? 1 : (img.width / img.height);
-                const candidateWidth = barWidth * 0.7;
-                const candidateHeight = candidateWidth / aspectRatio;
 
-                const gifSizeWidth = candidateWidth * 1.3;
-                const gifSizeHeight = candidateHeight * 1.3;
+                // ✅ PERBAIKAN: Gunakan ukuran square yang sama dengan foto kandidat
+                const candidateSize = Math.min(barWidth * 0.6, 80); // Sama dengan drawImageOnBar
+
+                // ✅ PERBAIKAN: Fire overlay sedikit lebih besar dari foto
+                const gifSizeWidth = candidateSize * 1.4;
+                const gifSizeHeight = candidateSize * 1.4;
                 const gifX = bar.x - (gifSizeWidth / 2);
-                const gifY = bar.base - candidateHeight - ((gifSizeHeight - candidateHeight) / 2);
+                const gifY = bar.base - candidateSize - 5 - ((gifSizeHeight - candidateSize) / 2);
 
                 // Buat elemen overlay GIF
                 const gifOverlay = document.createElement('img');
-                gifOverlay.src = "/static/fire.gif";
+                gifOverlay.src = fireGifPath; // ✅ PERBAIKAN: Gunakan konstanta path
                 gifOverlay.alt = "Fire Overlay";
                 gifOverlay.classList.add('winner-overlay');
                 gifOverlay.style.position = "absolute";
-                gifOverlay.style.opacity = "0.7"; // ✅ IMPROVED: Slightly more visible
+                gifOverlay.style.opacity = "0.8"; // ✅ IMPROVED: Slightly more visible
                 gifOverlay.style.pointerEvents = "none";
                 gifOverlay.style.left = gifX + "px";
                 gifOverlay.style.top = gifY + "px";
@@ -902,7 +1099,12 @@
                 gifOverlay.style.zIndex = "10";
 
                 gifOverlay.onerror = function() {
+                    console.error('❌ Failed to load fire.gif from:', this.src);
                     this.remove();
+                };
+
+                gifOverlay.onload = function() {
+                    console.log('✅ Fire overlay loaded successfully');
                 };
 
                 container.appendChild(gifOverlay);
@@ -1352,6 +1554,27 @@
         transition: all 0.5s ease-in-out;
         filter: brightness(1.2) saturate(1.5);
         z-index: 10;
+    }
+
+    /* ✅ NEW: Candidate Photo Styling */
+    .candidate-photo {
+        border-radius: 8px;
+        object-fit: cover;
+        aspect-ratio: 1 / 1; /* Force 1:1 ratio */
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .candidate-photo:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    }
+
+    /* ✅ NEW: Chart area styling untuk foto kandidat */
+    .chart-container canvas {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
     }
 
     /* Animations */

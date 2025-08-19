@@ -124,7 +124,11 @@ def recap_votes():
             decrypted_signature = pow(int(signature), public_key, n)
 
             # PERBAIKAN: Coba cocokkan dengan hash kandidat yang sudah di-precompute
+            ballot_matched = False  # Track if ballot has been matched to prevent double counting
             for candidate_id, (candidate_name, candidate_type) in candidate_dict.items():
+                if ballot_matched:  # Skip if ballot already matched
+                    break
+
                 if candidate_type == ballot_type:  # Hanya cek kandidat dengan tipe yang sesuai
                     expected_hash = candidate_hashes[candidate_id]
 
@@ -141,8 +145,8 @@ def recap_votes():
                             vote_counts[candidate_type][candidate_name] = 1
 
                         print(f"DEBUG Recap: Vote verified for {candidate_name} ({candidate_type}) using key_id={key_id}")
-                        # Break karena signature sudah terverifikasi untuk kandidat ini
-                        break
+                        ballot_matched = True  # Mark ballot as matched to prevent double counting
+                        break  # CRITICAL: Exit loop after finding match
         except (ValueError, TypeError, OverflowError) as e:
             print(f"DEBUG Recap: Error processing ballot signature {signature}: {e}")
             continue

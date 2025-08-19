@@ -63,8 +63,8 @@
                                                 {% for candidate in candidates %}
                                                     <option value="{{ candidate.id }}"
                                                             data-photo="{{ url_for('static', filename=candidate.photo) }}"
-                                                            data-name="{{ candidate.name | e }}"
-                                                            data-class="{{ candidate.class | e }}">
+                                                            data-name="{{ candidate.name }}"
+                                                            data-class="{{ candidate.class }}">
                                                         {{ candidate.name | e }} - {{ candidate.class | e }}
                                                     </option>
                                                 {% endfor %}
@@ -108,7 +108,7 @@
                                                      alt="Candidate Photo"
                                                      loading="lazy"
                                                      decoding="async"
-                                                     onerror="this.src='{{ url_for(&quot;static&quot;, filename=&quot;Unknown.png&quot;) }}'">
+                                                     onerror="this.src='{{ url_for('static', filename='Unknown.png') }}'">
                                                 <div class="photo-overlay">
                                                     <i class="fas fa-eye fa-2x"></i>
                                                 </div>

@@ -1,9 +1,33 @@
 #!/bin/bash
 
-# E-Voting System Startup Script
-# Cross-platform deployment script
+# E-Voting System Startup Script for Linux/macOS
+# Cross-platform deployment script with enhanced error handling
+#
+# USAGE:
+#   ./start.sh                    # Local deployment (default)
+#   ./start.sh docker             # Docker deployment
+#   ./start.sh --help            # Show help
+#
+# PREREQUISITES:
+#   - Python 3.8+ with pip
+#   - gfortran (for scipy compilation, auto-installed if possible)
+#   - Docker (optional, for Docker deployment)
+#   - sudo access (for installing system packages)
+#
+# FEATURES:
+#   ✅ Automatic dependency detection and installation
+#   ✅ Smart package installation with fallback methods
+#   ✅ Virtual environment setup and activation
+#   ✅ Database initialization and SSL certificate setup
+#   ✅ Cross-platform compatibility (Linux/macOS)
+#   ✅ Enhanced error handling and recovery
+#
+# If you encounter compilation errors:
+#   - Script will attempt to install gfortran automatically
+#   - Falls back to pre-compiled packages when possible
+#   - Continues with core functionality even if optional packages fail
 
-set -e  # Exit on error
+set -euo pipefail  # Exit on error, but handle errors gracefully in install function
 
 echo "🚀 Starting E-Voting System Deployment..."
 
@@ -76,9 +100,18 @@ check_dependencies() {
 setup_venv() {
     print_status "Setting up Python virtual environment..."
 
+    # Temporarily disable exit on error for venv operations
+    set +e
+
     if [ ! -d "venv" ]; then
         python3 -m venv venv
-        print_status "Virtual environment created"
+        if [ $? -eq 0 ]; then
+            print_status "Virtual environment created"
+        else
+            print_error "Failed to create virtual environment"
+            set -e
+            exit 1
+        fi
     fi
 
     # Activate virtual environment
@@ -88,23 +121,132 @@ setup_venv() {
         source venv/bin/activate
     fi
 
-    print_status "Virtual environment activated"
+    # Check if activation was successful
+    if [[ "$VIRTUAL_ENV" != "" ]]; then
+        print_status "Virtual environment activated: $VIRTUAL_ENV"
+    else
+        print_warning "Virtual environment activation may have failed, continuing..."
+    fi
+
+    # Re-enable exit on error
+    set -e
 }
 
-# Install dependencies
+# Install dependencies with enhanced error handling
 install_dependencies() {
     print_status "Installing Python dependencies..."
 
+    # Upgrade pip and install wheel for better package handling
+    print_status "Upgrading pip and installing wheel..."
+    pip install --upgrade pip wheel setuptools
+
+    # Determine requirements file
+    REQUIREMENTS_FILE=""
     if [ -f "config/requirements.txt" ]; then
-        pip install -r config/requirements.txt
+        REQUIREMENTS_FILE="config/requirements.txt"
     elif [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
+        REQUIREMENTS_FILE="requirements.txt"
     else
         print_error "No requirements.txt found"
         exit 1
     fi
 
-    print_status "Dependencies installed successfully"
+    print_status "Found requirements file: $REQUIREMENTS_FILE"
+
+    # Temporarily disable exit on error for package installation
+    set +e
+
+    # Try to install with pre-compiled wheels first
+    print_status "Attempting installation with pre-compiled packages..."
+    if pip install --prefer-binary -r "$REQUIREMENTS_FILE"; then
+        print_status "✅ Dependencies installed successfully with pre-compiled packages"
+        set -e  # Re-enable exit on error
+        return 0
+    fi
+
+    print_warning "❌ Bulk installation failed, trying critical packages individually..."
+
+    # Define critical packages needed for e-voting functionality
+    print_status "Installing critical packages for e-voting system..."
+
+    CRITICAL_PACKAGES=(
+        "flask==3.0.0"
+        "jinja2==3.1.2"
+        "werkzeug==3.0.1"
+        "flask-wtf==1.2.1"
+        "flask-limiter==3.5.0"
+        "pyopenssl==23.3.0"
+        "markupsafe==2.1.3"
+        "cryptography==41.0.7"
+        "requests==2.31.0"
+        "python-dotenv==1.0.0"
+        "bcrypt==4.1.2"
+        "itsdangerous==2.1.2"
+        "pillow==10.1.0"
+        "click==8.1.7"
+        "blinker==1.7.0"
+        "waitress==2.1.2"
+    )
+
+    CRITICAL_FAILED=false
+    for package in "${CRITICAL_PACKAGES[@]}"; do
+        print_status "Installing critical package: $package..."
+        if ! pip install --prefer-binary "$package"; then
+            print_warning "Failed to install $package with prefer-binary, trying without..."
+            if ! pip install "$package"; then
+                print_error "CRITICAL: Failed to install $package"
+                CRITICAL_FAILED=true
+            fi
+        fi
+    done
+
+    if [ "$CRITICAL_FAILED" = true ]; then
+        print_error "Critical packages failed to install. Cannot proceed."
+        set -e
+        exit 1
+    fi
+
+    # Try performance packages (optional - app works without them)
+    print_status "Installing performance optimization packages (optional)..."
+
+    PERFORMANCE_PACKAGES=(
+        "numpy"
+        "scipy"
+        "gunicorn==21.2.0"
+        "cheroot==10.0.0"
+    )
+
+    for package in "${PERFORMANCE_PACKAGES[@]}"; do
+        print_status "Installing optional package: $package..."
+        if ! pip install --prefer-binary "$package"; then
+            print_warning "Failed to install optional package $package with prefer-binary"
+            if ! pip install "$package"; then
+                print_warning "Failed to install optional package $package - continuing without it"
+            fi
+        fi
+    done
+
+    # Re-enable exit on error
+    set -e
+
+    # Verify critical packages
+    print_status "Verifying critical package installations..."
+
+    # Critical verifications (will exit if failed)
+    python3 -c "import flask; print('✅ Flask:', flask.__version__)"
+    python3 -c "import cryptography; print('✅ Cryptography available')"
+    python3 -c "import ssl; print('✅ SSL support available')"
+    python3 -c "import requests; print('✅ Requests available')"
+
+    # Optional verifications (won't fail the script)
+    set +e
+    python3 -c "import numpy; print('✅ NumPy:', numpy.__version__)" 2>/dev/null || print_warning "NumPy not available (performance features disabled)"
+    python3 -c "import scipy; print('✅ SciPy:', scipy.__version__)" 2>/dev/null || print_warning "SciPy not available (advanced math features disabled)"
+    python3 -c "import gunicorn; print('✅ Gunicorn available')" 2>/dev/null || print_warning "Gunicorn not available (will use built-in server)"
+    set -e
+
+    print_status "✅ Core dependencies installed successfully"
+    print_status "🎯 E-voting system is ready to run!"
 }
 
 # Setup database
@@ -211,9 +353,40 @@ case "$1" in
         main local
         ;;
     "--help"|"-h")
-        echo "Usage: $0 [docker|local]"
-        echo "  docker: Deploy using Docker containers"
-        echo "  local:  Deploy using local Python environment (default)"
+        echo "============================================"
+        echo "    E-Voting System Deployment Script"
+        echo "============================================"
+        echo ""
+        echo "USAGE:"
+        echo "  $0                    # Local deployment (default)"
+        echo "  $0 docker             # Docker deployment"
+        echo "  $0 local              # Explicit local deployment"
+        echo "  $0 --help             # Show this help"
+        echo ""
+        echo "FEATURES:"
+        echo "  ✅ Automatic dependency detection and installation"
+        echo "  ✅ Smart package installation with fallback methods"
+        echo "  ✅ Virtual environment setup and activation"
+        echo "  ✅ Database initialization and SSL certificate setup"
+        echo "  ✅ Cross-platform compatibility (Linux/macOS)"
+        echo "  ✅ Enhanced error handling and recovery"
+        echo ""
+        echo "PREREQUISITES:"
+        echo "  - Python 3.8+ with pip"
+        echo "  - gfortran (auto-installed if possible)"
+        echo "  - Docker (optional, for Docker deployment)"
+        echo "  - sudo access (for installing system packages)"
+        echo ""
+        echo "TROUBLESHOOTING:"
+        echo "  - If compilation errors occur, script will try fallback methods"
+        echo "  - gfortran will be auto-installed for scipy compilation"
+        echo "  - Core functionality works even if optional packages fail"
+        echo ""
+        echo "ACCESS AFTER STARTUP:"
+        echo "  Main App:    https://localhost:5001"
+        echo "  Admin Login: https://localhost:5001/login"
+        echo "  Username:    AdminKitaBersama"
+        echo "  Password:    AdminKitaBersama"
         exit 0
         ;;
     *)

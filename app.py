@@ -95,24 +95,36 @@ def return_db_connection(conn):
 @lru_cache(maxsize=128)
 def get_cached_candidates(stage=None):
     """Cache candidates untuk mengurangi database load"""
-    with get_optimized_db_connection() as conn:
+    try:
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        if stage:
-            c.execute("SELECT * FROM candidates WHERE type = ?", (stage,))
-        else:
-            c.execute("SELECT * FROM candidates")
 
-        candidates = []
-        for row in c.fetchall():
-            candidates.append({
-                'id': row[0],
-                'name': row[1],
-                'type': row[2],
-                'class': row[3],
-                'photo': row[4]
+        if stage:
+            c.execute("SELECT id, name, type, class, photo FROM candidates WHERE type = ?", (stage,))
+        else:
+            c.execute("SELECT id, name, type, class, photo FROM candidates")
+
+        candidates = c.fetchall()
+        conn.close()
+
+        # Convert to dictionaries for template compatibility
+        result = []
+        for candidate in candidates:
+            result.append({
+                'id': candidate['id'],
+                'name': candidate['name'],
+                'type': candidate['type'],
+                'class': candidate['class'],
+                'photo': candidate['photo']
             })
-        return_db_connection(conn)
-        return candidates
+
+        print(f"DEBUG get_cached_candidates: Found {len(result)} candidates for stage '{stage}'")
+        return result
+
+    except Exception as e:
+        print(f"ERROR in get_cached_candidates: {e}")
+        return []
 
 # Cache untuk voter status
 voter_cache = {}
@@ -130,11 +142,12 @@ def get_cached_voter_status(token_hash):
                 del voter_cache[token_hash]
 
     # Cache miss - fetch from database
-    with get_optimized_db_connection() as conn:
+    try:
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute("SELECT approved, token_used_senat, token_used_dewan FROM voters WHERE token_hash = ?", (token_hash,))
         result = c.fetchone()
-        return_db_connection(conn)
+        conn.close()
 
         if result:
             data = {
@@ -148,6 +161,10 @@ def get_cached_voter_status(token_hash):
                 voter_cache[token_hash] = (time.time(), data)
 
             return data
+    except Exception as e:
+        print(f"ERROR in get_cached_voter_status: {e}")
+        # Return None if database error
+        pass
 
     return None
 
@@ -731,8 +748,8 @@ def process_token():
             flash('Invalid token format detected')
             return redirect(url_for('submit_token_page'))
 
-    # Use the sanitized token
-    token = escape(raw_token)
+    # Token is already validated as safe A-Z0-9 format, no HTML escaping needed
+    token = raw_token
 
     # Validate and store token in session instead of URL
     salted_token = token + "PoltekSSN"
@@ -791,10 +808,18 @@ def vote_page():
 
     # Use cached candidates
     all_candidates = get_cached_candidates()
+    print(f"DEBUG vote_page: Total candidates found: {len(all_candidates)}")
 
     # Pisahkan kandidat berdasarkan jenis pemilihan
     senat_candidates = [candidate for candidate in all_candidates if candidate['type'] == 'senat']
     demus_candidates = [candidate for candidate in all_candidates if candidate['type'] == 'demus']
+
+    print(f"DEBUG vote_page: SENAT candidates: {len(senat_candidates)}")
+    print(f"DEBUG vote_page: DEMUS candidates: {len(demus_candidates)}")
+    for candidate in senat_candidates:
+        print(f"  - SENAT: {candidate['name']} ({candidate['type']})")
+    for candidate in demus_candidates:
+        print(f"  - DEMUS: {candidate['name']} ({candidate['type']})")
 
     try:
         # Get token usage status from cached data
@@ -829,9 +854,10 @@ def vote_page():
         return redirect(url_for('index'))
 
     except Exception as e:
-        flash(f'Error processing token: {sanitize_error_message(str(e))}')
+        print(f"ERROR in vote_page: {e}")
+        flash('System error occurred. Please try again.')
         session.pop('voting_token', None)
-        session.pop('voting_id_number', None)
+        session.pop('voting_id_number_hash', None)
         return redirect(url_for('submit_token_page'))
 
 
@@ -844,10 +870,10 @@ def vote():
         flash('Invalid session. Please submit your token again.')
         return redirect(url_for('submit_token_page'))
 
-    # Enhanced form data validation
+    # Form data validation (NO HTML escaping, only strip and check)
     try:
-        candidate_id = escape(request.form.get('candidate', '').strip())
-        voting_stage = escape(request.form.get('voting_stage', '').strip())
+        candidate_id = request.form.get('candidate', '').strip()
+        voting_stage = request.form.get('voting_stage', '').strip()
 
         # Length validation
         if len(candidate_id) > 10 or len(voting_stage) > 10:
@@ -873,12 +899,13 @@ def vote():
         flash('Invalid voting stage')
         return redirect(url_for('vote_page'))
 
+    # Token is already validated, do not escape or modify
     salted_token = token + "PoltekSSN"
     hashed_token = hashlib.sha256(salted_token.encode()).hexdigest()
     encoded_token = base64.b64encode(hashed_token.encode()).decode()
 
-    # Use optimized database connection
-    conn = get_optimized_db_connection()
+    # Use regular database connection to avoid threading issues
+    conn = get_db_connection()
     try:
         c = conn.cursor()
         # Mulai transaksi untuk memastikan operasi validasi dan update atomik
@@ -927,7 +954,7 @@ def vote():
         session.pop('voting_id_number', None)
         return redirect(url_for('submit_token_page'))
     finally:
-        return_db_connection(conn)
+        conn.close()
 
     # PERBAIKAN: Gunakan global key manager untuk konsistensi keys
     session_id = session.get('session_id', os.urandom(16).hex())
@@ -1080,6 +1107,12 @@ def vote():
                     conn_vote.commit()
                     print("DEBUG: Database committed successfully for senat")
 
+                    # ✅ PERBAIKAN: Clear cache setelah update database
+                    with cache_lock:
+                        if encoded_token in voter_cache:
+                            del voter_cache[encoded_token]
+                            print("DEBUG: Cleared voter cache after senat vote")
+
                     flash('Vote cast successfully for Ketua Senat. Please proceed to vote for Ketua Dewan Musyawarah Taruna.')
                     return redirect(url_for('vote_page'))
 
@@ -1096,6 +1129,12 @@ def vote():
                     # Commit seluruh transaksi
                     conn_vote.commit()
                     print("DEBUG: Database committed successfully for demus")
+
+                    # ✅ PERBAIKAN: Clear cache setelah update database
+                    with cache_lock:
+                        if encoded_token in voter_cache:
+                            del voter_cache[encoded_token]
+                            print("DEBUG: Cleared voter cache after demus vote")
 
                     flash('Vote cast successfully for Ketua Dewan Musyawarah Taruna. Thank you for voting!')
                     # Clear voting session after completed both votes
@@ -1312,11 +1351,14 @@ def get_candidate_photos():
     candidates = get_all_candidates()
     # Konversi setiap sqlite3.Row menjadi dictionary
     candidates = [dict(c) for c in candidates]
+    # ✅ PERBAIKAN: Gunakan kombinasi nama dan tipe sebagai key untuk menghindari duplikasi
     photos = {
-        c['name']: {
-            'id': c['id'],  # ✅ PERBAIKAN: Tambahkan ID untuk pengurutan
+        f"{c['name']} ({c.get('candidate_type', c.get('type', ''))})": {
+            'id': c['id'],
+            'name': c['name'],
             'photo': url_for('static', filename=c['photo']),
-            'type': c.get('candidate_type', '')
+            'type': c.get('candidate_type', c.get('type', '')),
+            'class': c.get('class', '')
         }
         for c in candidates
     }
@@ -1339,25 +1381,60 @@ def live_count():
     if vote_type not in ['senat', 'demus']:
         return "Invalid vote type", 400
 
-    # Additional security headers for SSE
+    # SSE Generator function
     def generate():
         try:
-            verified_ballots, _, _ = recap_votes()
-            for candidate_name, candidate_type in verified_ballots:
-                if candidate_type == vote_type:  # Hanya kirim data sesuai pilihan user
-                    # Sanitize output data
-                    safe_candidate_name = escape(str(candidate_name)[:100])  # Limit length
-                    safe_candidate_type = escape(str(candidate_type))
+            # Get current vote counts
+            verified_ballots, vote_counts, candidates = recap_votes()
 
-                    yield f"data: {json.dumps({'candidate': safe_candidate_name, 'type': safe_candidate_type})}\n\n"
-                    time.sleep(0.2)  # Delay 0.2 detik
+            # Get candidates for the requested type
+            type_candidates = candidates.get(vote_type, [])
+            type_vote_counts = vote_counts.get(vote_type, {})
+
+            # Build complete response data
+            candidates_data = []
+            total_votes = 0
+            current_leader = None
+            max_votes = 0
+
+            for candidate in type_candidates:
+                candidate_name = candidate['name']
+                votes = type_vote_counts.get(candidate_name, 0)
+
+                candidates_data.append({
+                    'id': candidate['id'],
+                    'name': candidate_name,
+                    'votes': votes
+                })
+
+                total_votes += votes
+
+                # Track current leader
+                if votes > max_votes:
+                    max_votes = votes
+                    current_leader = candidate_name
+
+            # Send complete data as single SSE event
+            complete_data = {
+                'type': vote_type,
+                'candidates': candidates_data,
+                'total_votes': total_votes,
+                'current_leader': current_leader,
+                'max_votes': max_votes,
+                'timestamp': time.strftime('%I:%M:%S %p')
+            }
+
+            yield f"data: {json.dumps(complete_data)}\n\n"
+
         except Exception as e:
-            # Log error but don't expose details to client
-            yield f"data: {json.dumps({'error': 'Processing error'})}\n\n"
+            print(f"ERROR in live_count SSE: {e}")
+            error_data = {'error': 'Unable to fetch vote counts', 'timestamp': time.strftime('%I:%M:%S %p')}
+            yield f"data: {json.dumps(error_data)}\n\n"
 
     response = Response(generate(), mimetype='text/event-stream')
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['Connection'] = 'keep-alive'
+    response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
 

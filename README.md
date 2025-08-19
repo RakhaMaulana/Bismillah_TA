@@ -118,9 +118,9 @@ secure-evoting-system/
 
 ### 🚀 Quick Start (Recommended)
 
-The easiest way to get started is using our automated deployment scripts:
+**The easiest way to get started! Our startup scripts handle everything automatically.**
 
-#### For Windows Users:
+#### Windows Users:
 ```batch
 # Clone the repository
 git clone https://github.com/RakhaMaulana/Bismillah_TA.git
@@ -131,42 +131,71 @@ start.bat
 
 # For Docker deployment:
 start.bat docker
+
+# For help with script options:
+start.bat --help
 ```
 
-#### For Linux/macOS Users:
+#### Linux/macOS Users:
 ```bash
 # Clone the repository
 git clone https://github.com/RakhaMaulana/Bismillah_TA.git
 cd Bismillah_TA
 
-# Make script executable
+# Make script executable and run
 chmod +x start.sh
-
-# Run the automated setup script
 ./start.sh
 
 # For Docker deployment:
 ./start.sh docker
+
+# For help with script options:
+./start.sh --help
 ```
 
-**What the startup scripts do:**
-- ✅ Check for Python and pip installation
-- ✅ Create and activate virtual environment
-- ✅ Install all dependencies automatically
-- ✅ Setup environment variables
-- ✅ Initialize database if needed
-- ✅ Copy SSL certificates
-- ✅ Start the application
+**📋 What the startup scripts do:**
+- ✅ **Verify Prerequisites**: Check Python, pip, and Docker (if needed)
+- ✅ **Environment Setup**: Create and activate virtual environment automatically
+- ✅ **Smart Dependencies**: Install packages with fallback options for compatibility
+- ✅ **Database Initialization**: Setup SQLite database if not exists
+- ✅ **SSL Configuration**: Copy SSL certificates for HTTPS
+- ✅ **Environment Variables**: Configure secure defaults automatically
+- ✅ **Application Launch**: Start the server with optimal settings
 
-**🌐 After running the script, access:**
-- Main application: `https://localhost:5001`
-- Admin login: `https://localhost:5001/login`
+**⚠️ Troubleshooting Startup Scripts:**
+
+If you encounter **NumPy compilation errors** on Windows:
+```cmd
+# Option 1: The script will try this automatically
+pip install --upgrade pip wheel
+pip install numpy --prefer-binary
+
+# Option 2: Install Visual C++ Build Tools if needed
+# Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+# Option 3: Use conda if available
+conda install numpy
+```
+
+If **SSL certificate errors** occur:
+```bash
+# The script creates self-signed certificates automatically
+# Custom certificates can be placed as:
+#   - dev.certificate.crt (certificate file)
+#   - dev.private.key (private key file)
+```
+
+**🌐 After successful startup:**
+- **Main Application**: `https://localhost:5001`
+- **Admin Dashboard**: `https://localhost:5001/login`
   - Username: `AdminKitaBersama`
   - Password: `AdminKitaBersama`
+- **Voting Page**: `https://localhost:5001/vote` (requires token)
+- **Registration**: `https://localhost:5001/register_voter`
 
 ### Option 2: Manual Local Development Setup
 
-*Use this option if you prefer manual setup or the automated scripts don't work in your environment.*
+*Use this option if you prefer manual control or the automated scripts don't work in your environment.*
 
 #### Step 1: Clone Repository
 ```bash
@@ -189,20 +218,32 @@ source venv/bin/activate
 #### Step 3: Install Dependencies
 ```bash
 # Upgrade pip first
-pip install --upgrade pip
+pip install --upgrade pip wheel
 
-# Install all required packages
-pip install -r requirements.txt
+# Install packages with fallback for compilation issues
+pip install --prefer-binary -r requirements.txt
+
+# If NumPy compilation fails on Windows, try:
+pip install numpy --prefer-binary
+pip install flask cryptography requests selenium beautifulsoup4 --prefer-binary
 ```
 
 #### Step 4: Set Up Environment Configuration
 ```bash
-# Environment variables are already configured in config/.env
-# You can modify config/.env if needed
-echo "Configuration file located at: config/.env"
+# Environment variables are already configured in app.py
+# Default settings work out-of-the-box for development
+echo "✅ Configuration ready - using secure defaults"
 ```
 
-#### Step 5: Generate SSL Certificates
+#### Step 5: Initialize Database
+```bash
+# Create the database (if it doesn't exist)
+python createdb.py
+
+# Or the database will be created automatically on first run
+```
+
+#### Step 6: Generate SSL Certificates
 ```bash
 # Generate self-signed SSL certificate for HTTPS
 openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
@@ -210,24 +251,53 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 \
   -subj "/CN=Pemilihan Umum Taruna" \
   -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:0.0.0.0"
 
-# On Windows PowerShell, use:
-openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout dev.private.key -out dev.certificate.crt -subj "/CN=Pemilihan Umum Taruna"
+# On Windows PowerShell (if OpenSSL is not available):
+# The application will create basic certificates automatically
 ```
 
-#### Step 6: Run Application
+#### Step 7: Run Application
 ```bash
 # Start the Flask application
 python app.py
 
-# Or for development with auto-reload:
-python -m flask run --host=0.0.0.0 --port=5001 --cert=dev.certificate.crt --key=dev.private.key
+# Or for development mode:
+python main.py
 ```
 
 **🌐 Access the application:**
-- Main application: `https://localhost:5001` or `https://[your-ip]:5001`
-- Admin login: `https://localhost:5001/login`
+- **Main application**: `https://localhost:5001`
+- **Admin dashboard**: `https://localhost:5001/login`
   - Username: `AdminKitaBersama`
   - Password: `AdminKitaBersama`
+
+**🔧 Manual Setup Troubleshooting:**
+
+**Python version issues:**
+```bash
+# Check Python version (needs 3.8+)
+python --version
+
+# If using multiple Python versions:
+python3 -m venv venv
+python3 app.py
+```
+
+**Package installation errors:**
+```bash
+# For compile errors, use pre-built wheels:
+pip install --only-binary=all -r requirements.txt
+
+# Install individual packages if bulk install fails:
+pip install flask
+pip install cryptography --prefer-binary
+pip install numpy --prefer-binary
+```
+
+**Port conflicts:**
+```bash
+# If port 5001 is busy, edit app.py and change:
+app.run(host='0.0.0.0', port=5002, ssl_context='adhoc')
+```
 
 ### Option 3: Docker Deployment
 
@@ -357,6 +427,219 @@ flask run --cert=dev.certificate.crt --key=dev.private.key --port=5001
 ```bash
 # Generate sample voters and votes
 python generate_dummy_votes.py
+```
+
+## 🛠️ Troubleshooting Guide
+
+### Common Installation Issues
+
+#### **NumPy Compilation Errors on Windows**
+```cmd
+ERROR: Microsoft Visual C++ 14.0 is required
+```
+**Solutions:**
+1. **Use Pre-compiled Packages (Fastest)**:
+   ```cmd
+   pip install --upgrade pip wheel
+   pip install numpy --prefer-binary
+   pip install -r requirements.txt --prefer-binary
+   ```
+
+2. **Install Visual C++ Build Tools**:
+   - Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Install "C++ build tools" workload
+   - Restart command prompt and retry
+
+3. **Use Conda Alternative**:
+   ```cmd
+   conda install numpy flask cryptography
+   ```
+
+#### **SSL Certificate Issues**
+```
+SSL: CERTIFICATE_VERIFY_FAILED
+```
+**Solutions:**
+1. **Generate Fresh Certificates**:
+   ```bash
+   # Delete old certificates
+   del dev.certificate.crt dev.private.key  # Windows
+   rm dev.certificate.crt dev.private.key   # Linux/macOS
+
+   # Run startup script to regenerate
+   start.bat        # Windows
+   ./start.sh       # Linux/macOS
+   ```
+
+2. **Browser Security Warnings**:
+   - Click "Advanced" → "Proceed to localhost (unsafe)"
+   - This is normal for self-signed certificates in development
+
+#### **Port Already in Use**
+```
+OSError: [Errno 48] Address already in use
+```
+**Solutions:**
+1. **Find and Kill Process**:
+   ```cmd
+   # Windows
+   netstat -ano | findstr :5001
+   taskkill /PID <process_id> /F
+
+   # Linux/macOS
+   lsof -ti:5001 | xargs kill -9
+   ```
+
+2. **Use Different Port**:
+   ```bash
+   # Edit app.py, change line:
+   app.run(host='0.0.0.0', port=5002, ssl_context='adhoc')
+   ```
+
+#### **Database Access Issues**
+```
+sqlite3.OperationalError: database is locked
+```
+**Solutions:**
+1. **Reset Database**:
+   ```bash
+   # Delete and recreate database
+   del evoting.db instance\evoting.db     # Windows
+   rm evoting.db instance/evoting.db      # Linux/macOS
+
+   python createdb.py
+   ```
+
+2. **Fix Permissions**:
+   ```bash
+   # Linux/macOS
+   chmod 664 evoting.db
+   chmod 775 instance/
+   ```
+
+### Browser-Specific Issues
+
+#### **Chrome/Edge: NET::ERR_CERT_AUTHORITY_INVALID**
+1. **Enable Unsafe Localhost**:
+   - Navigate to: `chrome://flags/#allow-insecure-localhost`
+   - Set to "Enabled"
+   - Restart browser
+
+2. **Accept Certificate**:
+   - Click "Advanced" → "Proceed to localhost"
+
+#### **Firefox: SEC_ERROR_UNKNOWN_ISSUER**
+1. **Add Exception**:
+   - Click "Advanced" → "Add Exception"
+   - Click "Confirm Security Exception"
+
+### Performance Issues
+
+#### **Slow Startup or Response**
+1. **Check System Resources**:
+   ```bash
+   # Monitor resource usage
+   python benchmark_tabulasi.py
+   ```
+
+2. **Optimize for Development**:
+   ```bash
+   # Use debug mode for faster reload
+   export FLASK_ENV=development  # Linux/macOS
+   set FLASK_ENV=development     # Windows
+   ```
+
+### Docker-Specific Issues
+
+#### **Docker Build Failures**
+```bash
+# Clear Docker cache and rebuild
+docker system prune -a
+docker-compose build --no-cache
+```
+
+#### **Container Won't Start**
+```bash
+# Check logs for errors
+docker-compose logs app
+
+# Check port conflicts
+docker-compose ps
+netstat -tulpn | grep :5001
+```
+
+### Development Environment Issues
+
+#### **Import Errors**
+```python
+ModuleNotFoundError: No module named 'cryptomath'
+```
+**Solutions:**
+1. **Verify Virtual Environment**:
+   ```bash
+   # Check if venv is activated
+   which python  # Should show venv path
+
+   # Reactivate if needed
+   source venv/bin/activate  # Linux/macOS
+   venv\Scripts\activate     # Windows
+   ```
+
+2. **Reinstall Dependencies**:
+   ```bash
+   pip install -r requirements.txt --force-reinstall
+   ```
+
+#### **Path Issues**
+```python
+FileNotFoundError: [Errno 2] No such file or directory
+```
+**Solutions:**
+1. **Run from Correct Directory**:
+   ```bash
+   # Always run from project root
+   cd Bismillah_TA
+   python app.py
+   ```
+
+2. **Check File Structure**:
+   ```bash
+   # Verify files exist
+   ls -la *.py        # Linux/macOS
+   dir *.py           # Windows
+   ```
+
+### Getting Help
+
+#### **Check System Status**
+```bash
+# Verify all components
+python --version              # Should be 3.8+
+pip --version                # Should be latest
+python -c "import flask"      # Should not error
+python -c "import cryptography"  # Should not error
+```
+
+#### **Enable Debug Mode**
+```python
+# In app.py, change:
+app.run(host='0.0.0.0', port=5001, debug=True, ssl_context='adhoc')
+```
+
+#### **Generate System Report**
+```bash
+# Create troubleshooting report
+echo "=== System Information ===" > debug_report.txt
+python --version >> debug_report.txt
+pip list >> debug_report.txt
+echo "=== Directory Contents ===" >> debug_report.txt
+ls -la >> debug_report.txt  # Linux/macOS
+dir >> debug_report.txt     # Windows
+```
+
+**Still having issues?**
+- Check the [GitHub Issues](https://github.com/RakhaMaulana/Bismillah_TA/issues)
+- Create a new issue with your debug report
 
 # Create initial database structure
 python createdb.py
