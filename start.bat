@@ -155,6 +155,10 @@ call :install_optional_package "bcrypt==4.1.2" "Password hashing"
 call :install_optional_package "waitress==2.1.2" "WSGI server"
 call :install_optional_package "pillow==10.1.0" "Image processing"
 
+REM Install matplotlib with special handling (needed for chart generation)
+echo [INFO] Installing matplotlib for chart generation...
+call :install_matplotlib_package "matplotlib" "Chart generation"
+
 REM Try performance packages (optional - app works without them)
 echo [INFO] Installing performance optimization packages (optional)...
 call :install_optional_package "numpy" "Numerical computing"
@@ -191,6 +195,40 @@ if %errorlevel% neq 0 (
     )
 )
 echo [SUCCESS] Installed optional %~1
+goto :eof
+
+:install_matplotlib_package
+echo [INFO] Installing matplotlib with multiple fallback methods...
+echo [INFO] Attempting matplotlib with prefer-binary...
+pip install --prefer-binary matplotlib >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Installed matplotlib with prefer-binary
+    goto :eof
+)
+
+echo [INFO] Attempting matplotlib without prefer-binary...
+pip install matplotlib >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Installed matplotlib
+    goto :eof
+)
+
+echo [INFO] Attempting matplotlib with no-deps and then install deps...
+pip install --no-deps matplotlib >nul 2>&1
+pip install cycler kiwisolver python-dateutil pyparsing numpy fonttools >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Installed matplotlib with dependency management
+    goto :eof
+)
+
+echo [INFO] Attempting matplotlib with specific version...
+pip install "matplotlib>=3.5.0,<4.0.0" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Installed matplotlib with version constraint
+    goto :eof
+)
+
+echo [WARNING] Failed to install matplotlib with all methods - %~2 (continuing without it)
 goto :eof
 
 :verify_packages
@@ -257,6 +295,13 @@ if %errorlevel% neq 0 (
     echo [INFO] Gunicorn not available (will use built-in server)
 ) else (
     echo [SUCCESS] Gunicorn available
+)
+
+python -c "import matplotlib; print('Matplotlib available')" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [INFO] Matplotlib not available (chart generation disabled)
+) else (
+    echo [SUCCESS] Matplotlib available
 )
 
 echo [SUCCESS] Dependencies installed and verified

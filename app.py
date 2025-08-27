@@ -27,9 +27,19 @@ from flask import Response
 import json
 import ssl
 import statistics
-import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend untuk server
-import matplotlib.pyplot as plt
+
+# ✅ PERBAIKAN: Make matplotlib optional
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend untuk server
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+    print("✅ Matplotlib loaded successfully")
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    print("⚠️ Matplotlib not available - chart generation disabled")
+    plt = None
+
 import random
 import sqlite3
 import threading
@@ -1961,6 +1971,10 @@ def generate_complete_benchmark_charts(generation_results, tabulation_results, d
     """
     Generate comprehensive benchmark charts
     """
+    if not MATPLOTLIB_AVAILABLE:
+        print("⚠️ Matplotlib not available - chart generation skipped")
+        return None
+
     try:
         import numpy as np
         from io import BytesIO
