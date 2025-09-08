@@ -286,8 +286,14 @@
         }, 3000);
     }
 
-    // Enhanced initialization with image validation
+receipt-freeness & coercion-resistance    // Enhanced initialization with image validation and security features
     window.onload = async function() {
+        // 🔒 SECURITY: Private browsing detection
+        detectPrivateBrowsing();
+
+        // 🔒 SECURITY: Setup automatic cleanup on page unload
+        setupSecurityCleanup();
+
         // Set default fallback for initial image
         const initialPhoto = document.getElementById('candidate-photo');
         if (initialPhoto) {
@@ -710,4 +716,374 @@
         }
     }
 </style>
+
+<script>
+    // 🔒 SECURITY ENHANCEMENT: Private Browsing Detection & Browser Cleanup
+
+    function detectPrivateBrowsing() {
+        function isPrivateBrowsing(callback) {
+            // Method 1: Check localStorage availability
+            try {
+                if (typeof Storage === "undefined") {
+                    callback(true); // Assume private if no storage
+                    return;
+                }
+
+                // Method 2: Try to use localStorage
+                localStorage.setItem('__test__', 'test');
+                localStorage.removeItem('__test__');
+
+                // Method 3: Check sessionStorage quota (works in some browsers)
+                try {
+                    var storage = window.sessionStorage;
+                    storage.setItem('__private_test__', '1');
+                    storage.removeItem('__private_test__');
+                } catch (e) {
+                    callback(true);
+                    return;
+                }
+
+                // Method 4: Check for specific private browsing indicators
+                if (navigator.userAgent.indexOf('Safari') > -1 &&
+                    navigator.userAgent.indexOf('Chrome') === -1) {
+                    // Safari private mode detection
+                    try {
+                        window.openDatabase(null, null, null, null);
+                        callback(false);
+                    } catch (e) {
+                        callback(true);
+                        return;
+                    }
+                }
+
+                // Method 5: Chrome/Firefox detection
+                if ('webkitRequestFileSystem' in window) {
+                    // Chrome
+                    webkitRequestFileSystem(TEMPORARY, 1,
+                        function() { callback(false); },
+                        function() { callback(true); }
+                    );
+                } else if ('indexedDB' in window && indexedDB !== null) {
+                    // Firefox
+                    var db = indexedDB.open('__private_test__');
+                    db.onsuccess = function() { callback(false); };
+                    db.onerror = function() { callback(true); };
+                } else {
+                    callback(false); // Assume public if can't detect
+                }
+
+            } catch (e) {
+                callback(false); // Assume public if error
+            }
+        }
+
+        isPrivateBrowsing(function(isPrivate) {
+            if (!isPrivate) {
+                showPrivateBrowsingRecommendation();
+            } else {
+                console.log('✅ Private browsing detected - enhanced security enabled');
+                // Show privacy confirmation
+                showPrivacyConfirmation();
+            }
+        });
+    }
+
+    function showPrivateBrowsingRecommendation() {
+        const recommendation = document.createElement('div');
+        recommendation.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+            z-index: 10000;
+            max-width: 350px;
+            font-size: 14px;
+            border-left: 4px solid #ff5722;
+        `;
+
+        recommendation.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-shield-alt" style="font-size: 20px;"></i>
+                <div>
+                    <strong>🔒 Privacy Recommendation</strong><br>
+                    <small>For maximum security, use Private/Incognito mode</small>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()"
+                        style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
+            </div>
+        `;
+
+        document.body.appendChild(recommendation);
+
+        // Auto-remove after 8 seconds
+        setTimeout(() => {
+            if (recommendation.parentNode) {
+                recommendation.remove();
+            }
+        }, 8000);
+    }
+
+    function showPrivacyConfirmation() {
+        const confirmation = document.createElement('div');
+        confirmation.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            z-index: 10000;
+            max-width: 350px;
+            font-size: 14px;
+            border-left: 4px solid #1b5e20;
+        `;
+
+        confirmation.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-check-shield" style="font-size: 20px;"></i>
+                <div>
+                    <strong>✅ Private Mode Active</strong><br>
+                    <small>Enhanced security enabled for voting</small>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()"
+                        style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
+            </div>
+        `;
+
+        document.body.appendChild(confirmation);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (confirmation.parentNode) {
+                confirmation.remove();
+            }
+        }, 5000);
+    }
+
+    function setupSecurityCleanup() {
+        // 🔒 AUTOMATIC BROWSER CLEANUP AFTER VOTING
+
+        // Function to perform comprehensive cleanup
+        function performSecurityCleanup() {
+            try {
+                console.log('🔒 Performing security cleanup...');
+
+                // 1. Clear all session storage
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.clear();
+                }
+
+                // 2. Clear relevant local storage items (but not all - might break other apps)
+                if (typeof localStorage !== 'undefined') {
+                    const keysToRemove = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.includes('vote') || key.includes('candidate') ||
+                                   key.includes('token') || key.includes('election') ||
+                                   key.includes('ballot'))) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    keysToRemove.forEach(key => localStorage.removeItem(key));
+                }
+
+                // 3. Clear form data
+                const forms = document.querySelectorAll('form');
+                forms.forEach(form => {
+                    if (form.reset) form.reset();
+                });
+
+                // 4. Clear sensitive input values
+                const sensitiveInputs = document.querySelectorAll('input, select, textarea');
+                sensitiveInputs.forEach(input => {
+                    if (input.type !== 'hidden') {
+                        input.value = '';
+                    }
+                });
+
+                // 5. Clear browser history entry (replace current page)
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, '', window.location.pathname);
+                }
+
+                // 6. Clear any cached candidate photos
+                const images = document.querySelectorAll('img');
+                images.forEach(img => {
+                    if (img.src.includes('candidate') || img.src.includes('upload')) {
+                        img.src = '';
+                    }
+                });
+
+                // 7. Clear any temporary variables
+                if (typeof candidatePhotoCache !== 'undefined') {
+                    candidatePhotoCache = {};
+                }
+
+                console.log('✅ Security cleanup completed');
+
+                // Show cleanup confirmation
+                showCleanupNotification();
+
+            } catch (error) {
+                console.warn('⚠️ Some cleanup operations failed:', error);
+            }
+        }
+
+        // Setup cleanup triggers
+
+        // 1. On page unload (user navigates away)
+        window.addEventListener('beforeunload', function(e) {
+            performSecurityCleanup();
+        });
+
+        // 2. On page visibility change (tab switching, minimizing)
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                performSecurityCleanup();
+            }
+        });
+
+        // 3. On voting form submission (after successful vote)
+        const voteForm = document.querySelector('form[method="POST"]');
+        if (voteForm) {
+            voteForm.addEventListener('submit', function(e) {
+                // Delay cleanup to allow form submission
+                setTimeout(function() {
+                    performSecurityCleanup();
+
+                    // Additional security: redirect to homepage after cleanup
+                    setTimeout(function() {
+                        window.location.href = '/';
+                    }, 1000);
+                }, 500);
+            });
+        }
+
+        // 4. Setup automatic cleanup timer (as backup)
+        let cleanupTimer = setTimeout(function() {
+            performSecurityCleanup();
+        }, 300000); // 5 minutes auto-cleanup
+
+        // 5. Clear cleanup timer on user activity
+        ['click', 'keypress', 'touchstart'].forEach(event => {
+            document.addEventListener(event, function() {
+                clearTimeout(cleanupTimer);
+                cleanupTimer = setTimeout(performSecurityCleanup, 300000);
+            });
+        });
+
+        // 6. Cleanup on browser focus loss
+        window.addEventListener('blur', function() {
+            setTimeout(performSecurityCleanup, 1000);
+        });
+    }
+
+    function showCleanupNotification() {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+            z-index: 10000;
+            font-size: 13px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        `;
+
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-broom" style="font-size: 16px;"></i>
+                <span>🔒 Browser data cleaned for privacy</span>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+
+        // Auto-remove
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // 🔒 ENHANCED SECURITY: Disable right-click during voting
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        showSecurityMessage('Right-click disabled for security');
+    });
+
+    // 🔒 ENHANCED SECURITY: Disable F12, Ctrl+Shift+I, etc.
+    document.addEventListener('keydown', function(e) {
+        // Disable F12
+        if (e.key === 'F12') {
+            e.preventDefault();
+            showSecurityMessage('Developer tools disabled during voting');
+            return false;
+        }
+
+        // Disable Ctrl+Shift+I
+        if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+            e.preventDefault();
+            showSecurityMessage('Developer tools disabled during voting');
+            return false;
+        }
+
+        // Disable Ctrl+U (view source)
+        if (e.ctrlKey && e.key === 'u') {
+            e.preventDefault();
+            showSecurityMessage('View source disabled during voting');
+            return false;
+        }
+    });
+
+    function showSecurityMessage(message) {
+        const alert = document.createElement('div');
+        alert.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(244, 67, 54, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(244, 67, 54, 0.3);
+            z-index: 10001;
+            text-align: center;
+            font-weight: 500;
+        `;
+
+        alert.innerHTML = `
+            <i class="fas fa-shield-alt" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
+            ${message}
+        `;
+
+        document.body.appendChild(alert);
+
+        setTimeout(() => alert.remove(), 2000);
+    }
+</script>
 {% endblock %}

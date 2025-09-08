@@ -47,6 +47,43 @@ from functools import lru_cache
 import concurrent.futures
 
 
+# 🔒 ANONYMITY ENHANCEMENT: Photo cleanup functions
+def delete_voter_photo(photo_filename):
+    """
+    Menghapus foto pendaftar untuk menjaga anonimitas setelah approval/rejection
+    """
+    if not photo_filename:
+        return True  # No photo to delete
+
+    try:
+        # Path ke folder uploads
+        upload_folder = os.path.join(app.static_folder, 'uploads')
+        photo_path = os.path.join(upload_folder, photo_filename)
+
+        # Cek apakah file exists
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
+            print(f"✅ Deleted voter photo: {photo_filename}")
+            return True
+        else:
+            print(f"⚠️ Photo not found: {photo_filename}")
+            return True  # File sudah tidak ada, consider success
+
+    except Exception as e:
+        print(f"❌ Error deleting photo {photo_filename}: {e}")
+        return False
+
+def cleanup_voter_photos_batch(photo_filenames):
+    """
+    Hapus multiple foto pendaftar secara batch untuk efisiensi
+    """
+    success_count = 0
+    for photo_filename in photo_filenames:
+        if delete_voter_photo(photo_filename):
+            success_count += 1
+    return success_count
+
+
 # Enhanced imports untuk performance optimization
 try:
     from core.generate_dummy_votes import generate_dummy_votes_with_timing, create_dummy_candidates, get_or_create_keys
@@ -703,6 +740,12 @@ def approve_voter():
 
     with get_db_connection() as conn:
         c = conn.cursor()
+
+        # 🔒 ANONYMITY: Ambil foto pendaftar sebelum update/delete
+        c.execute("SELECT photo FROM voters WHERE id = ?", (voter_id,))
+        voter_data = c.fetchone()
+        voter_photo = voter_data[0] if voter_data else None
+
         # Mulai transaksi
         conn.execute("BEGIN IMMEDIATE;")
         if action == 'approve':
@@ -712,6 +755,15 @@ def approve_voter():
             c.execute("DELETE FROM voters WHERE id = ?", (voter_id,))
             flash('Voter rejected successfully')
         conn.commit()
+
+        # 🔒 ANONYMITY: Hapus foto pendaftar setelah transaksi berhasil
+        if voter_photo:
+            delete_success = delete_voter_photo(voter_photo)
+            if delete_success:
+                print(f"✅ Voter photo deleted for anonymity: {voter_photo}")
+            else:
+                print(f"⚠️ Failed to delete voter photo: {voter_photo}")
+
     return redirect(url_for('approve_voter_page'))
 
 
