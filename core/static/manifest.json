@@ -1,97 +1,13 @@
 {
     "name": "Crypvote - Secure E-Voting System",
     "short_name": "Crypvote",
-    "description": "Secure electronic voting system with cryptographic blind signature technology",
+    "description": "Secure electronic voting system with cryptographic blind signature",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#04305e",
     "theme_color": "#04305e",
-    "orientation": "any",
-    "scope": "/",
-    "lang": "en-US",
-    "dir": "ltr",
-    "prefer_related_applications": false,
-    "categories": ["government", "utilities", "productivity"],
-    "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
-    "edge_side_panel": {
-        "preferred_width": 400
-    },
-    "launch_handler": {
-        "client_mode": "auto"
-    },
-    "protocol_handlers": [
-        {
-            "protocol": "web+vote",
-            "url": "/vote?token=%s"
-        }
-    ],
-    "share_target": {
-        "action": "/",
-        "method": "GET",
-        "enctype": "application/x-www-form-urlencoded",
-        "params": {
-            "title": "title",
-            "text": "text",
-            "url": "url"
-        }
-    },
-    "shortcuts": [
-        {
-            "name": "Vote",
-            "short_name": "Vote",
-            "description": "Cast your vote",
-            "url": "/vote",
-            "icons": [
-                {
-                    "src": "/static/icon.ico",
-                    "sizes": "96x96"
-                }
-            ]
-        },
-        {
-            "name": "Results",
-            "short_name": "Results",
-            "description": "View voting results",
-            "url": "/recap",
-            "icons": [
-                {
-                    "src": "/static/icon.ico",
-                    "sizes": "96x96"
-                }
-            ]
-        }
-    ],
+    "orientation": "portrait-primary",
     "icons": [
-        {
-            "src": "/static/icon.ico",
-            "sizes": "72x72",
-            "type": "image/x-icon",
-            "purpose": "any"
-        },
-        {
-            "src": "/static/icon.ico",
-            "sizes": "96x96",
-            "type": "image/x-icon",
-            "purpose": "any"
-        },
-        {
-            "src": "/static/icon.ico",
-            "sizes": "128x128",
-            "type": "image/x-icon",
-            "purpose": "any"
-        },
-        {
-            "src": "/static/icon.ico",
-            "sizes": "144x144",
-            "type": "image/x-icon",
-            "purpose": "any"
-        },
-        {
-            "src": "/static/icon.ico",
-            "sizes": "152x152",
-            "type": "image/x-icon",
-            "purpose": "any"
-        },
         {
             "src": "/static/icon.ico",
             "sizes": "192x192",
@@ -100,15 +16,13 @@
         },
         {
             "src": "/static/icon.ico",
-            "sizes": "384x384",
-            "type": "image/x-icon",
-            "purpose": "any"
-        },
-        {
-            "src": "/static/icon.ico",
             "sizes": "512x512",
             "type": "image/x-icon",
             "purpose": "any maskable"
         }
-    ]
+    ],
+    "categories": ["government", "utilities"],
+    "lang": "en",
+    "scope": "/",
+    "prefer_related_applications": false
 }

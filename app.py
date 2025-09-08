@@ -516,6 +516,11 @@ def register_candidate():
         photo_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         photo.save(photo_filename)
         save_candidate(name, 'uploads/' + filename, candidate_class, candidate_type)
+
+        # Clear cache setelah candidate baru ditambahkan
+        get_cached_candidates.cache_clear()
+        print(f"Cache cleared after registering candidate: {name}")
+
         flash('Candidate registered successfully')
     else:
         flash('Invalid file type')

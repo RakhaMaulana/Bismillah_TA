@@ -202,7 +202,21 @@
     // Async image loading with fallback
     async function updateCandidatePhotoAsync() {
         const candidateSelect = document.getElementById('candidate');
+
+        // Check if select element exists and has options
+        if (!candidateSelect || candidateSelect.options.length === 0) {
+            console.log('No candidate select element or no candidates available');
+            return;
+        }
+
         const selectedOption = candidateSelect.options[candidateSelect.selectedIndex];
+
+        // Check if selectedOption exists
+        if (!selectedOption) {
+            console.log('No selected option available');
+            return;
+        }
+
         const photoUrl = selectedOption.getAttribute('data-photo');
         const candidateName = selectedOption.getAttribute('data-name');
         const candidateClass = selectedOption.getAttribute('data-class');
@@ -213,13 +227,13 @@
         try {
             // Preload and validate image
             const validImageUrl = await preloadAndValidateImage(photoUrl);
-            candidatePhoto.src = validImageUrl;
+            if (candidatePhoto) candidatePhoto.src = validImageUrl;
         } catch (error) {
-            candidatePhoto.src = defaultImageUrl;
+            if (candidatePhoto) candidatePhoto.src = defaultImageUrl;
         }
 
-        candidateNameElement.textContent = candidateName;
-        candidateClassElement.textContent = candidateClass;
+        if (candidateNameElement) candidateNameElement.textContent = candidateName || 'No candidate selected';
+        if (candidateClassElement) candidateClassElement.textContent = candidateClass || '';
     }
 
     function validateForm() {

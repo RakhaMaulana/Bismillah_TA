@@ -8,3 +8,6 @@ evoting.db-shm
 evoting.db-wal
 Pengujian/Script Pengujian
 evoting.db.backup
+evoting copy.db-shm
+evoting copy.db
+evoting copy.db-wal

@@ -508,7 +508,7 @@
 
             // File size validation (base64 encoded image should be reasonable size)
             const imageSizeInBytes = (photoInput.length * 3) / 4;
-            const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+            const maxSizeInBytes = 8 * 1024 * 1024; // 5MB
             if (imageSizeInBytes > maxSizeInBytes) {
                 showError('Photo file size is too large');
                 return false;

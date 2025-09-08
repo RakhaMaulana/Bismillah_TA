@@ -198,9 +198,9 @@
                 photoInput.classList.add('is-invalid');
                 showNotification('Invalid file type. Only JPG, JPEG, and PNG are allowed.', 'error');
                 isValid = false;
-            } else if (photo.size > 5 * 1024 * 1024) { // 5MB limit
+            } else if (photo.size > 8 * 1024 * 1024) { // 5MB limit
                 photoInput.classList.add('is-invalid');
-                showNotification('File size too large. Maximum 5MB allowed.', 'error');
+                showNotification('File size too large. Maximum 8MB allowed.', 'error');
                 isValid = false;
             } else {
                 photoInput.classList.add('is-valid');
