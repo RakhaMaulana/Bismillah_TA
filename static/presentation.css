@@ -1,0 +1,202 @@
+/* Enhanced Styles for E-Voting Presentation */
+
+/* Additional animations and effects */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.6), 0 0 30px rgba(102, 126, 234, 0.4); }
+    100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.3); }
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Enhanced feature cards */
+.feature-card {
+    animation: fadeInUp 0.8s ease forwards;
+    animation-delay: calc(var(--delay) * 0.2s);
+}
+
+/* Glowing security badges */
+.security-badge {
+    animation: glow 3s infinite;
+    transition: all 0.3s ease;
+}
+
+.security-badge:hover {
+    transform: scale(1.05);
+    animation: none;
+    box-shadow: 0 0 25px rgba(40, 167, 69, 0.6);
+}
+
+/* Enhanced demo buttons */
+.demo-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.demo-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.demo-button:hover::before {
+    left: 100%;
+}
+
+/* Enhanced stats animation */
+.stat-number {
+    animation: fadeInUp 1s ease forwards;
+    animation-delay: 0.5s;
+    opacity: 0;
+}
+
+/* Flow step animations */
+.flow-step {
+    animation: slideInLeft 0.6s ease forwards;
+    animation-delay: calc(var(--step) * 0.3s);
+    opacity: 0;
+}
+
+/* Tech stack hover effects */
+.tech-item {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.tech-item:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-5px) scale(1.05);
+}
+
+/* Enhanced card hover effects */
+.card {
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.05), transparent);
+    transform: rotate(45deg);
+    transition: all 0.6s;
+    opacity: 0;
+}
+
+.card:hover::before {
+    animation: rotate 2s linear infinite;
+    opacity: 1;
+}
+
+/* Loading animation for security score */
+.security-score-loading {
+    width: 100px;
+    height: 100px;
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid #667eea;
+    border-radius: 50%;
+    animation: rotate 1s linear infinite;
+    margin: 20px auto;
+}
+
+/* Progressive enhancement for mobile */
+@media (max-width: 768px) {
+    .features-grid {
+        animation: none;
+    }
+
+    .feature-card {
+        animation: fadeInUp 0.5s ease forwards;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Print styles */
+@media print {
+    .demo-button {
+        background: #333 !important;
+        color: white !important;
+    }
+
+    .card {
+        break-inside: avoid;
+        margin-bottom: 30px;
+    }
+
+    .hero {
+        break-after: page;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .card {
+        border: 2px solid #000;
+    }
+
+    .feature-card {
+        border: 1px solid #666;
+    }
+
+    .demo-button {
+        border: 2px solid #000;
+    }
+}
